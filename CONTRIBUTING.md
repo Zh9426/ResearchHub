@@ -43,9 +43,9 @@ git commit
 
 ## GitHub 连接
 
-目标仓库为 `https://github.com/Zh9426/ResearchHub`，可见性必须为 Private。
+当前仓库为 [Zh9426/ResearchHub](https://github.com/Zh9426/ResearchHub)，已确认可见性为 Private。当前本地目录已配置 `origin`，`main` 跟踪 `origin/main`。
 
-创建远程仓库时不自动生成 README 或其他初始文件，以便推送本地初始提交。远程创建成功后执行：
+本项目已完成远程创建与首次推送，无需重复添加 `origin`。以下命令仅供重新连接一个尚未配置远程的本地副本参考：
 
 ```powershell
 git remote add origin https://github.com/Zh9426/ResearchHub.git

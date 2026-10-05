@@ -4,12 +4,13 @@
 
 ## 项目状态
 
-当前处于仓库初始化阶段，尚未实现应用功能，技术栈待确定。
+开发仓库与 GitHub 同步已就绪，尚未实现应用功能，技术栈待确定。
 
 - 本地目录：`H:\ResearchHub`
-- 目标 GitHub 仓库：`Zh9426/ResearchHub`
-- 仓库可见性要求：Private（私有）
+- GitHub 仓库：[Zh9426/ResearchHub](https://github.com/Zh9426/ResearchHub)
+- 已验证仓库可见性：Private（私有），后续保持私有
 - 主分支：`main`
+- 远程跟踪分支：`origin/main`
 
 ## 开发与同步约定
 
