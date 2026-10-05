@@ -1,0 +1,9 @@
+https://{$RESEARCHHUB_HOST} {
+    tls internal
+    encode gzip
+    reverse_proxy web:3000
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+    }
+}

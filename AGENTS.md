@@ -4,7 +4,7 @@
 
 - 这是个人使用的科研进度 Hub。
 - GitHub 目标仓库为 `Zh9426/ResearchHub`，必须保持私有。
-- 首次初始化只准备仓库和迭代管理基础；应用功能与技术栈需结合用户后续需求确定。
+- v0.1 使用 Next.js/FastAPI/PostgreSQL/MinIO；需求与证据边界见 `docs/V0.1_REQUIREMENTS.txt`，不得用测试替身冒充实际服务验收。
 - 交流、开发文档和提交正文优先使用中文。
 
 ## 每次提交的要求

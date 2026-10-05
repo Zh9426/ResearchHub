@@ -1,0 +1,47 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "severity": {
+      "default": "medium",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "status": {
+      "default": "open",
+      "enum": [
+        "open",
+        "mitigated",
+        "closed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "mitigation": {
+      "default": "",
+      "title": "Mitigation",
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "title": "RiskInput",
+  "type": "object"
+}

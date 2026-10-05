@@ -1,0 +1,131 @@
+{
+  "id": "generic",
+  "name": "Generic Research",
+  "version": "0.1.0",
+  "description": "通用科研工作空间；不预置任何超声参数。",
+  "run_types": [
+    {
+      "id": "simulation",
+      "name": "simulation"
+    },
+    {
+      "id": "numerical_validation",
+      "name": "numerical_validation"
+    },
+    {
+      "id": "measurement",
+      "name": "measurement"
+    },
+    {
+      "id": "benchmark",
+      "name": "benchmark"
+    },
+    {
+      "id": "optimization",
+      "name": "optimization"
+    },
+    {
+      "id": "physical_experiment",
+      "name": "physical_experiment"
+    },
+    {
+      "id": "parameter_sweep",
+      "name": "parameter_sweep"
+    },
+    {
+      "id": "material_test",
+      "name": "material_test"
+    },
+    {
+      "id": "imaging_test",
+      "name": "imaging_test"
+    }
+  ],
+  "parameter_schemas": [],
+  "metric_schemas": [],
+  "research_stages": [
+    {
+      "id": "question",
+      "name": "question",
+      "description": "question"
+    },
+    {
+      "id": "design",
+      "name": "design",
+      "description": "design"
+    },
+    {
+      "id": "execution",
+      "name": "execution",
+      "description": "execution"
+    },
+    {
+      "id": "analysis",
+      "name": "analysis",
+      "description": "analysis"
+    },
+    {
+      "id": "review",
+      "name": "review",
+      "description": "review"
+    }
+  ],
+  "stage_gates": [],
+  "artifact_categories": [
+    "data",
+    "figure",
+    "report",
+    "protocol",
+    "code",
+    "other"
+  ],
+  "dashboard_widgets": [
+    "research_questions",
+    "tasks",
+    "recent_runs",
+    "evidence_summary"
+  ],
+  "navigation": [
+    {
+      "id": "overview",
+      "name": "overview"
+    },
+    {
+      "id": "research",
+      "name": "research"
+    },
+    {
+      "id": "runs",
+      "name": "runs"
+    },
+    {
+      "id": "evidence",
+      "name": "evidence"
+    },
+    {
+      "id": "tasks",
+      "name": "tasks"
+    },
+    {
+      "id": "milestones",
+      "name": "milestones"
+    },
+    {
+      "id": "artifacts",
+      "name": "artifacts"
+    },
+    {
+      "id": "notes",
+      "name": "notes"
+    },
+    {
+      "id": "decisions",
+      "name": "decisions"
+    },
+    {
+      "id": "timeline",
+      "name": "timeline"
+    }
+  ],
+  "custom_views": []
+}

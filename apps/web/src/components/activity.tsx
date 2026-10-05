@@ -1,0 +1,4 @@
+import type {RecordData} from '../../../../packages/shared/types';
+import {date,Empty,Panel,human} from './ui';
+export function ActivityList({rows}:{rows:RecordData[]}){return !rows.length?<Empty>尚无活动。关键写操作会记录审计。</Empty>:<ol className="timeline">{rows.map(row=><li key={row.id}><span className="timeline-dot"/><time>{date(row.timestamp??row.created_at)}</time><div><strong>{human(row.action)}</strong><p>{human(row.actor_type)} · {String(row.actor??row.actor_id??'system')} · {human(row.resource_type)}</p><code>{String(row.resource_id??'')}</code><details><summary>审计详情</summary><pre>{JSON.stringify({source:row.source,request_id:row.request_id,before:row.before,after:row.after},null,2)}</pre></details></div></li>)}</ol>}
+export function ActivityPanel({rows}:{rows:RecordData[]}){return <Panel title="Activity"><ActivityList rows={rows}/></Panel>}

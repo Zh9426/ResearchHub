@@ -1,0 +1,69 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Run Id"
+    },
+    "context": {
+      "default": "",
+      "title": "Context",
+      "type": "string"
+    },
+    "decision": {
+      "default": "",
+      "title": "Decision",
+      "type": "string"
+    },
+    "reason": {
+      "default": "",
+      "title": "Reason",
+      "type": "string"
+    },
+    "alternatives": {
+      "default": "",
+      "title": "Alternatives",
+      "type": "string"
+    },
+    "status": {
+      "default": "proposed",
+      "enum": [
+        "proposed",
+        "accepted",
+        "superseded",
+        "rejected"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "title": "DecisionInput",
+  "type": "object"
+}

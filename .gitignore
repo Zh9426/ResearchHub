@@ -12,11 +12,14 @@ node_modules/
 dist/
 build/
 coverage/
+*.tsbuildinfo
 .venv/
 venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+pytest-cache-files-*/
+.pytest-tmp*/
 .cache/
 *.log
 

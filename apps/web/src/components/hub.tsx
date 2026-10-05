@@ -1,0 +1,32 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {usePathname} from 'next/navigation';
+import {api,setCsrfToken,ApiError} from '@/lib/api';
+import {useData} from '@/lib/use-data';
+import type {AuthResponse,Project} from '../../../../packages/shared/types';
+import {Auth} from './auth';
+import {Shell} from './shell';
+import {Home,Projects,GlobalTasks,ActivityPage} from './global-pages';
+import {ProjectWorkspace} from './project-workspace';
+import {RunDetail} from './run-detail';
+import {SettingsPage} from './settings';
+import {Feedback} from './ui';
+export function Hub(){
+ const [auth,setAuth]=useState<AuthResponse|null>(null),[checking,setChecking]=useState(true),[error,setError]=useState('');
+ const pathname=usePathname(),parts=pathname.split('/').filter(Boolean);
+ const projects=useData<Project[]>(auth?'/projects':null);
+ useEffect(()=>{api<AuthResponse>('/auth/me').then(value=>{setCsrfToken(value.csrf_token);setAuth(value);}).catch(e=>{if(!(e instanceof ApiError&&e.status===401))setError(e.message);}).finally(()=>setChecking(false));},[]);
+ useEffect(()=>{if('serviceWorker'in navigator&&window.isSecureContext)navigator.serviceWorker.register('/sw.js').catch(()=>{});},[]);
+ if(checking)return <main className="auth-page"><Feedback loading/></main>;
+ if(!auth)return <>{error&&<div className="connection-banner">{error}</div>}<Auth onLogin={value=>{setError('');setAuth(value);}}/></>;
+ const projectId=parts[0]==='projects'?parts[1]:undefined;
+ let content;
+ if(parts[0]==='projects'&&projectId)content=<ProjectWorkspace id={projectId} tab={parts[2]??'overview'} onProjectsChange={projects.refresh}/>;
+ else if(parts[0]==='projects')content=<Projects projects={projects.data??[]} refresh={projects.refresh}/>;
+ else if(parts[0]==='runs'&&parts[1])content=<RunDetail id={parts[1]}/>;
+ else if(parts[0]==='tasks')content=<GlobalTasks projects={projects.data??[]}/>;
+ else if(parts[0]==='activity')content=<ActivityPage/>;
+ else if(parts[0]==='settings')content=<SettingsPage auth={auth} onLogout={()=>{setAuth(null);setCsrfToken('');}} onSeed={projects.refresh}/>;
+ else content=<Home projects={projects.data??[]}/>;
+ return <Shell projects={projects.data??[]} projectId={projectId}><Feedback error={projects.error}/>{content}</Shell>;
+}

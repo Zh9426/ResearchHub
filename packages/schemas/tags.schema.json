@@ -1,0 +1,21 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "color": {
+      "default": "gray",
+      "title": "Color",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "TagInput",
+  "type": "object"
+}

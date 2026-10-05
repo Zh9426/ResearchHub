@@ -1,0 +1,72 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "default": "",
+      "title": "Title",
+      "type": "string"
+    },
+    "statement": {
+      "minLength": 1,
+      "title": "Statement",
+      "type": "string"
+    },
+    "status": {
+      "default": "draft",
+      "enum": [
+        "draft",
+        "supported",
+        "rejected",
+        "inconclusive"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "limitations": {
+      "default": "",
+      "title": "Limitations",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "run_ids": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Run Ids",
+      "type": "array"
+    },
+    "artifact_ids": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Artifact Ids",
+      "type": "array"
+    },
+    "source_ids": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Source Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "statement"
+  ],
+  "title": "ClaimInput",
+  "type": "object"
+}

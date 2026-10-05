@@ -1,0 +1,2503 @@
+你现在需要直接开发一个可实际运行的个人科研工作系统：
+
+Research Hub
+
+当前目标不是继续只写架构文档，而是交付：
+
+Research Hub v0.1
+
+这是一个真正可运行、可在电脑和手机访问、拥有独立数据存储，并能够继续扩展 ChatGPT / Codex / MCP 自动化能力的个人科研工作平台。
+
+==================================================
+0. PRODUCT DEFINITION
+==================================================
+
+Research Hub 不是：
+
+- HDSP 专用管理工具
+- ICE 专用管理工具
+- 普通 Todo App
+- Notion 克隆
+- 实验记录表
+- AI 聊天网页
+
+它是：
+
+“面向个人科研工作的 Research Operating System”。
+
+核心目标：
+
+1. 一个 Hub 管理多个科研课题；
+2. 不同课题共享科研基础能力；
+3. 每个课题又可以拥有自己的工作流、参数、指标和页面；
+4. 手机和电脑使用同一套数据；
+5. 科研事实保存在 Research Hub，而不是 ChatGPT Memory 或 Codex 对话中；
+6. 后续 ChatGPT / Codex 可以通过 MCP 安全访问；
+7. 后续 Codex 可以自动运行实验并回写结果；
+8. 即使以后完全不用 OpenAI，Research Hub 本身仍可独立运行。
+
+目前至少需要支持：
+
+- Generic Research
+- HDSP
+- ICE-Sonocuring
+
+三种 Project Module。
+
+==================================================
+1. FIRST VERSION GOAL
+==================================================
+
+本轮只开发 Research Hub v0.1。
+
+目标是：
+
+“做出一个真正能开始用于科研工作的第一版系统。”
+
+本轮结束时，我应该能够：
+
+1. 启动整个系统；
+2. 创建并登录个人账号；
+3. 在电脑浏览器中使用；
+4. 在手机浏览器中使用；
+5. 安装为 PWA；
+6. 创建项目；
+7. 选择项目类型；
+8. 使用 Generic / HDSP / ICE 不同工作空间；
+9. 创建 Research Run；
+10. 填写参数和指标；
+11. 上传 Artifact；
+12. 建立父子 Run；
+13. 管理任务和 Milestone；
+14. 添加 Note 与 Decision；
+15. 添加 Research Question 与 Hypothesis；
+16. 查看 Evidence；
+17. 查看项目 Stage / Gate；
+18. 查看 Audit Log；
+19. 数据实际保存到 PostgreSQL / Object Storage；
+20. 重启容器后数据仍存在。
+
+这是 v0.1 的核心验收标准。
+
+==================================================
+2. IMPORTANT DEVELOPMENT RULE
+==================================================
+
+不要再次花大量时间只写设计文档。
+
+允许先建立必要设计文件，但必须快速进入实际开发。
+
+采用：
+
+DESIGN
+→ IMPLEMENT
+→ RUN
+→ TEST
+→ VISUAL REVIEW
+→ FIX
+
+循环。
+
+不要：
+
+写几十页文档
+→ 没有可运行软件
+
+本轮最终交付的核心是：
+
+WORKING SOFTWARE。
+
+==================================================
+3. TECH STACK
+==================================================
+
+默认技术栈：
+
+Frontend
+- Next.js
+- React
+- TypeScript
+
+UI
+- Tailwind CSS 或等效现代 CSS 方案
+- 可使用成熟组件基础设施
+- 但不要直接套用明显的默认模板视觉
+
+Backend
+- Python
+- FastAPI
+
+Database
+- PostgreSQL
+
+ORM
+- SQLAlchemy
+
+Migration
+- Alembic
+
+Object Storage
+- S3 Compatible
+- 本地开发默认 MinIO
+
+Deployment
+- Docker
+- Docker Compose
+
+PWA
+- 必须支持
+
+Authentication
+- 单用户优先设计
+- 但数据模型不要完全锁死为只能一个 User
+- 安全 Session / Cookie 或可靠等效实现
+- 密码安全哈希
+
+Testing
+- pytest
+- 必要 frontend tests
+
+==================================================
+4. REPOSITORY STRUCTURE
+==================================================
+
+建议：
+
+research-hub/
+│
+├── apps/
+│   ├── web/
+│   ├── api/
+│   └── mcp/
+│
+├── packages/
+│   ├── shared/
+│   ├── schemas/
+│   └── project-modules/
+│       ├── generic/
+│       ├── hdsp/
+│       └── ice-sonocuring/
+│
+├── infrastructure/
+│   ├── docker/
+│   └── migrations/
+│
+├── docs/
+│
+├── tests/
+│
+├── docker-compose.yml
+├── .env.example
+└── README.md
+
+如果根据技术栈需要调整目录，可以调整。
+
+但必须保持：
+
+Core
+
+Workflow Engine
+
+Project Module
+
+Infrastructure
+
+之间具有清晰边界。
+
+==================================================
+5. THREE-LAYER ARCHITECTURE
+==================================================
+
+Research Hub 使用三层科研架构：
+
+================================
+LAYER 1
+Research Hub Core
+================================
+
+通用科研实体：
+
+User
+
+Project
+
+ResearchQuestion
+
+Hypothesis
+
+Milestone
+
+Task
+
+ResearchRun
+
+Parameter
+
+Metric
+
+Artifact
+
+Evidence
+
+Claim
+
+Source
+
+Note
+
+Decision
+
+Risk
+
+Tag
+
+AuditLog
+
+
+================================
+LAYER 2
+Research Workflow Engine
+================================
+
+提供：
+
+Research Stage
+
+Stage Gate
+
+Gate Criterion
+
+Run Type
+
+Parameter Schema
+
+Metric Schema
+
+Evidence Status
+
+Protocol
+
+Validation
+
+Workflow Status
+
+Research provenance
+
+
+================================
+LAYER 3
+Project Modules
+================================
+
+目前：
+
+generic
+
+hdsp
+
+ice-sonocuring
+
+未来可能加入完全不同领域课题。
+
+因此绝对不能把系统写死为超声研究软件。
+
+==================================================
+6. CORE DATA MODEL
+==================================================
+
+设计并实现真正数据库模型。
+
+------------------------------
+Project
+------------------------------
+
+至少：
+
+id
+name
+description
+module_id
+status
+current_stage
+created_at
+updated_at
+
+------------------------------
+ResearchQuestion
+------------------------------
+
+project_id
+title
+description
+status
+
+------------------------------
+Hypothesis
+------------------------------
+
+project_id
+research_question_id
+statement
+status
+evidence_status
+
+------------------------------
+Milestone
+------------------------------
+
+project_id
+title
+description
+status
+target_date
+completed_at
+
+------------------------------
+Task
+------------------------------
+
+project_id
+milestone_id
+title
+description
+status
+priority
+due_date
+
+------------------------------
+ResearchRun
+------------------------------
+
+这是非常重要的通用对象。
+
+不要只叫 Experiment。
+
+ResearchRun 可以是：
+
+simulation
+
+numerical_validation
+
+measurement
+
+benchmark
+
+optimization
+
+physical_experiment
+
+parameter_sweep
+
+material_test
+
+imaging_test
+
+等等。
+
+至少包含：
+
+id
+project_id
+run_type
+parent_run_id
+
+title
+objective
+hypothesis
+
+status
+
+protocol
+
+observation
+
+ai_analysis
+
+human_conclusion
+
+next_step
+
+environment
+
+software_version
+
+code_revision
+
+started_at
+completed_at
+
+created_by
+created_at
+updated_at
+
+ResearchRun 必须支持：
+
+Parent → Child
+
+例如：
+
+#037
+ ├── #038
+ └── #039
+      └── #041
+           └── #042
+
+UI 第一版至少能够显示：
+
+Based on Run
+Child Runs
+Changes from Parent
+
+不要求第一版做复杂实验树可视化。
+
+------------------------------
+Parameter
+------------------------------
+
+参数不是单纯：
+
+name=value
+
+必须支持科研来源。
+
+至少：
+
+run_id
+name
+value
+value_type
+unit
+
+source_kind
+source_id
+source_location
+
+uncertainty
+valid_conditions
+
+is_confirmed
+
+------------------------------
+Metric
+------------------------------
+
+run_id
+name
+value
+unit
+
+metric_schema_id
+status
+
+------------------------------
+Artifact
+------------------------------
+
+结构化数据不能把大型文件直接塞 PostgreSQL。
+
+文件进入 MinIO / S3。
+
+Artifact 至少：
+
+id
+project_id
+run_id
+
+filename
+mime_type
+size
+
+checksum
+object_key
+
+category
+
+metadata
+
+created_at
+created_by
+
+------------------------------
+Note
+------------------------------
+
+project_id
+run_id optional
+title
+content
+created_at
+
+------------------------------
+Decision
+------------------------------
+
+project_id
+run_id optional
+
+title
+
+context
+decision
+reason
+
+alternatives
+
+status
+
+created_at
+
+------------------------------
+Evidence
+------------------------------
+
+Evidence 是第一版必须存在的科研核心模型。
+
+至少：
+
+id
+project_id
+
+title
+description
+
+evidence_type
+status
+
+linked_run_id optional
+linked_artifact_id optional
+linked_source_id optional
+
+limitations
+
+created_at
+
+------------------------------
+Claim
+------------------------------
+
+允许创建科研 Claim。
+
+例如：
+
+“方案 A 在当前几何约束下优于方案 B”
+
+Claim 应允许关联多个 Evidence。
+
+第一版 UI 不需要非常复杂，但数据关系必须成立。
+
+------------------------------
+AuditLog
+------------------------------
+
+至少：
+
+actor
+actor_type
+
+action
+
+resource_type
+resource_id
+
+before
+after
+
+source
+
+timestamp
+
+request_id
+
+actor_type 至少：
+
+human
+chatgpt
+codex
+system
+
+即使第一版主要由 human 操作，也必须预留这一结构。
+
+==================================================
+7. PARAMETER PROVENANCE
+==================================================
+
+这是科研数据设计中的重要要求。
+
+source_kind 至少支持：
+
+unknown
+synthetic
+assumed
+literature
+manufacturer
+measured
+calibrated
+derived
+
+例如：
+
+frequency
+4 MHz
+source_kind = assumed
+
+不能与：
+
+frequency
+4 MHz
+source_kind = measured
+
+混为一谈。
+
+Unknown 必须真的能够存储为 unknown。
+
+不要为了表单方便自动生成假数据。
+
+==================================================
+8. EVIDENCE MODEL
+==================================================
+
+科研结论不能因为 AI 写出来就变成事实。
+
+Evidence status 至少支持：
+
+unknown
+
+hypothesis
+
+assumed
+
+synthetic
+
+simulated
+
+measured
+
+calibrated
+
+validated
+
+reproduced
+
+rejected
+
+Claim 可以关联：
+
+Run
+
+Artifact
+
+Source
+
+Evidence
+
+最终形成：
+
+Claim
+   ↓
+Evidence
+   ↓
+ResearchRun
+   ↓
+Parameters / Metrics / Artifact
+
+v0.1 不需要做复杂知识图谱。
+
+但关系模型与基础 UI 必须成立。
+
+==================================================
+9. PROJECT MODULE SYSTEM
+==================================================
+
+绝对不要使用：
+
+复制一套 HDSP 页面
++
+复制一套 ICE 页面
+
+来实现所谓 Module。
+
+必须设计：
+
+ProjectModuleManifest
+
+概念上类似：
+
+id
+
+name
+
+version
+
+description
+
+run_types
+
+parameter_schemas
+
+metric_schemas
+
+research_stages
+
+stage_gates
+
+artifact_categories
+
+dashboard_widgets
+
+navigation
+
+custom_views
+
+模块可以定义：
+
+显示什么
+
+有哪些科研对象
+
+有哪些 workflow
+
+有哪些参数
+
+有哪些指标
+
+有哪些 dashboard widget
+
+但不能复制整个 Research Hub Core。
+
+==================================================
+10. GENERIC RESEARCH MODULE
+==================================================
+
+Generic 是系统可扩展性的验证。
+
+Generic Project 至少支持：
+
+Overview
+
+Research Questions
+
+Hypotheses
+
+Runs
+
+Tasks
+
+Milestones
+
+Evidence
+
+Notes
+
+Decisions
+
+Artifacts
+
+Timeline
+
+不要带任何 HDSP / ICE 特有字段。
+
+==================================================
+11. HDSP MODULE
+==================================================
+
+HDSP：
+
+用于超声 3D 打印的全息超声调制相位板研究。
+
+HDSP 目前主要科研流程：
+
+Target Design
+
+Phase Retrieval
+
+Phase Plate Design
+
+Acoustic Simulation
+
+Z-Scan
+
+Thermal Simulation
+
+Curing Prediction
+
+Optimization
+
+Physical Validation
+
+
+HDSP Dashboard 第一版建议：
+
+Current Stage
+
+Current Goal
+
+Recent Runs
+
+Best Metrics
+
+Open Tasks
+
+Recent Decisions
+
+Artifacts
+
+Recent Activity
+
+
+HDSP Run Types 至少包括：
+
+phase_retrieval
+
+phase_plate_design
+
+acoustic_simulation
+
+zscan
+
+thermal_simulation
+
+curing_prediction
+
+optimization
+
+physical_validation
+
+
+示例 Parameters：
+
+frequency
+z_target
+pressure
+algorithm
+iterations
+beta
+phase_levels
+
+
+示例 Metrics：
+
+IoU
+correlation
+coverage
+p_max
+Tmax
+Omega
+best_z
+
+
+这些都属于 HDSP module。
+
+不要加入 Core 固定字段。
+
+==================================================
+12. ICE-SONOCURING MODULE
+==================================================
+
+ICE-Sonocuring 是第二个科研模块。
+
+请以提供的：
+
+2026-09-26-ice-research-roadmap.md
+
+作为 ICE 领域工作流的重要依据。
+
+不要机械地把 Markdown 每一行做成数据库字段。
+
+你需要抽取：
+
+哪些属于 Core
+
+哪些属于 Workflow Engine
+
+哪些只属于 ICE Module。
+
+
+ICE 研究目标大致是：
+
+设计并验证面向局部声响应封堵的双功能 ICE 探头体系。
+
+研究过程包含：
+
+计算层
+
+工程层
+
+实验层
+
+
+ICE 的高级 Stage 可以体现：
+
+A
+Numerical credibility and acoustic screening
+
+B
+Imaging evaluation and enhanced simulation
+
+C
+Physical closed-loop validation
+
+D
+System / prototype validation
+
+E
+Pre-animal evidence review
+
+
+ICE Gate：
+
+G0
+Baseline reproducibility
+
+G1
+Numerical credibility
+
+G2
+Controlled comparison
+
+G3
+Deliverable evidence
+
+G4
+Manufacturing / tank validation review
+
+G5
+Phantom / ex-vivo validation
+
+
+Gate status：
+
+not_started
+
+in_progress
+
+passed
+
+failed
+
+blocked
+
+
+每个 Gate 应至少支持：
+
+description
+
+criteria
+
+status
+
+linked evidence
+
+blocking reason
+
+
+ICE Workspace 第一版至少需要显示：
+
+Current Stage
+
+Current Gate
+
+Gate Progress
+
+Blocking Issues
+
+Recent Runs
+
+Open Risks
+
+Evidence Summary
+
+Tasks
+
+
+ICE 专属研究区域：
+
+Probe Architecture
+
+Acoustic Screening
+
+Beam Steering
+
+Sequential Scanning
+
+Imaging
+
+k-Wave Validation
+
+Electroacoustics
+
+Hydrophone Measurement
+
+Material Response
+
+Thermal / Flow
+
+Dual-function Coexistence
+
+Tank Validation
+
+Phantom / Ex-vivo
+
+
+ICE Run Types 至少定义：
+
+numerical_validation
+
+controlled_probe_comparison
+
+steering_test
+
+scan_protocol_test
+
+robustness_test
+
+imaging_psf
+
+kwave_validation
+
+hydrophone_measurement
+
+material_response
+
+thermal_flow_test
+
+prototype_validation
+
+phantom_test
+
+
+特别注意：
+
+负结果是科研结果。
+
+例如：
+
+“当前分辨率下两个方案不可区分”
+
+这应该是一个有效 Result。
+
+不能把：
+
+negative scientific result
+
+当作：
+
+software failure。
+
+
+ICE 中还必须能表达：
+
+unknown parameter
+
+failed gate
+
+blocked stage
+
+candidate rejection
+
+numerical limitation
+
+evidence boundary
+
+==================================================
+13. PROJECT CREATION EXPERIENCE
+==================================================
+
+用户点击：
+
+New Project
+
+看到：
+
+Project Type
+
+○ Generic Research
+
+○ HDSP
+
+○ ICE Sonocuring
+
+
+选择以后：
+
+Research Hub Core 相同。
+
+但：
+
+Dashboard
+
+Navigation
+
+Run Types
+
+Metrics
+
+Parameters
+
+Stages
+
+Gates
+
+Widgets
+
+根据 Project Module 改变。
+
+这就是整个架构最重要的产品表现。
+
+==================================================
+14. INFORMATION ARCHITECTURE
+==================================================
+
+全局导航建议：
+
+Home
+
+Projects
+
+Tasks
+
+Activity
+
+Settings
+
+
+进入 Project：
+
+Overview
+
+Research
+
+Runs
+
+Evidence
+
+Tasks
+
+Files
+
+Notes
+
+Decisions
+
+根据 Module 再增加专属入口。
+
+
+Desktop：
+
+左侧导航
++
+主工作区
+
+
+Mobile：
+
+底部或 compact navigation
++
+Project selector
+
+不要简单缩小桌面 Sidebar。
+
+==================================================
+15. FRONTEND / UI / UX
+==================================================
+
+以下两个技能已经提供：
+
+frontend-app-builder
+
+ui-ux-pro-max
+
+必须实际使用，而不是只在文档里提到。
+
+在开发主要页面之前：
+
+STEP 1
+
+读取：
+
+frontend-app-builder
+
+skill instructions
+
+
+STEP 2
+
+读取：
+
+ui-ux-pro-max
+
+skill instructions
+
+
+STEP 3
+
+建立：
+
+Research Hub Design System
+
+
+至少定义：
+
+Typography
+
+Spacing
+
+Layout grid
+
+Surface hierarchy
+
+Borders
+
+Radius
+
+Iconography
+
+Status system
+
+Interactive states
+
+Table style
+
+Form style
+
+Chart style
+
+Mobile behavior
+
+
+STEP 4
+
+设计：
+
+Desktop layout
+
+Mobile layout
+
+
+STEP 5
+
+再进入正式页面实现。
+
+
+==================================================
+16. DESIGN LANGUAGE
+==================================================
+
+目标：
+
+Professional Scientific Software
+
+而不是：
+
+AI Generated Dashboard
+
+
+设计特征：
+
+克制
+
+专业
+
+精密
+
+现代
+
+良好的信息密度
+
+高可读性
+
+数据优先
+
+研究状态优先
+
+
+避免：
+
+大面积渐变
+
+大量玻璃拟态
+
+所有内容都是卡片
+
+几十个圆角矩形
+
+夸张阴影
+
+巨大 Hero
+
+无意义彩色 KPI
+
+过多 Emoji
+
+无意义动画
+
+营销网站风格
+
+
+Cards 只在存在明确视觉分组时使用。
+
+如果 Table 更适合，就使用 Table。
+
+如果 Timeline 更适合，就使用 Timeline。
+
+如果 Status list 更适合，就使用 Status list。
+
+
+不要：
+
+Everything is a Card。
+
+
+==================================================
+17. DASHBOARD DESIGN
+==================================================
+
+Global Home：
+
+Projects
+
+Tasks
+
+Recent Activity
+
+Current Focus
+
+
+Project Overview：
+
+Research Stage
+
+Current Gate
+
+Current Objective
+
+Research Questions
+
+Open Tasks
+
+Recent Runs
+
+Important Metrics
+
+Evidence Status
+
+Recent Decisions
+
+
+HDSP：
+
+突出：
+
+Recent Runs
+
+Best Metrics
+
+Optimization progress
+
+
+ICE：
+
+突出：
+
+Stage / Gate
+
+Evidence
+
+Blocking Issues
+
+Validation Progress
+
+
+Generic：
+
+突出：
+
+Research Questions
+
+Tasks
+
+Runs
+
+Evidence
+
+==================================================
+18. RESEARCH RUN PAGE
+==================================================
+
+这是第一版最重要页面之一。
+
+Run Detail：
+
+Header
+
+Run ID
+
+Run Type
+
+Status
+
+Parent Run
+
+Created
+
+
+Objective
+
+Hypothesis
+
+
+Changes from Parent
+
+
+Parameters
+
+
+Metrics
+
+
+Artifacts
+
+
+Observation
+
+
+AI Analysis
+
+
+Human Conclusion
+
+
+Next Step
+
+
+Provenance
+
+environment
+
+software version
+
+code revision
+
+
+Related Evidence
+
+
+Child Runs
+
+
+手机端仍然必须可以正常查看和编辑。
+
+==================================================
+19. RUN COMPARISON
+==================================================
+
+第一版实现基础：
+
+Compare Runs
+
+至少支持选择：
+
+2 个 Research Run
+
+显示：
+
+Parameter Differences
+
+Metric Differences
+
+Status
+
+Conclusions
+
+Artifacts summary
+
+
+不要第一版做复杂统计平台。
+
+==================================================
+20. FILE / ARTIFACT SYSTEM
+==================================================
+
+用户可以：
+
+Upload
+
+Download
+
+View metadata
+
+
+至少支持：
+
+png
+jpg
+pdf
+csv
+json
+mat
+npy
+npz
+zip
+txt
+log
+
+
+文件进入 MinIO。
+
+数据库记录 metadata。
+
+
+必须计算：
+
+checksum
+
+
+同一 Artifact 需要知道：
+
+所属 Project
+
+所属 Run
+
+category
+
+size
+
+filename
+
+created_at
+
+==================================================
+21. TASK / MILESTONE SYSTEM
+==================================================
+
+保持简单。
+
+Task：
+
+todo
+doing
+blocked
+done
+
+
+Milestone：
+
+not_started
+in_progress
+completed
+blocked
+
+
+允许：
+
+Project Task
+
+Milestone Task
+
+
+第一版不要做复杂 Jira / Kanban。
+
+==================================================
+22. NOTES AND DECISIONS
+==================================================
+
+Note：
+
+自由科研记录。
+
+
+Decision：
+
+结构化决策。
+
+
+Decision 页面至少：
+
+Context
+
+Decision
+
+Reason
+
+Alternatives
+
+Related Run
+
+Related Evidence
+
+
+这是后续 AI 查询：
+
+“我们为什么放弃这个方案？”
+
+的重要依据。
+
+==================================================
+23. AUDIT
+==================================================
+
+关键写操作记录 Audit Log。
+
+例如：
+
+create_run
+
+update_metric
+
+upload_artifact
+
+update_gate
+
+create_decision
+
+
+第一版 Audit UI 可以简单：
+
+Activity Timeline
+
+显示：
+
+时间
+
+Actor
+
+Action
+
+Resource
+
+==================================================
+24. AUTHENTICATION
+==================================================
+
+这是个人科研系统。
+
+v0.1 不需要团队协作系统。
+
+但是必须：
+
+有 User
+
+有登录
+
+安全密码存储
+
+安全 Session
+
+不能把 API 完全裸露在公网。
+
+
+可以：
+
+首次启动创建 Admin User。
+
+
+不要开发：
+
+organization
+
+team billing
+
+role hierarchy
+
+复杂协作权限
+
+==================================================
+25. MCP — V0.1 SCOPE
+==================================================
+
+这一版不要投入大量时间做 MCP 自动化。
+
+但是架构必须准备好。
+
+实现最小 MCP Proof of Concept。
+
+建议只有以下工具：
+
+get_projects
+
+get_project
+
+get_project_context
+
+list_runs
+
+get_run
+
+create_run
+
+save_run_metrics
+
+create_note
+
+create_task
+
+
+目标不是功能完整。
+
+目标是验证：
+
+ChatGPT / Codex
+        ↓
+MCP
+        ↓
+Application Service
+        ↓
+Research Hub
+
+架构可行。
+
+
+MCP 不能：
+
+执行任意 SQL
+
+执行任意 shell
+
+读取任意服务器文件
+
+
+MCP write：
+
+必须产生 AuditLog。
+
+
+如果因为当前官方 OpenAI MCP / Plugin 接入条件导致无法实际完成外部连接：
+
+实现 MCP Server
+
+运行本地测试
+
+并标记：
+
+EXTERNAL INTEGRATION NOT VERIFIED
+
+
+不要伪造已经连通 ChatGPT。
+
+==================================================
+26. NO DESKTOP AGENT YET
+==================================================
+
+v0.1 不开发：
+
+MATLAB Desktop Agent
+
+COMSOL Agent
+
+Verasonics Agent
+
+Lab Instrument Agent
+
+Remote Code Execution
+
+
+只确保未来可以：
+
+Research Hub
+     ↓
+Job / API
+     ↓
+Desktop Agent
+
+回传：
+
+Run
+
+Metrics
+
+Artifact
+
+
+在 docs 中记录即可。
+
+==================================================
+27. SECURITY
+==================================================
+
+至少实现：
+
+Password hashing
+
+Authentication
+
+Authorization
+
+Secure session
+
+API validation
+
+CORS configuration
+
+Upload validation
+
+MCP scope foundation
+
+Secrets through env
+
+No secrets committed
+
+Audit Log
+
+
+不要过度开发企业安全体系。
+
+但不能为了 Demo 牺牲基础安全。
+
+==================================================
+28. PWA
+==================================================
+
+必须：
+
+manifest
+
+icons
+
+installable
+
+responsive
+
+mobile safe areas
+
+touch target sizing
+
+
+测试至少：
+
+Desktop viewport
+
+Tablet viewport
+
+Mobile viewport
+
+
+手机核心场景：
+
+查看项目
+
+查看 Task
+
+创建 Note
+
+创建 Run
+
+查看最近 Run
+
+查看 Metrics
+
+上传实验照片
+
+查看 Gate
+
+更新 Task
+
+==================================================
+29. SEED DATA
+==================================================
+
+为 UI 验证提供 Demo 数据。
+
+建立：
+
+Demo Generic Project
+
+Demo HDSP Project
+
+Demo ICE Project
+
+
+Demo 数据必须明确标记：
+
+DEMO / SYNTHETIC
+
+
+不要让它看起来像真实科研结果。
+
+
+HDSP demo：
+
+几次 simulation run
+
+
+ICE demo：
+
+G0 passed
+
+G1 in_progress
+
+G2 blocked
+
+
+用于验证：
+
+不同 Module 的视觉差异。
+
+==================================================
+30. TESTING
+==================================================
+
+至少测试：
+
+Authentication
+
+Project CRUD
+
+ResearchRun CRUD
+
+Parent Run
+
+Parameter
+
+Metric
+
+Artifact upload
+
+Checksum
+
+Evidence
+
+Claim linkage
+
+Task
+
+Milestone
+
+Stage
+
+Gate
+
+Module loading
+
+AuditLog
+
+MCP read
+
+MCP write
+
+
+权限测试：
+
+unauthenticated cannot read private project
+
+MCP read scope cannot write
+
+invalid Project ID
+
+invalid Run ID
+
+invalid Artifact
+
+
+所有关键测试必须实际运行。
+
+不要写：
+
+tests passed
+
+除非真正执行。
+
+==================================================
+31. VISUAL VALIDATION
+==================================================
+
+这是强制步骤。
+
+不能只通过单元测试就宣布前端完成。
+
+
+主要页面完成后：
+
+运行 App
+
+打开 Desktop 页面
+
+打开 Mobile 页面
+
+检查实际渲染
+
+
+至少检查：
+
+Global Home
+
+Project Overview
+
+Generic Workspace
+
+HDSP Workspace
+
+ICE Workspace
+
+Run Detail
+
+Run Compare
+
+Evidence
+
+Tasks
+
+Artifacts
+
+
+使用：
+
+frontend-app-builder
+
+ui-ux-pro-max
+
+再次审查实际实现。
+
+
+重点寻找：
+
+AI 味
+
+布局机械
+
+信息层次差
+
+Cards 过多
+
+空白过多
+
+移动端只是缩小版
+
+视觉不统一
+
+按钮过多
+
+科研信息密度不足
+
+
+发现后进行第二轮 UI refinement。
+
+==================================================
+32. DOCUMENTATION
+==================================================
+
+不要写大量无用文档。
+
+v0.1 保留：
+
+README.md
+
+docs/
+ARCHITECTURE.md
+DATA_MODEL.md
+MODULE_SYSTEM.md
+EVIDENCE_MODEL.md
+DESIGN_SYSTEM.md
+MCP.md
+BACKUP.md
+DEVELOPMENT.md
+
+
+README 需要让我能真正运行：
+
+Windows
+
+Docker Desktop
+
+
+写清：
+
+安装要求
+
+.env 配置
+
+启动
+
+停止
+
+数据库初始化
+
+创建用户
+
+访问网址
+
+MinIO
+
+测试
+
+备份
+
+恢复
+
+==================================================
+33. BACKUP
+==================================================
+
+第一版提供基本备份能力。
+
+至少提供：
+
+PostgreSQL backup
+
+MinIO data backup guidance
+
+restore documentation
+
+
+理想情况下提供脚本：
+
+backup
+
+restore
+
+
+不要依赖 ChatGPT 保存科研数据。
+
+==================================================
+34. OUT OF SCOPE
+==================================================
+
+v0.1 明确不开发：
+
+复杂 Zotero
+
+论文编辑器
+
+知识图谱
+
+复杂 AI Chat
+
+复杂团队系统
+
+复杂通知
+
+Email
+
+Calendar
+
+复杂 BI
+
+MATLAB automation
+
+COMSOL automation
+
+instrument control
+
+Cloud SaaS billing
+
+multi-organization
+
+mobile native app
+
+advanced experiment optimizer
+
+automatic paper writing
+
+
+不要自行扩 Scope。
+
+==================================================
+35. DEVELOPMENT PROCESS
+==================================================
+
+现在开始实际开发。
+
+顺序：
+
+STEP 1
+Inspect environment
+
+STEP 2
+Read UI skills:
+
+frontend-app-builder
+ui-ux-pro-max
+
+STEP 3
+Freeze minimum architecture
+
+STEP 4
+Create repository structure
+
+STEP 5
+Create PostgreSQL / MinIO / API
+
+STEP 6
+Implement data models
+
+STEP 7
+Implement authentication
+
+STEP 8
+Implement Core API
+
+STEP 9
+Implement Module system
+
+STEP 10
+Implement Generic Module
+
+STEP 11
+Implement HDSP Module
+
+STEP 12
+Implement ICE Module
+
+STEP 13
+Implement frontend Design System
+
+STEP 14
+Implement desktop UI
+
+STEP 15
+Implement mobile / PWA
+
+STEP 16
+Implement Artifacts
+
+STEP 17
+Implement Evidence
+
+STEP 18
+Implement Audit
+
+STEP 19
+Implement minimal MCP
+
+STEP 20
+Seed demo projects
+
+STEP 21
+Run tests
+
+STEP 22
+Run complete system
+
+STEP 23
+Visual inspection
+
+STEP 24
+UI refinement
+
+STEP 25
+Final verification
+
+
+你可以根据依赖关系调整开发顺序。
+
+但不能跳过：
+
+UI Skill review
+
+actual runtime testing
+
+mobile inspection
+
+visual refinement
+
+==================================================
+36. WORKING STYLE
+==================================================
+
+普通技术细节：
+
+自行决定。
+
+不要频繁询问我：
+
+组件库选哪个
+
+文件叫什么
+
+按钮放哪里
+
+数据库 index 怎么建
+
+这些自行采用最佳实践。
+
+
+只有以下情况才需要询问我：
+
+A.
+需要改变重大架构
+
+B.
+可能导致科研数据不可迁移
+
+C.
+需要引入付费服务
+
+D.
+涉及数据上传第三方云
+
+E.
+需要放弃 PWA
+
+F.
+需要改变 Core / Module 分层
+
+G.
+无法满足个人数据独立存储
+
+H.
+发现当前需求存在根本冲突
+
+
+否则继续开发。
+
+==================================================
+37. IMPORTANT PRINCIPLE
+==================================================
+
+Research Hub Core 负责：
+
+“如何组织科研工作”。
+
+
+Project Module 负责：
+
+“这个课题具体研究什么”。
+
+
+HDSP 与 ICE 必须感觉像：
+
+同一个 Research Hub 中的两个专业科研 Workspace。
+
+
+不能感觉像：
+
+两个独立网站被强行放在一起。
+
+==================================================
+38. FINAL ACCEPTANCE
+==================================================
+
+只有以下条件满足，才能认为 Research Hub v0.1 完成：
+
+[ ] docker compose 能成功启动
+
+[ ] PostgreSQL 工作
+
+[ ] MinIO 工作
+
+[ ] API 工作
+
+[ ] Web 工作
+
+[ ] Login 工作
+
+[ ] 创建 Project 工作
+
+[ ] Generic Module 工作
+
+[ ] HDSP Module 工作
+
+[ ] ICE Module 工作
+
+[ ] Research Run 工作
+
+[ ] Parent / Child Run 工作
+
+[ ] Parameter 工作
+
+[ ] Metric 工作
+
+[ ] Artifact upload 工作
+
+[ ] Evidence 工作
+
+[ ] Claim linkage 工作
+
+[ ] Task / Milestone 工作
+
+[ ] Stage / Gate 工作
+
+[ ] Note / Decision 工作
+
+[ ] Audit Log 工作
+
+[ ] PWA 可安装
+
+[ ] Mobile UI 可用
+
+[ ] Desktop UI 可用
+
+[ ] Demo data 可用
+
+[ ] MCP 基础服务可运行
+
+[ ] Tests 实际通过
+
+[ ] 数据重启后仍存在
+
+[ ] README 能让我从零启动
+
+
+==================================================
+39. FINAL REPORT
+==================================================
+
+完成后不要只告诉我：
+
+“项目开发完成。”
+
+
+请输出：
+
+1. 当前系统架构
+
+2. 实际实现功能
+
+3. Repository Tree
+
+4. Database Tables
+
+5. Generic / HDSP / ICE 模块区别
+
+6. UI Design System
+
+7. Desktop 截图 / 页面检查结果
+
+8. Mobile 页面检查结果
+
+9. PWA 状态
+
+10. MCP 状态
+
+11. Test results
+
+12. 未验证项目
+
+13. 已知问题
+
+14. Technical debt
+
+15. 下一版最建议开发的 5 项功能
+
+
+明确区分：
+
+IMPLEMENTED
+
+TESTED
+
+NOT VERIFIED
+
+NOT IMPLEMENTED
+
+
+不要把未来设计写成已经实现。
+
+==================================================
+40. START NOW
+==================================================
+
+现在开始开发 Research Hub v0.1。
+
+首先：
+
+1. 检查当前工作目录；
+2. 读取 frontend-app-builder skill；
+3. 读取 ui-ux-pro-max skill；
+4. 读取提供的 ICE research roadmap；
+5. 建立最小架构；
+6. 随后立即进入实际实现。
+
+不要停留在仅输出设计方案。
+
+目标是交付：
+
+一个真正能够运行的 Research Hub v0.1。

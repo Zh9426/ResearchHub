@@ -1,0 +1,255 @@
+{
+  "$defs": {
+    "Criterion": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "provenance": {
+          "title": "Provenance",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "description",
+        "provenance"
+      ],
+      "title": "Criterion",
+      "type": "object"
+    },
+    "Named": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "Named",
+      "type": "object"
+    },
+    "Schema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "value_type": {
+          "enum": [
+            "number",
+            "integer",
+            "string",
+            "boolean",
+            "object",
+            "array"
+          ],
+          "title": "Value Type",
+          "type": "string"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "value_type",
+        "unit"
+      ],
+      "title": "Schema",
+      "type": "object"
+    },
+    "Stage": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description"
+      ],
+      "title": "Stage",
+      "type": "object"
+    },
+    "StageGate": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "stage_id": {
+          "title": "Stage Id",
+          "type": "string"
+        },
+        "criteria": {
+          "items": {
+            "$ref": "#/$defs/Criterion"
+          },
+          "title": "Criteria",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "stage_id",
+        "criteria"
+      ],
+      "title": "StageGate",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    },
+    "run_types": {
+      "items": {
+        "$ref": "#/$defs/Named"
+      },
+      "title": "Run Types",
+      "type": "array"
+    },
+    "parameter_schemas": {
+      "items": {
+        "$ref": "#/$defs/Schema"
+      },
+      "title": "Parameter Schemas",
+      "type": "array"
+    },
+    "metric_schemas": {
+      "items": {
+        "$ref": "#/$defs/Schema"
+      },
+      "title": "Metric Schemas",
+      "type": "array"
+    },
+    "research_stages": {
+      "items": {
+        "$ref": "#/$defs/Stage"
+      },
+      "title": "Research Stages",
+      "type": "array"
+    },
+    "stage_gates": {
+      "items": {
+        "$ref": "#/$defs/StageGate"
+      },
+      "title": "Stage Gates",
+      "type": "array"
+    },
+    "artifact_categories": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Artifact Categories",
+      "type": "array"
+    },
+    "dashboard_widgets": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Dashboard Widgets",
+      "type": "array"
+    },
+    "navigation": {
+      "items": {
+        "$ref": "#/$defs/Named"
+      },
+      "title": "Navigation",
+      "type": "array"
+    },
+    "custom_views": {
+      "items": {
+        "$ref": "#/$defs/Named"
+      },
+      "title": "Custom Views",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "description",
+    "version",
+    "run_types",
+    "parameter_schemas",
+    "metric_schemas",
+    "research_stages",
+    "stage_gates",
+    "artifact_categories",
+    "dashboard_widgets",
+    "navigation",
+    "custom_views"
+  ],
+  "title": "Manifest",
+  "type": "object"
+}

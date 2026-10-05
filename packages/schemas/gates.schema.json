@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "CriterionInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "provenance": {
+          "default": "proposed",
+          "title": "Provenance",
+          "type": "string"
+        },
+        "status": {
+          "default": "not_started",
+          "enum": [
+            "not_started",
+            "in_progress",
+            "passed",
+            "failed",
+            "blocked"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "description"
+      ],
+      "title": "CriterionInput",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "gate_id": {
+      "title": "Gate Id",
+      "type": "string"
+    },
+    "stage_id": {
+      "title": "Stage Id",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "status": {
+      "default": "not_started",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "passed",
+        "failed",
+        "blocked"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "criteria": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/CriterionInput"
+      },
+      "title": "Criteria",
+      "type": "array"
+    },
+    "evidence_ids": {
+      "default": [],
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "blocking_reason": {
+      "default": "",
+      "title": "Blocking Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "gate_id",
+    "stage_id",
+    "name"
+  ],
+  "title": "GateInput",
+  "type": "object"
+}

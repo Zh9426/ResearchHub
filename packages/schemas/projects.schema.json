@@ -1,0 +1,55 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "module_id": {
+      "title": "Module Id",
+      "type": "string"
+    },
+    "status": {
+      "default": "active",
+      "enum": [
+        "active",
+        "paused",
+        "completed",
+        "archived",
+        "blocked"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "current_stage": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Current Stage"
+    },
+    "current_objective": {
+      "default": "",
+      "title": "Current Objective",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "module_id"
+  ],
+  "title": "ProjectInput",
+  "type": "object"
+}

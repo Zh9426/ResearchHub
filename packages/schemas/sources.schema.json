@@ -1,0 +1,77 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "source_kind": {
+      "default": "unknown",
+      "enum": [
+        "unknown",
+        "synthetic",
+        "assumed",
+        "literature",
+        "manufacturer",
+        "measured",
+        "calibrated",
+        "derived"
+      ],
+      "title": "Source Kind",
+      "type": "string"
+    },
+    "url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Url"
+    },
+    "doi": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Doi"
+    },
+    "citation": {
+      "default": "",
+      "title": "Citation",
+      "type": "string"
+    },
+    "source_location": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Location"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "title": "SourceInput",
+  "type": "object"
+}

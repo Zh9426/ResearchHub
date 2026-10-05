@@ -1,0 +1,142 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "run_type": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Run Type",
+      "type": "string"
+    },
+    "parent_run_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent Run Id"
+    },
+    "objective": {
+      "default": "",
+      "title": "Objective",
+      "type": "string"
+    },
+    "hypothesis": {
+      "default": "",
+      "title": "Hypothesis",
+      "type": "string"
+    },
+    "status": {
+      "default": "planned",
+      "enum": [
+        "planned",
+        "running",
+        "completed",
+        "failed",
+        "cancelled",
+        "blocked"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "scientific_outcome": {
+      "default": "unknown",
+      "enum": [
+        "unknown",
+        "positive_result",
+        "negative_result",
+        "inconclusive",
+        "candidate_rejected"
+      ],
+      "title": "Scientific Outcome",
+      "type": "string"
+    },
+    "protocol": {
+      "default": "",
+      "title": "Protocol",
+      "type": "string"
+    },
+    "observation": {
+      "default": "",
+      "title": "Observation",
+      "type": "string"
+    },
+    "ai_analysis": {
+      "default": "",
+      "title": "Ai Analysis",
+      "type": "string"
+    },
+    "human_conclusion": {
+      "default": "",
+      "title": "Human Conclusion",
+      "type": "string"
+    },
+    "next_step": {
+      "default": "",
+      "title": "Next Step",
+      "type": "string"
+    },
+    "environment": {
+      "default": "",
+      "title": "Environment",
+      "type": "string"
+    },
+    "software_version": {
+      "default": "",
+      "title": "Software Version",
+      "type": "string"
+    },
+    "code_revision": {
+      "default": "",
+      "title": "Code Revision",
+      "type": "string"
+    },
+    "changes_from_parent": {
+      "default": "",
+      "title": "Changes From Parent",
+      "type": "string"
+    },
+    "started_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Started At"
+    },
+    "completed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Completed At"
+    }
+  },
+  "required": [
+    "title",
+    "run_type"
+  ],
+  "title": "RunInput",
+  "type": "object"
+}

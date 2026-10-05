@@ -1,0 +1,255 @@
+{
+  "id": "hdsp",
+  "name": "HDSP",
+  "version": "0.1.0",
+  "description": "固定目标平面的全息超声表面打印；厚度相位板设计、声场、热与固化验证。",
+  "run_types": [
+    {
+      "id": "phase_retrieval",
+      "name": "phase_retrieval"
+    },
+    {
+      "id": "phase_plate_design",
+      "name": "phase_plate_design"
+    },
+    {
+      "id": "acoustic_simulation",
+      "name": "acoustic_simulation"
+    },
+    {
+      "id": "zscan",
+      "name": "zscan"
+    },
+    {
+      "id": "thermal_simulation",
+      "name": "thermal_simulation"
+    },
+    {
+      "id": "curing_prediction",
+      "name": "curing_prediction"
+    },
+    {
+      "id": "optimization",
+      "name": "optimization"
+    },
+    {
+      "id": "physical_validation",
+      "name": "physical_validation"
+    }
+  ],
+  "parameter_schemas": [
+    {
+      "id": "frequency",
+      "name": "频率",
+      "value_type": "number",
+      "unit": "Hz"
+    },
+    {
+      "id": "z_target",
+      "name": "固定目标平面距离",
+      "value_type": "number",
+      "unit": "m"
+    },
+    {
+      "id": "pressure",
+      "name": "声压",
+      "value_type": "number",
+      "unit": "Pa"
+    },
+    {
+      "id": "algorithm",
+      "name": "算法",
+      "value_type": "string",
+      "unit": ""
+    },
+    {
+      "id": "iterations",
+      "name": "迭代数",
+      "value_type": "integer",
+      "unit": ""
+    },
+    {
+      "id": "beta",
+      "name": "Beta",
+      "value_type": "number",
+      "unit": ""
+    },
+    {
+      "id": "phase_levels",
+      "name": "相位级数",
+      "value_type": "integer",
+      "unit": ""
+    }
+  ],
+  "metric_schemas": [
+    {
+      "id": "IoU",
+      "name": "固化 IoU",
+      "value_type": "number",
+      "unit": ""
+    },
+    {
+      "id": "correlation",
+      "name": "相关性",
+      "value_type": "number",
+      "unit": ""
+    },
+    {
+      "id": "coverage",
+      "name": "覆盖率",
+      "value_type": "number",
+      "unit": ""
+    },
+    {
+      "id": "p_max",
+      "name": "最大声压",
+      "value_type": "number",
+      "unit": "Pa"
+    },
+    {
+      "id": "Tmax",
+      "name": "最高温度",
+      "value_type": "number",
+      "unit": "K"
+    },
+    {
+      "id": "Omega",
+      "name": "Arrhenius 积分",
+      "value_type": "number",
+      "unit": ""
+    },
+    {
+      "id": "best_z",
+      "name": "最佳平面",
+      "value_type": "number",
+      "unit": "m"
+    },
+    {
+      "id": "Energy Efficiency",
+      "name": "能量效率",
+      "value_type": "number",
+      "unit": ""
+    },
+    {
+      "id": "over_cure",
+      "name": "过固化面积",
+      "value_type": "number",
+      "unit": ""
+    },
+    {
+      "id": "under_cure",
+      "name": "欠固化面积",
+      "value_type": "number",
+      "unit": ""
+    }
+  ],
+  "research_stages": [
+    {
+      "id": "target_design",
+      "name": "target_design",
+      "description": "target_design"
+    },
+    {
+      "id": "phase_retrieval",
+      "name": "phase_retrieval",
+      "description": "phase_retrieval"
+    },
+    {
+      "id": "phase_plate_design",
+      "name": "phase_plate_design",
+      "description": "phase_plate_design"
+    },
+    {
+      "id": "acoustic_simulation",
+      "name": "acoustic_simulation",
+      "description": "acoustic_simulation"
+    },
+    {
+      "id": "zscan",
+      "name": "zscan",
+      "description": "zscan"
+    },
+    {
+      "id": "thermal_simulation",
+      "name": "thermal_simulation",
+      "description": "thermal_simulation"
+    },
+    {
+      "id": "curing_prediction",
+      "name": "curing_prediction",
+      "description": "curing_prediction"
+    },
+    {
+      "id": "optimization",
+      "name": "optimization",
+      "description": "optimization"
+    },
+    {
+      "id": "physical_validation",
+      "name": "physical_validation",
+      "description": "physical_validation"
+    }
+  ],
+  "stage_gates": [],
+  "artifact_categories": [
+    "data",
+    "figure",
+    "report",
+    "protocol",
+    "code",
+    "other"
+  ],
+  "dashboard_widgets": [
+    "current_stage",
+    "current_goal",
+    "recent_runs",
+    "best_metrics",
+    "open_tasks",
+    "recent_decisions",
+    "artifacts",
+    "activity"
+  ],
+  "navigation": [
+    {
+      "id": "overview",
+      "name": "overview"
+    },
+    {
+      "id": "research",
+      "name": "research"
+    },
+    {
+      "id": "runs",
+      "name": "runs"
+    },
+    {
+      "id": "evidence",
+      "name": "evidence"
+    },
+    {
+      "id": "tasks",
+      "name": "tasks"
+    },
+    {
+      "id": "milestones",
+      "name": "milestones"
+    },
+    {
+      "id": "artifacts",
+      "name": "artifacts"
+    },
+    {
+      "id": "notes",
+      "name": "notes"
+    },
+    {
+      "id": "decisions",
+      "name": "decisions"
+    },
+    {
+      "id": "timeline",
+      "name": "timeline"
+    }
+  ],
+  "custom_views": []
+}

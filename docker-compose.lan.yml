@@ -1,0 +1,22 @@
+# Explicit trusted-LAN HTTPS opt-in. Never configure a router port-forward.
+services:
+  api:
+    environment:
+      COOKIE_SECURE: "true"
+      CORS_ORIGINS: https://${RESEARCHHUB_HOST:?Set the server LAN IP or hostname in .env}
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      RESEARCHHUB_HOST: ${RESEARCHHUB_HOST}
+    ports: ["443:443"]
+    volumes:
+      - ./infrastructure/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,87 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "evidence_type": {
+      "default": "observation",
+      "title": "Evidence Type",
+      "type": "string"
+    },
+    "status": {
+      "default": "unknown",
+      "enum": [
+        "unknown",
+        "hypothesis",
+        "assumed",
+        "synthetic",
+        "simulated",
+        "measured",
+        "calibrated",
+        "validated",
+        "reproduced",
+        "rejected"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "linked_run_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Linked Run Id"
+    },
+    "linked_artifact_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Linked Artifact Id"
+    },
+    "linked_source_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Linked Source Id"
+    },
+    "limitations": {
+      "default": "",
+      "title": "Limitations",
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "title": "EvidenceInput",
+  "type": "object"
+}

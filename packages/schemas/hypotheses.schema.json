@@ -1,0 +1,57 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "research_question_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Research Question Id"
+    },
+    "statement": {
+      "minLength": 1,
+      "title": "Statement",
+      "type": "string"
+    },
+    "status": {
+      "default": "proposed",
+      "enum": [
+        "proposed",
+        "testing",
+        "supported",
+        "rejected",
+        "inconclusive"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "evidence_status": {
+      "default": "hypothesis",
+      "enum": [
+        "unknown",
+        "hypothesis",
+        "assumed",
+        "synthetic",
+        "simulated",
+        "measured",
+        "calibrated",
+        "validated",
+        "reproduced",
+        "rejected"
+      ],
+      "title": "Evidence Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "statement"
+  ],
+  "title": "HypothesisInput",
+  "type": "object"
+}
