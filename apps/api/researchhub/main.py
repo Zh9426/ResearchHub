@@ -859,11 +859,11 @@ def create_app(database_url=None, initialize=False):
                 actor,
                 request,
                 {
-                    "name": "DEMO / SYNTHETIC " + module["name"],
+                    "name": "演示 / 合成数据（DEMO / SYNTHETIC）" + module["name"],
                     "description": "界面演示数据，不代表真实科研结果。",
                     "module_id": mid,
                     "current_stage": module["research_stages"][0]["id"],
-                    "current_objective": "验证工作流；所有结果为 SYNTHETIC。",
+                    "current_objective": "验证工作流；所有结果均为合成数据。",
                 },
                 True,
             )
@@ -876,11 +876,11 @@ def create_app(database_url=None, initialize=False):
                     "runs",
                     p.id,
                     {
-                        "title": f"DEMO / SYNTHETIC Run {i + 1}",
+                        "title": f"演示研究记录 {i + 1}（DEMO / SYNTHETIC）",
                         "run_type": module["run_types"][0]["id"],
                         "status": "completed",
                         "parent_run_id": first,
-                        "observation": "SYNTHETIC 演示观察",
+                        "observation": "合成数据演示观察",
                         "ai_analysis": "演示 AI 分析，未经验证。",
                         "human_conclusion": "演示数据不得作为真实结论。",
                         "scientific_outcome": "negative_result" if i else "unknown",
@@ -927,7 +927,7 @@ def create_app(database_url=None, initialize=False):
                 "evidence",
                 p.id,
                 {
-                    "title": "DEMO / SYNTHETIC evidence",
+                    "title": "演示证据（DEMO / SYNTHETIC）",
                     "status": "synthetic",
                     "linked_run_id": first,
                     "limitations": "仅用于界面演示，不支持现实世界结论。",

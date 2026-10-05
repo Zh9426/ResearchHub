@@ -8,7 +8,11 @@
 
 ### 当前电脑直接使用（已准备原生环境）
 
-当前电脑已准备真实 PostgreSQL17.11、MinIO 与生产 Web/API，可先打开 [Research Hub](http://localhost:3000) 创建自己的账户。个人数据库与验收数据库独立；没有预设个人账户或自动导入演示数据。若进程已停止：
+桌面已建立 **Research Hub** 快捷方式，双击会自动启动本机 PostgreSQL、MinIO、API 和 Web，并打开浏览器。服务已运行时直接进入，不重复启动。也可双击仓库中的 `打开ResearchHub.cmd`。所有入口使用个人数据库，不创建账号或自动导入数据。
+
+重新建立桌面入口可执行 `.\scripts\create-desktop-shortcut.ps1`；脚本保留同名已有快捷方式。后台数据保存在被忽略的 `storage/runtime/`，关闭浏览器不会停止存储服务。
+
+当前电脑已准备真实 PostgreSQL17.11、MinIO 与生产 Web/API，可打开 [Research Hub](http://localhost:3000) 登录使用；新数据库首次创建自己的账户。个人数据库与验收数据库独立；没有预设个人账户或自动导入演示数据。若进程已停止：
 
 ```powershell
 Set-Location H:\ResearchHub
@@ -53,6 +57,8 @@ Set-Location H:\ResearchHub
 **实现不等于全部验收完成。** 当前设备的 Docker 引擎受 Windows 虚拟化组件重启要求阻塞。Compose 配置检查、单元/协议测试与实际运行验收的具体状态，以 [v0.1 验收报告](docs/V0.1_REPORT.md) 为准；未验证事项会单独列出。
 
 手机与电脑访问同一个本机服务器。局域网 HTTPS 与本地证书信任步骤见 [DEVELOPMENT](docs/DEVELOPMENT.md)。PWA 不缓存科研 API，也不支持离线编辑。外部 ChatGPT/Codex MCP 连接未验证；当前交付本地 stdio 服务和配置说明。
+
+当前使用优先级为电脑端。手机与平板端保留现有响应式结构，本轮不打包或部署移动入口。系统预置界面、状态、模块阶段和表单使用简体中文；专业缩写、数据标识与用户录入内容保留原样。
 
 ## 开发
 

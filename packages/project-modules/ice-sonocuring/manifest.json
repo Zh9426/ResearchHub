@@ -1,56 +1,56 @@
 {
   "id": "ice-sonocuring",
-  "name": "ICE Sonocuring",
+  "name": "ICE 声固化",
   "version": "0.1.0",
   "description": "双功能 ICE 探头局部声响应封堵研究。路线图仅定义拟议流程，历史结果不作为当前事实。",
   "run_types": [
     {
       "id": "numerical_validation",
-      "name": "numerical_validation"
+      "name": "数值验证"
     },
     {
       "id": "controlled_probe_comparison",
-      "name": "controlled_probe_comparison"
+      "name": "受控探头比较"
     },
     {
       "id": "steering_test",
-      "name": "steering_test"
+      "name": "声束偏转测试"
     },
     {
       "id": "scan_protocol_test",
-      "name": "scan_protocol_test"
+      "name": "扫描方案测试"
     },
     {
       "id": "robustness_test",
-      "name": "robustness_test"
+      "name": "稳健性测试"
     },
     {
       "id": "imaging_psf",
-      "name": "imaging_psf"
+      "name": "成像点扩散函数"
     },
     {
       "id": "kwave_validation",
-      "name": "kwave_validation"
+      "name": "k-Wave 验证"
     },
     {
       "id": "hydrophone_measurement",
-      "name": "hydrophone_measurement"
+      "name": "水听器测量"
     },
     {
       "id": "material_response",
-      "name": "material_response"
+      "name": "材料响应"
     },
     {
       "id": "thermal_flow_test",
-      "name": "thermal_flow_test"
+      "name": "热与流动测试"
     },
     {
       "id": "prototype_validation",
-      "name": "prototype_validation"
+      "name": "原型验证"
     },
     {
       "id": "phantom_test",
-      "name": "phantom_test"
+      "name": "模型体测试"
     }
   ],
   "parameter_schemas": [
@@ -98,7 +98,7 @@
     },
     {
       "id": "material_threshold",
-      "name": "材料响应阈值（未知时保持 null）",
+      "name": "材料响应阈值（未知时保持 null（未知值））",
       "value_type": "number",
       "unit": ""
     }
@@ -150,34 +150,34 @@
   "research_stages": [
     {
       "id": "A",
-      "name": "Numerical credibility and acoustic screening",
-      "description": "Numerical credibility and acoustic screening"
+      "name": "数值可信度与声学筛选",
+      "description": "数值可信度与声学筛选"
     },
     {
       "id": "B",
-      "name": "Imaging evaluation and enhanced simulation",
-      "description": "Imaging evaluation and enhanced simulation"
+      "name": "成像评价与增强仿真",
+      "description": "成像评价与增强仿真"
     },
     {
       "id": "C",
-      "name": "Physical closed-loop validation",
-      "description": "Physical closed-loop validation"
+      "name": "物理闭环验证",
+      "description": "物理闭环验证"
     },
     {
       "id": "D",
-      "name": "System / prototype validation",
-      "description": "System / prototype validation"
+      "name": "系统与原型验证",
+      "description": "系统与原型验证"
     },
     {
       "id": "E",
-      "name": "Pre-animal evidence review",
-      "description": "Pre-animal evidence review"
+      "name": "动物实验前证据评审",
+      "description": "动物实验前证据评审"
     }
   ],
   "stage_gates": [
     {
       "id": "G0",
-      "name": "Baseline reproducibility",
+      "name": "基线可复现性",
       "stage_id": "A",
       "description": "依据 2026-09-26 ICE roadmap 的拟议门槛；不表示项目已通过。",
       "criteria": [
@@ -195,7 +195,7 @@
     },
     {
       "id": "G1",
-      "name": "Numerical credibility",
+      "name": "数值可信度",
       "stage_id": "A",
       "description": "依据 2026-09-26 ICE roadmap 的拟议门槛；不表示项目已通过。",
       "criteria": [
@@ -206,7 +206,7 @@
         },
         {
           "id": "G1-2",
-          "description": "扩大搜索域检查峰值与截断；截断外域保持 unknown。",
+          "description": "扩大搜索域检查峰值与截断；截断外域保持 未知。",
           "provenance": "proposed: 2026-09-26-ice-research-roadmap.md"
         },
         {
@@ -218,7 +218,7 @@
     },
     {
       "id": "G2",
-      "name": "Controlled comparison",
+      "name": "受控比较",
       "stage_id": "A",
       "description": "依据 2026-09-26 ICE roadmap 的拟议门槛；不表示项目已通过。",
       "criteria": [
@@ -241,7 +241,7 @@
     },
     {
       "id": "G3",
-      "name": "Deliverable evidence",
+      "name": "可交付证据",
       "stage_id": "B",
       "description": "依据 2026-09-26 ICE roadmap 的拟议门槛；不表示项目已通过。",
       "criteria": [
@@ -259,7 +259,7 @@
     },
     {
       "id": "G4",
-      "name": "Manufacturing / tank validation review",
+      "name": "制造与水槽验证评审",
       "stage_id": "D",
       "description": "依据 2026-09-26 ICE roadmap 的拟议门槛；不表示项目已通过。",
       "criteria": [
@@ -277,7 +277,7 @@
     },
     {
       "id": "G5",
-      "name": "Phantom / ex-vivo validation",
+      "name": "模型体与离体验证",
       "stage_id": "E",
       "description": "依据 2026-09-26 ICE roadmap 的拟议门槛；不表示项目已通过。",
       "criteria": [
@@ -315,97 +315,97 @@
   "navigation": [
     {
       "id": "overview",
-      "name": "overview"
+      "name": "概览"
     },
     {
       "id": "research",
-      "name": "research"
+      "name": "研究"
     },
     {
       "id": "runs",
-      "name": "runs"
+      "name": "研究记录"
     },
     {
       "id": "evidence",
-      "name": "evidence"
+      "name": "证据"
     },
     {
       "id": "tasks",
-      "name": "tasks"
+      "name": "任务"
     },
     {
       "id": "milestones",
-      "name": "milestones"
+      "name": "里程碑"
     },
     {
       "id": "artifacts",
-      "name": "artifacts"
+      "name": "研究文件"
     },
     {
       "id": "notes",
-      "name": "notes"
+      "name": "笔记"
     },
     {
       "id": "decisions",
-      "name": "decisions"
+      "name": "决策"
     },
     {
       "id": "timeline",
-      "name": "timeline"
+      "name": "时间线"
     }
   ],
   "custom_views": [
     {
       "id": "probe_architecture",
-      "name": "probe_architecture"
+      "name": "探头架构"
     },
     {
       "id": "acoustic_screening",
-      "name": "acoustic_screening"
+      "name": "声学筛选"
     },
     {
       "id": "beam_steering",
-      "name": "beam_steering"
+      "name": "声束偏转"
     },
     {
       "id": "sequential_scanning",
-      "name": "sequential_scanning"
+      "name": "顺序扫描"
     },
     {
       "id": "imaging",
-      "name": "imaging"
+      "name": "成像"
     },
     {
       "id": "kwave_validation",
-      "name": "kwave_validation"
+      "name": "k-Wave 验证"
     },
     {
       "id": "electroacoustics",
-      "name": "electroacoustics"
+      "name": "电声特性"
     },
     {
       "id": "hydrophone_measurement",
-      "name": "hydrophone_measurement"
+      "name": "水听器测量"
     },
     {
       "id": "material_response",
-      "name": "material_response"
+      "name": "材料响应"
     },
     {
       "id": "thermal_flow",
-      "name": "thermal_flow"
+      "name": "热与流动"
     },
     {
       "id": "dual_function_coexistence",
-      "name": "dual_function_coexistence"
+      "name": "双功能共存"
     },
     {
       "id": "tank_validation",
-      "name": "tank_validation"
+      "name": "水槽验证"
     },
     {
       "id": "phantom_ex_vivo",
-      "name": "phantom_ex_vivo"
+      "name": "模型体与离体验证"
     }
   ]
 }

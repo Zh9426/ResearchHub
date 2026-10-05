@@ -6,35 +6,35 @@
   "run_types": [
     {
       "id": "phase_retrieval",
-      "name": "phase_retrieval"
+      "name": "相位检索"
     },
     {
       "id": "phase_plate_design",
-      "name": "phase_plate_design"
+      "name": "相位板设计"
     },
     {
       "id": "acoustic_simulation",
-      "name": "acoustic_simulation"
+      "name": "声场仿真"
     },
     {
       "id": "zscan",
-      "name": "zscan"
+      "name": "轴向扫描"
     },
     {
       "id": "thermal_simulation",
-      "name": "thermal_simulation"
+      "name": "热仿真"
     },
     {
       "id": "curing_prediction",
-      "name": "curing_prediction"
+      "name": "固化预测"
     },
     {
       "id": "optimization",
-      "name": "optimization"
+      "name": "优化"
     },
     {
       "id": "physical_validation",
-      "name": "physical_validation"
+      "name": "物理验证"
     }
   ],
   "parameter_schemas": [
@@ -70,7 +70,7 @@
     },
     {
       "id": "beta",
-      "name": "Beta",
+      "name": "β 系数",
       "value_type": "number",
       "unit": ""
     },
@@ -146,48 +146,48 @@
   "research_stages": [
     {
       "id": "target_design",
-      "name": "target_design",
-      "description": "target_design"
+      "name": "目标设计",
+      "description": "目标设计"
     },
     {
       "id": "phase_retrieval",
-      "name": "phase_retrieval",
-      "description": "phase_retrieval"
+      "name": "相位检索",
+      "description": "相位检索"
     },
     {
       "id": "phase_plate_design",
-      "name": "phase_plate_design",
-      "description": "phase_plate_design"
+      "name": "相位板设计",
+      "description": "相位板设计"
     },
     {
       "id": "acoustic_simulation",
-      "name": "acoustic_simulation",
-      "description": "acoustic_simulation"
+      "name": "声场仿真",
+      "description": "声场仿真"
     },
     {
       "id": "zscan",
-      "name": "zscan",
-      "description": "zscan"
+      "name": "轴向扫描",
+      "description": "轴向扫描"
     },
     {
       "id": "thermal_simulation",
-      "name": "thermal_simulation",
-      "description": "thermal_simulation"
+      "name": "热仿真",
+      "description": "热仿真"
     },
     {
       "id": "curing_prediction",
-      "name": "curing_prediction",
-      "description": "curing_prediction"
+      "name": "固化预测",
+      "description": "固化预测"
     },
     {
       "id": "optimization",
-      "name": "optimization",
-      "description": "optimization"
+      "name": "优化",
+      "description": "优化"
     },
     {
       "id": "physical_validation",
-      "name": "physical_validation",
-      "description": "physical_validation"
+      "name": "物理验证",
+      "description": "物理验证"
     }
   ],
   "stage_gates": [],
@@ -212,43 +212,43 @@
   "navigation": [
     {
       "id": "overview",
-      "name": "overview"
+      "name": "概览"
     },
     {
       "id": "research",
-      "name": "research"
+      "name": "研究"
     },
     {
       "id": "runs",
-      "name": "runs"
+      "name": "研究记录"
     },
     {
       "id": "evidence",
-      "name": "evidence"
+      "name": "证据"
     },
     {
       "id": "tasks",
-      "name": "tasks"
+      "name": "任务"
     },
     {
       "id": "milestones",
-      "name": "milestones"
+      "name": "里程碑"
     },
     {
       "id": "artifacts",
-      "name": "artifacts"
+      "name": "研究文件"
     },
     {
       "id": "notes",
-      "name": "notes"
+      "name": "笔记"
     },
     {
       "id": "decisions",
-      "name": "decisions"
+      "name": "决策"
     },
     {
       "id": "timeline",
-      "name": "timeline"
+      "name": "时间线"
     }
   ],
   "custom_views": []

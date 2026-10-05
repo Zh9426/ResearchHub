@@ -24,7 +24,7 @@ function Save-Json($path, $value) {
 function Get-VendorDownload($url, $path) {
     if (-not (Test-Path -LiteralPath $path)) {
         Write-Host ('Downloading vendor archive: ' + [IO.Path]::GetFileName($path))
-        Invoke-WebRequest -Uri $url -OutFile $path -TimeoutSec 600
+        Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $path -TimeoutSec 600
     }
 }
 function Invoke-Pg($executable, [string[]]$arguments) {
@@ -82,7 +82,7 @@ if ($Action -eq 'Stop') {
 if ($Action -eq 'Status') {
     if (Test-Path -LiteralPath $statePath) { Get-Content -Raw -LiteralPath $statePath }
     Invoke-Pg 'pg_isready.exe' @('-h','127.0.0.1','-p','55432')
-    (Invoke-WebRequest 'http://127.0.0.1:59000/minio/health/live' -TimeoutSec 5).StatusCode
+    (Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:59000/minio/health/live' -TimeoutSec 5).StatusCode
     exit 0
 }
 
@@ -135,7 +135,7 @@ if (-not $minioProcess) {
     } finally { $env:MINIO_ROOT_USER=$oldUser; $env:MINIO_ROOT_PASSWORD=$oldSecret }
 }
 for ($attempt=0; $attempt -lt 60; $attempt++) {
-    try { $health=Invoke-WebRequest 'http://127.0.0.1:59000/minio/health/live' -TimeoutSec 2; if ($health.StatusCode -eq 200) { break } } catch { Start-Sleep -Milliseconds 500 }
+    try { $health=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:59000/minio/health/live' -TimeoutSec 2; if ($health.StatusCode -eq 200) { break } } catch { Start-Sleep -Milliseconds 500 }
     if ($minioProcess.HasExited) { throw 'MinIO exited; inspect native runtime logs.' }
 }
 if (-not $health -or $health.StatusCode -ne 200) { throw 'MinIO health check did not become ready.' }

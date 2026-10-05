@@ -12,8 +12,8 @@ $nodeExe=$nodeCommand.Source
 
 if ($Action -eq 'Status') {
     if (Test-Path -LiteralPath $statePath) { Get-Content -Raw -LiteralPath $statePath }
-    (Invoke-WebRequest 'http://127.0.0.1:8000/api/auth/status' -TimeoutSec 5).StatusCode
-    (Invoke-WebRequest 'http://127.0.0.1:3000' -TimeoutSec 5).StatusCode
+    (Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8000/api/auth/status' -TimeoutSec 5).StatusCode
+    (Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:3000' -TimeoutSec 5).StatusCode
     exit 0
 }
 if ($Action -eq 'Stop') {
@@ -66,8 +66,8 @@ try {
     for ($attempt=0;$attempt -lt 60;$attempt++) {
         if ($apiProcess.HasExited -or $webProcess.HasExited) { throw 'Native app process exited; inspect storage/runtime logs.' }
         try {
-            $apiHealth=Invoke-WebRequest 'http://127.0.0.1:8000/api/auth/status' -TimeoutSec 2
-            $webHealth=Invoke-WebRequest 'http://127.0.0.1:3000' -TimeoutSec 2
+            $apiHealth=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8000/api/auth/status' -TimeoutSec 2
+            $webHealth=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:3000' -TimeoutSec 2
             if ($apiHealth.StatusCode -eq 200 -and $webHealth.StatusCode -eq 200) { $ready=$true; break }
         } catch { Start-Sleep -Milliseconds 500 }
     }

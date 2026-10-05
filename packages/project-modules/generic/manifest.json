@@ -1,36 +1,36 @@
 {
   "id": "generic",
-  "name": "Generic Research",
+  "name": "通用科研",
   "version": "0.1.0",
   "description": "通用科研工作空间；不预置任何超声参数。",
   "run_types": [
     {
       "id": "simulation",
-      "name": "simulation"
+      "name": "仿真"
     },
     {
       "id": "numerical_validation",
-      "name": "numerical_validation"
+      "name": "数值验证"
     },
     {
       "id": "measurement",
-      "name": "measurement"
+      "name": "测量"
     },
     {
       "id": "benchmark",
-      "name": "benchmark"
+      "name": "基准测试"
     },
     {
       "id": "optimization",
-      "name": "optimization"
+      "name": "优化"
     },
     {
       "id": "physical_experiment",
-      "name": "physical_experiment"
+      "name": "物理实验"
     },
     {
       "id": "parameter_sweep",
-      "name": "parameter_sweep"
+      "name": "参数扫描"
     },
     {
       "id": "material_test",
@@ -46,28 +46,28 @@
   "research_stages": [
     {
       "id": "question",
-      "name": "question",
-      "description": "question"
+      "name": "研究问题",
+      "description": "研究问题"
     },
     {
       "id": "design",
-      "name": "design",
-      "description": "design"
+      "name": "研究设计",
+      "description": "研究设计"
     },
     {
       "id": "execution",
-      "name": "execution",
-      "description": "execution"
+      "name": "研究执行",
+      "description": "研究执行"
     },
     {
       "id": "analysis",
-      "name": "analysis",
-      "description": "analysis"
+      "name": "结果分析",
+      "description": "结果分析"
     },
     {
       "id": "review",
-      "name": "review",
-      "description": "review"
+      "name": "复核",
+      "description": "复核"
     }
   ],
   "stage_gates": [],
@@ -88,43 +88,43 @@
   "navigation": [
     {
       "id": "overview",
-      "name": "overview"
+      "name": "概览"
     },
     {
       "id": "research",
-      "name": "research"
+      "name": "研究"
     },
     {
       "id": "runs",
-      "name": "runs"
+      "name": "研究记录"
     },
     {
       "id": "evidence",
-      "name": "evidence"
+      "name": "证据"
     },
     {
       "id": "tasks",
-      "name": "tasks"
+      "name": "任务"
     },
     {
       "id": "milestones",
-      "name": "milestones"
+      "name": "里程碑"
     },
     {
       "id": "artifacts",
-      "name": "artifacts"
+      "name": "研究文件"
     },
     {
       "id": "notes",
-      "name": "notes"
+      "name": "笔记"
     },
     {
       "id": "decisions",
-      "name": "decisions"
+      "name": "决策"
     },
     {
       "id": "timeline",
-      "name": "timeline"
+      "name": "时间线"
     }
   ],
   "custom_views": []
