@@ -5,6 +5,27 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 
+ALLOWED_ARTIFACT_TYPES = {
+    "png": {"image/png"},
+    "jpg": {"image/jpeg"},
+    "jpeg": {"image/jpeg"},
+    "pdf": {"application/pdf"},
+    "csv": {"text/csv", "application/csv", "text/plain"},
+    "json": {"application/json", "text/plain"},
+    "mat": {"application/octet-stream", "application/x-matlab-data"},
+    "npy": {"application/octet-stream"},
+    "npz": {"application/octet-stream", "application/zip"},
+    "zip": {"application/zip", "application/x-zip-compressed"},
+    "txt": {"text/plain"},
+    "log": {"text/plain"},
+}
+ARTIFACT_SIGNATURES = {
+    "png": b"\x89PNG\r\n\x1a\n",
+    "jpg": b"\xff\xd8\xff",
+    "jpeg": b"\xff\xd8\xff",
+    "pdf": b"%PDF-",
+}
+
 
 class S3Objects:
     def __init__(self):

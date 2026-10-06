@@ -143,7 +143,7 @@ def test_pg_waiting_writer_rechecks_committed_state(live, scenario):
             else:
                 obj = svc.project_for(holding, human, pid, write=True)
                 latest = copy.deepcopy(obj.module_snapshot)
-                latest["version"] = "0.2.0"
+                latest["version"] = "0.2.1"
                 latest["run_types"] = [
                     row for row in latest["run_types"] if row["id"] != "simulation"
                 ]
@@ -194,7 +194,7 @@ def test_pg_waiting_writer_rechecks_committed_state(live, scenario):
             elif scenario == "restored_run":
                 assert db.get(m.ResearchRun, rid).trashed_at is None
             else:
-                assert db.get(m.Project, pid).module_version == "0.2.0"
+                assert db.get(m.Project, pid).module_version == "0.2.1"
                 assert (
                     list(
                         db.scalars(

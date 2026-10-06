@@ -44,6 +44,21 @@
       "default": "",
       "title": "Current Objective",
       "type": "string"
+    },
+    "enabled_capabilities": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Enabled Capabilities"
     }
   },
   "required": [

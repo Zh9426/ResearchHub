@@ -1,6 +1,7 @@
 * text=auto
 *.md text eol=lf
 *.json text eol=lf
+examples/research-bundle/artifacts/*.csv text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
 .gitmessage text eol=lf

@@ -1,6 +1,15 @@
 {
   "additionalProperties": false,
   "properties": {
+    "tag_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Tag Ids",
+      "type": "array"
+    },
     "title": {
       "maxLength": 200,
       "minLength": 1,

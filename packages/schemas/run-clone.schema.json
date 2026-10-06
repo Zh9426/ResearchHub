@@ -1,0 +1,74 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "run_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Run Type"
+    },
+    "objective": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Objective"
+    },
+    "inherit_parameters": {
+      "default": true,
+      "title": "Inherit Parameters",
+      "type": "boolean"
+    },
+    "inherit_protocol": {
+      "default": true,
+      "title": "Inherit Protocol",
+      "type": "boolean"
+    },
+    "inherit_environment": {
+      "default": true,
+      "title": "Inherit Environment",
+      "type": "boolean"
+    },
+    "inherit_software": {
+      "default": true,
+      "title": "Inherit Software",
+      "type": "boolean"
+    },
+    "inherit_code": {
+      "default": true,
+      "title": "Inherit Code",
+      "type": "boolean"
+    },
+    "artifact_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Artifact Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "title": "CloneInput",
+  "type": "object"
+}

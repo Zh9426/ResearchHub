@@ -26,7 +26,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from sqlalchemy import create_engine, event, select, text
+from sqlalchemy import create_engine, event, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
@@ -45,7 +45,7 @@ from .schemas import (
     TokenInput,
 )
 from .security import LoginAttempts
-from .storage import S3Objects
+from .storage import ALLOWED_ARTIFACT_TYPES, ARTIFACT_SIGNATURES, S3Objects
 
 
 def digest(value):
@@ -401,6 +401,15 @@ def create_app(database_url=None, initialize=False):
             s["id"] for s in module["research_stages"]
         }:
             raise HTTPException(422, "Unknown stage")
+        from .modules import CAPABILITY_IDS
+
+        if data["enabled_capabilities"] is None:
+            data["enabled_capabilities"] = module.get("default_capabilities", [])
+        if (
+            len(set(data["enabled_capabilities"])) != len(data["enabled_capabilities"])
+            or not set(data["enabled_capabilities"]) <= CAPABILITY_IDS
+        ):
+            raise HTTPException(422, "Unknown or duplicate capability")
         p = m.Project(
             owner_id=actor.user.id,
             is_demo=is_demo,
@@ -450,8 +459,25 @@ def create_app(database_url=None, initialize=False):
         return svc.serialize(db, p)
 
     @app.get("/api/projects/{pid}/context")
-    def context(pid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
-        return svc.project_context(db, actor, str(pid), app.state.modules)
+    def context(
+        pid: UUID, request: Request, actor=Depends(actor_dep), db=Depends(db_dep)
+    ):
+        from .workflow import positive_int
+
+        selected = request.query_params.get("collections")
+        selected = selected.split(",") if selected is not None else None
+        if selected is not None and not set(selected) <= {
+            *m.COLLECTIONS,
+            "artifacts",
+            "activity",
+        }:
+            raise HTTPException(422, "Unknown context collection")
+        limit = positive_int(request.query_params.get("limit"), 100, 100)
+        if limit == 0:
+            raise HTTPException(422, "limit must be positive")
+        return svc.project_context(
+            db, actor, str(pid), app.state.modules, selected, limit
+        )
 
     @app.get("/api/projects/{pid}")
     def get_project(pid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
@@ -475,6 +501,15 @@ def create_app(database_url=None, initialize=False):
             "projects",
             {**{k: before[k] for k in SCHEMAS["projects"].model_fields}, **payload},
         )
+        from .modules import CAPABILITY_IDS
+
+        if (
+            data["enabled_capabilities"] is None
+            or len(set(data["enabled_capabilities"]))
+            != len(data["enabled_capabilities"])
+            or not set(data["enabled_capabilities"]) <= CAPABILITY_IDS
+        ):
+            raise HTTPException(422, "Unknown or duplicate capability")
         if data["current_stage"] and data["current_stage"] not in {
             s["id"] for s in svc.module_for(p)["research_stages"]
         }:
@@ -496,52 +531,79 @@ def create_app(database_url=None, initialize=False):
         return {"ok": True}
 
     @app.get("/api/activity")
-    def activity(actor=Depends(actor_dep), db=Depends(db_dep)):
-        return [
-            svc.serialize(db, o)
-            for o in db.scalars(
-                select(m.AuditLog)
-                .where(m.AuditLog.owner_id == actor.user.id)
-                .order_by(m.AuditLog.timestamp.desc())
-                .limit(200)
-            )
-        ]
+    def activity(
+        request: Request,
+        response: Response,
+        actor=Depends(actor_dep),
+        db=Depends(db_dep),
+    ):
+        from .workflow import audit_query
+
+        page = audit_query(db, actor, dict(request.query_params), activity=True)
+        response.headers["X-Total-Count"] = str(page["total"])
+        return page if request.query_params.get("format") == "page" else page["items"]
 
     @app.get("/api/tasks")
-    def all_tasks(actor=Depends(actor_dep), db=Depends(db_dep)):
-        return [
-            svc.serialize(db, t)
-            for t in db.scalars(
-                select(m.Task)
-                .join(m.Project)
-                .where(
-                    m.Project.owner_id == actor.user.id,
-                    m.Project.trashed_at.is_(None),
-                    m.Project.archived_at.is_(None),
-                    m.Task.trashed_at.is_(None),
-                    m.Task.archived_at.is_(None),
-                )
+    def all_tasks(
+        request: Request,
+        response: Response,
+        actor=Depends(actor_dep),
+        db=Depends(db_dep),
+    ):
+        from .workflow import pagination, text_filter
+
+        params = dict(request.query_params)
+        limit, offset = pagination(params)
+        clauses = [
+            m.Project.owner_id == actor.user.id,
+            *svc.visible_records(m.Project),
+            *svc.visible_records(m.Task),
+        ]
+        if params.get("project_id"):
+            svc.project_for(db, actor, params["project_id"])
+            clauses.append(m.Task.project_id == params["project_id"])
+        if params.get("status"):
+            clauses.append(m.Task.status == params["status"])
+        if params.get("exclude_status"):
+            clauses.append(m.Task.status != params["exclude_status"])
+        if params.get("q"):
+            clauses.append(text_filter(m.Task, params["q"][:300]))
+        statement = select(m.Task).join(m.Project).where(*clauses)
+        total = db.scalar(select(func.count()).select_from(statement.subquery()))
+        items = [
+            svc.serialize(db, obj)
+            for obj in db.scalars(
+                statement.order_by(m.Task.created_at.desc(), m.Task.id)
+                .limit(limit)
+                .offset(offset)
             )
         ]
+        response.headers["X-Total-Count"] = str(total)
+        return (
+            {"items": items, "total": total, "limit": limit, "offset": offset}
+            if params.get("format") == "page"
+            else items
+        )
 
     @app.get("/api/runs/{rid}/context")
     def run_context(rid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
         return svc.run_context(db, actor, str(rid))
 
     def add_collection(kind, cls):
-        def list_records(pid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
-            svc.project_for(db, actor, str(pid))
-            return [
-                svc.serialize(db, o)
-                for o in db.scalars(
-                    select(cls)
-                    .where(
-                        cls.project_id == str(pid),
-                        *svc.visible_records(cls),
-                    )
-                    .order_by(cls.created_at)
-                )
-            ]
+        def list_records(
+            pid: UUID,
+            request: Request,
+            response: Response,
+            actor=Depends(actor_dep),
+            db=Depends(db_dep),
+        ):
+            from .workflow import collection_query
+
+            page = collection_query(
+                db, actor, str(pid), kind, dict(request.query_params)
+            )
+            response.headers["X-Total-Count"] = str(page["total"])
+            return page["items"]
 
         def create_record(
             pid: UUID,
@@ -570,6 +632,16 @@ def create_app(database_url=None, initialize=False):
             obj = svc.resource(db, actor, cls, str(rid), write=True)
             before = svc.serialize(db, obj)
             svc.scientific_authority(actor, kind, payload, existing=obj)
+            if isinstance(obj, m.ResearchRun) and isinstance(
+                payload.get("context_data"), dict
+            ):
+                payload = {
+                    **payload,
+                    "context_data": {
+                        **before["context_data"],
+                        **payload["context_data"],
+                    },
+                }
             data = svc.parsed(
                 kind, {**{k: before[k] for k in SCHEMAS[kind].model_fields}, **payload}
             )
@@ -728,21 +800,13 @@ def create_app(database_url=None, initialize=False):
         db=Depends(db_dep),
     ):
         r = svc.resource(db, actor, m.ResearchRun, str(rid), write=True)
-        objs = [
-            svc.create_record(
-                db,
-                actor,
-                request,
-                "metrics",
-                r.project_id,
-                item.model_dump(mode="json"),
-                app.state.modules,
-                r.id,
-            )
-            for item in payload.metrics
-        ]
+        from .workflow import upsert_values
+
+        objs = upsert_values(
+            db, actor, request, r.id, "metrics", payload.metrics, app.state.modules
+        )
         db.commit()
-        return [svc.serialize(db, o) for o in objs]
+        return objs
 
     def objects():
         if app.state.objects is None:
@@ -957,17 +1021,20 @@ def create_app(database_url=None, initialize=False):
         return result
 
     @app.get("/api/projects/{pid}/artifacts")
-    def artifacts(pid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
-        svc.project_for(db, actor, str(pid))
-        return [
-            svc.serialize(db, o)
-            for o in db.scalars(
-                select(m.Artifact).where(
-                    m.Artifact.project_id == str(pid),
-                    *svc.visible_records(m.Artifact),
-                )
-            )
-        ]
+    def artifacts(
+        pid: UUID,
+        request: Request,
+        response: Response,
+        actor=Depends(actor_dep),
+        db=Depends(db_dep),
+    ):
+        from .workflow import collection_query
+
+        page = collection_query(
+            db, actor, str(pid), "artifacts", dict(request.query_params)
+        )
+        response.headers["X-Total-Count"] = str(page["total"])
+        return page["items"]
 
     @app.post("/api/projects/{pid}/artifacts")
     def upload(
@@ -993,20 +1060,7 @@ def create_app(database_url=None, initialize=False):
         ):
             raise HTTPException(422, "Invalid filename")
         ext = filename.rsplit(".", 1)[-1].lower()
-        allowed = {
-            "png": {"image/png"},
-            "jpg": {"image/jpeg"},
-            "jpeg": {"image/jpeg"},
-            "pdf": {"application/pdf"},
-            "csv": {"text/csv", "application/csv", "text/plain"},
-            "json": {"application/json", "text/plain"},
-            "mat": {"application/octet-stream", "application/x-matlab-data"},
-            "npy": {"application/octet-stream"},
-            "npz": {"application/octet-stream", "application/zip"},
-            "zip": {"application/zip", "application/x-zip-compressed"},
-            "txt": {"text/plain"},
-            "log": {"text/plain"},
-        }
+        allowed = ALLOWED_ARTIFACT_TYPES
         mime = file.content_type or "application/octet-stream"
         if ext not in allowed or mime not in allowed[ext]:
             raise HTTPException(422, "Unsupported extension or MIME type")
@@ -1037,12 +1091,7 @@ def create_app(database_url=None, initialize=False):
             prefix = stream.read(8)
             stream.seek(0)
             if ext in ("png", "jpg", "jpeg", "pdf"):
-                signatures = {
-                    "png": b"\x89PNG\r\n\x1a\n",
-                    "jpg": b"\xff\xd8\xff",
-                    "jpeg": b"\xff\xd8\xff",
-                    "pdf": b"%PDF-",
-                }
+                signatures = ARTIFACT_SIGNATURES
                 if not prefix.startswith(signatures[ext]):
                     raise HTTPException(
                         422, "File content does not match declared type"
@@ -1264,6 +1313,9 @@ def create_app(database_url=None, initialize=False):
         db.commit()
         return {"ok": True, "message": "DEMO / SYNTHETIC projects ready"}
 
+    from .workflow import install_workflow
+
+    install_workflow(app, actor_dep, db_dep, objects)
     return app
 
 

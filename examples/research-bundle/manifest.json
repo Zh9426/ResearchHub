@@ -1,0 +1,14 @@
+{
+  "artifacts": [
+    {
+      "path": "artifacts/synthetic.csv",
+      "filename": "synthetic.csv",
+      "mime_type": "text/csv",
+      "category": "data",
+      "checksum": "fdb859bbdce35e22f0e67ae082250354ef822763ca3fb0c69960b4ab2122d92b",
+      "metadata": {
+        "data_kind": "SYNTHETIC_QA_ONLY"
+      }
+    }
+  ]
+}

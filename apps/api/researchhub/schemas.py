@@ -73,6 +73,11 @@ class ProjectInput(Input):
     status: Literal["active", "paused", "completed", "archived", "blocked"] = "active"
     current_stage: str | None = None
     current_objective: str = ""
+    enabled_capabilities: list[str] | None = None
+
+
+class TaggedInput(Input):
+    tag_ids: list[UUID] = Field(default_factory=list, max_length=100)
 
 
 class TitleInput(Input):
@@ -101,14 +106,14 @@ class MilestoneInput(TitleInput):
     completed_at: datetime | None = None
 
 
-class TaskInput(TitleInput):
+class TaskInput(TitleInput, TaggedInput):
     milestone_id: UUID | None = None
     status: Literal["todo", "doing", "blocked", "done"] = "todo"
     priority: Literal["low", "medium", "high", "critical"] = "medium"
     due_date: datetime | None = None
 
 
-class RunInput(Input):
+class RunInput(TaggedInput):
     title: str = Field(min_length=1, max_length=200)
     run_type: str = Field(min_length=1, max_length=100)
     parent_run_id: UUID | None = None
@@ -135,6 +140,38 @@ class RunInput(Input):
     changes_from_parent: str = ""
     started_at: datetime | None = None
     completed_at: datetime | None = None
+    context_data: dict[str, Any] = Field(default_factory=dict)
+    artifact_ids: list[UUID] = Field(default_factory=list, max_length=100)
+
+
+class HighlightInput(Input):
+    is_highlighted: bool
+    type: str | None = Field(default=None, max_length=100)
+    note: str = Field(default="", max_length=10000)
+    user_requested: bool = False
+
+
+class CloneInput(Input):
+    title: str = Field(min_length=1, max_length=200)
+    run_type: str | None = None
+    objective: str | None = None
+    inherit_parameters: bool = True
+    inherit_protocol: bool = True
+    inherit_environment: bool = True
+    inherit_software: bool = True
+    inherit_code: bool = True
+    artifact_ids: list[UUID] = Field(default_factory=list, max_length=100)
+
+
+class ActivityClearInput(Input):
+    confirm: Literal[True]
+    project_id: UUID | None = None
+
+
+class ImportConfirmInput(Input):
+    confirm: Literal[True]
+    preview_id: UUID
+    digest: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class ParameterInput(Input):
@@ -180,6 +217,23 @@ class MetricsBatch(Input):
     metrics: list[MetricInput] = Field(min_length=1, max_length=100)
 
 
+class ParametersBatch(Input):
+    parameters: list[ParameterInput] = Field(min_length=1, max_length=100)
+
+
+class BundleArtifact(Input):
+    path: str = Field(min_length=1, max_length=300)
+    filename: str = Field(min_length=1, max_length=255)
+    mime_type: str = Field(min_length=1, max_length=100)
+    category: str = Field(min_length=1, max_length=100)
+    checksum: str = Field(pattern=r"^[a-f0-9]{64}$")
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class BundleManifest(Input):
+    artifacts: list[BundleArtifact] = Field(default_factory=list, max_length=100)
+
+
 class SourceInput(TitleInput):
     source_kind: SourceKind = "unknown"
     url: str | None = None
@@ -188,7 +242,7 @@ class SourceInput(TitleInput):
     source_location: str | None = None
 
 
-class EvidenceInput(TitleInput):
+class EvidenceInput(TitleInput, TaggedInput):
     evidence_type: str = "observation"
     status: EvidenceState = "unknown"
     linked_run_id: UUID | None = None
@@ -208,13 +262,13 @@ class ClaimInput(Input):
     source_ids: list[UUID] = []
 
 
-class NoteInput(Input):
+class NoteInput(TaggedInput):
     title: str = Field(min_length=1, max_length=200)
     content: str = ""
     run_id: UUID | None = None
 
 
-class DecisionInput(Input):
+class DecisionInput(TaggedInput):
     title: str = Field(min_length=1, max_length=200)
     run_id: UUID | None = None
     context: str = ""

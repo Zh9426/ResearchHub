@@ -1,0 +1,65 @@
+{
+  "$defs": {
+    "BundleArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "filename": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Filename",
+          "type": "string"
+        },
+        "mime_type": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Mime Type",
+          "type": "string"
+        },
+        "category": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "checksum": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Checksum",
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "path",
+        "filename",
+        "mime_type",
+        "category",
+        "checksum"
+      ],
+      "title": "BundleArtifact",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/BundleArtifact"
+      },
+      "maxItems": 100,
+      "title": "Artifacts",
+      "type": "array"
+    }
+  },
+  "title": "BundleManifest",
+  "type": "object"
+}

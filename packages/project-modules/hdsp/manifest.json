@@ -1,40 +1,58 @@
 {
   "id": "hdsp",
   "name": "HDSP",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "固定目标平面的全息超声表面打印；厚度相位板设计、声场、热与固化验证。",
   "run_types": [
     {
       "id": "phase_retrieval",
-      "name": "相位检索"
+      "name": "相位检索",
+      "capability": "code_simulation"
     },
     {
       "id": "phase_plate_design",
-      "name": "相位板设计"
+      "name": "相位板设计",
+      "capability": "fabrication"
     },
     {
       "id": "acoustic_simulation",
-      "name": "声场仿真"
+      "name": "声场仿真",
+      "capability": "code_simulation"
     },
     {
       "id": "zscan",
-      "name": "轴向扫描"
+      "name": "轴向扫描",
+      "capability": "code_simulation"
     },
     {
       "id": "thermal_simulation",
-      "name": "热仿真"
+      "name": "热仿真",
+      "capability": "code_simulation"
     },
     {
       "id": "curing_prediction",
-      "name": "固化预测"
+      "name": "固化预测",
+      "capability": "code_simulation"
     },
     {
       "id": "optimization",
-      "name": "优化"
+      "name": "优化",
+      "capability": "code_simulation"
     },
     {
       "id": "physical_validation",
-      "name": "物理验证"
+      "name": "物理验证",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "phase_plate_fabrication",
+      "name": "相位板制造",
+      "capability": "fabrication"
+    },
+    {
+      "id": "dataset_analysis",
+      "name": "数据分析",
+      "capability": "data_analysis"
     }
   ],
   "parameter_schemas": [
@@ -42,43 +60,92 @@
       "id": "frequency",
       "name": "频率",
       "value_type": "number",
-      "unit": "Hz"
+      "unit": "Hz",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 0,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "z_target",
       "name": "固定目标平面距离",
       "value_type": "number",
-      "unit": "m"
+      "unit": "m",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 1,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "pressure",
       "name": "声压",
       "value_type": "number",
-      "unit": "Pa"
+      "unit": "Pa",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 2,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "algorithm",
       "name": "算法",
       "value_type": "string",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 3,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "iterations",
       "name": "迭代数",
       "value_type": "integer",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 4,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "beta",
       "name": "β 系数",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 5,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "phase_levels",
       "name": "相位级数",
       "value_type": "integer",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 6,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     }
   ],
   "metric_schemas": [
@@ -86,61 +153,131 @@
       "id": "IoU",
       "name": "固化 IoU",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 0,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "correlation",
       "name": "相关性",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 1,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "coverage",
       "name": "覆盖率",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 2,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "p_max",
       "name": "最大声压",
       "value_type": "number",
-      "unit": "Pa"
+      "unit": "Pa",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 3,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "Tmax",
       "name": "最高温度",
       "value_type": "number",
-      "unit": "K"
+      "unit": "K",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 4,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "Omega",
       "name": "Arrhenius 积分",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 5,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "best_z",
       "name": "最佳平面",
       "value_type": "number",
-      "unit": "m"
+      "unit": "m",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 6,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "Energy Efficiency",
       "name": "能量效率",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 7,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "over_cure",
       "name": "过固化面积",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 8,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "under_cure",
       "name": "欠固化面积",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 9,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     }
   ],
   "research_stages": [
@@ -251,5 +388,718 @@
       "name": "时间线"
     }
   ],
-  "custom_views": []
+  "custom_views": [],
+  "default_capabilities": [
+    "code_simulation",
+    "lab_experiment",
+    "fabrication",
+    "data_analysis"
+  ],
+  "context_fields": [
+    {
+      "id": "repository",
+      "name": "代码仓库",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "branch",
+      "name": "分支",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "commit",
+      "name": "提交 SHA",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "config",
+      "name": "配置文件或配置说明",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "experiment_date",
+      "name": "实验日期",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "operator",
+      "name": "操作人",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "sample_batch",
+      "name": "样品 / 批次",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "equipment",
+      "name": "设备",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "equipment_settings",
+      "name": "设备设置",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "environment_conditions",
+      "name": "环境条件",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "unexpected_events",
+      "name": "异常与意外观察",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "fabrication_process",
+      "name": "制造工艺",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "fabrication"
+    },
+    {
+      "id": "fabrication_batch",
+      "name": "制造批次",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "fabrication"
+    },
+    {
+      "id": "design_revision",
+      "name": "设计版本",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "fabrication"
+    },
+    {
+      "id": "dataset",
+      "name": "数据集与版本",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "data_analysis"
+    },
+    {
+      "id": "analysis_method",
+      "name": "分析方法",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "data_analysis"
+    }
+  ],
+  "run_forms": [
+    {
+      "run_type": "phase_retrieval",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "z_target",
+            "pressure",
+            "algorithm",
+            "iterations",
+            "beta",
+            "phase_levels"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "IoU",
+            "correlation",
+            "coverage",
+            "p_max",
+            "Tmax",
+            "Omega",
+            "best_z",
+            "Energy Efficiency",
+            "over_cure",
+            "under_cure"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "phase_plate_design",
+      "capability": "fabrication",
+      "groups": [
+        {
+          "id": "context",
+          "name": "制造与设计记录",
+          "fields": [
+            "fabrication_process",
+            "fabrication_batch",
+            "design_revision"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "z_target",
+            "pressure",
+            "algorithm",
+            "iterations",
+            "beta",
+            "phase_levels"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "IoU",
+            "correlation",
+            "coverage",
+            "p_max",
+            "Tmax",
+            "Omega",
+            "best_z",
+            "Energy Efficiency",
+            "over_cure",
+            "under_cure"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "acoustic_simulation",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "z_target",
+            "pressure",
+            "algorithm",
+            "iterations",
+            "beta",
+            "phase_levels"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "IoU",
+            "correlation",
+            "coverage",
+            "p_max",
+            "Tmax",
+            "Omega",
+            "best_z",
+            "Energy Efficiency",
+            "over_cure",
+            "under_cure"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "zscan",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "z_target",
+            "pressure",
+            "algorithm",
+            "iterations",
+            "beta",
+            "phase_levels"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "IoU",
+            "correlation",
+            "coverage",
+            "p_max",
+            "Tmax",
+            "Omega",
+            "best_z",
+            "Energy Efficiency",
+            "over_cure",
+            "under_cure"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "thermal_simulation",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "z_target",
+            "pressure",
+            "algorithm",
+            "iterations",
+            "beta",
+            "phase_levels"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "IoU",
+            "correlation",
+            "coverage",
+            "p_max",
+            "Tmax",
+            "Omega",
+            "best_z",
+            "Energy Efficiency",
+            "over_cure",
+            "under_cure"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "curing_prediction",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "z_target",
+            "pressure",
+            "algorithm",
+            "iterations",
+            "beta",
+            "phase_levels"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "IoU",
+            "correlation",
+            "coverage",
+            "p_max",
+            "Tmax",
+            "Omega",
+            "best_z",
+            "Energy Efficiency",
+            "over_cure",
+            "under_cure"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "optimization",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "z_target",
+            "pressure",
+            "algorithm",
+            "iterations",
+            "beta",
+            "phase_levels"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "IoU",
+            "correlation",
+            "coverage",
+            "p_max",
+            "Tmax",
+            "Omega",
+            "best_z",
+            "Energy Efficiency",
+            "over_cure",
+            "under_cure"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "physical_validation",
+      "capability": "lab_experiment",
+      "groups": [
+        {
+          "id": "context",
+          "name": "实验条件与设备",
+          "fields": [
+            "experiment_date",
+            "operator",
+            "sample_batch",
+            "equipment",
+            "equipment_settings",
+            "environment_conditions",
+            "unexpected_events"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "z_target",
+            "pressure",
+            "algorithm",
+            "iterations",
+            "beta",
+            "phase_levels"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "IoU",
+            "correlation",
+            "coverage",
+            "p_max",
+            "Tmax",
+            "Omega",
+            "best_z",
+            "Energy Efficiency",
+            "over_cure",
+            "under_cure"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "phase_plate_fabrication",
+      "capability": "fabrication",
+      "groups": [
+        {
+          "id": "context",
+          "name": "制造与设计记录",
+          "fields": [
+            "fabrication_process",
+            "fabrication_batch",
+            "design_revision"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "z_target",
+            "pressure",
+            "algorithm",
+            "iterations",
+            "beta",
+            "phase_levels"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "IoU",
+            "correlation",
+            "coverage",
+            "p_max",
+            "Tmax",
+            "Omega",
+            "best_z",
+            "Energy Efficiency",
+            "over_cure",
+            "under_cure"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "dataset_analysis",
+      "capability": "data_analysis",
+      "groups": [
+        {
+          "id": "context",
+          "name": "数据与分析",
+          "fields": [
+            "dataset",
+            "analysis_method"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "z_target",
+            "pressure",
+            "algorithm",
+            "iterations",
+            "beta",
+            "phase_levels"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "IoU",
+            "correlation",
+            "coverage",
+            "p_max",
+            "Tmax",
+            "Omega",
+            "best_z",
+            "Energy Efficiency",
+            "over_cure",
+            "under_cure"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    }
+  ]
 }

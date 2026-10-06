@@ -1,56 +1,78 @@
 {
   "id": "ice-sonocuring",
   "name": "ICE 声固化",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "双功能 ICE 探头局部声响应封堵研究。路线图仅定义拟议流程，历史结果不作为当前事实。",
   "run_types": [
     {
       "id": "numerical_validation",
-      "name": "数值验证"
+      "name": "数值验证",
+      "capability": "code_simulation"
     },
     {
       "id": "controlled_probe_comparison",
-      "name": "受控探头比较"
+      "name": "受控探头比较",
+      "capability": "code_simulation"
     },
     {
       "id": "steering_test",
-      "name": "声束偏转测试"
+      "name": "声束偏转测试",
+      "capability": "code_simulation"
     },
     {
       "id": "scan_protocol_test",
-      "name": "扫描方案测试"
+      "name": "扫描方案测试",
+      "capability": "code_simulation"
     },
     {
       "id": "robustness_test",
-      "name": "稳健性测试"
+      "name": "稳健性测试",
+      "capability": "code_simulation"
     },
     {
       "id": "imaging_psf",
-      "name": "成像点扩散函数"
+      "name": "成像点扩散函数",
+      "capability": "measurement_imaging"
     },
     {
       "id": "kwave_validation",
-      "name": "k-Wave 验证"
+      "name": "k-Wave 验证",
+      "capability": "code_simulation"
     },
     {
       "id": "hydrophone_measurement",
-      "name": "水听器测量"
+      "name": "水听器测量",
+      "capability": "measurement_imaging"
     },
     {
       "id": "material_response",
-      "name": "材料响应"
+      "name": "材料响应",
+      "capability": "lab_experiment"
     },
     {
       "id": "thermal_flow_test",
-      "name": "热与流动测试"
+      "name": "热与流动测试",
+      "capability": "lab_experiment"
     },
     {
       "id": "prototype_validation",
-      "name": "原型验证"
+      "name": "原型验证",
+      "capability": "hardware_system"
     },
     {
       "id": "phantom_test",
-      "name": "模型体测试"
+      "name": "模型体测试",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "probe_assembly",
+      "name": "探头装配",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "literature_review",
+      "name": "文献研究",
+      "capability": "literature_sources"
     }
   ],
   "parameter_schemas": [
@@ -58,49 +80,105 @@
       "id": "frequency",
       "name": "频率",
       "value_type": "number",
-      "unit": "Hz"
+      "unit": "Hz",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 0,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "element_count",
       "name": "阵元数",
       "value_type": "integer",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 1,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "pitch",
       "name": "阵元间距",
       "value_type": "number",
-      "unit": "m"
+      "unit": "m",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 2,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "source_velocity",
       "name": "表面速度",
       "value_type": "number",
-      "unit": "m/s"
+      "unit": "m/s",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 3,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "roi",
       "name": "固定评价域",
       "value_type": "object",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 4,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "sound_speed",
       "name": "声速",
       "value_type": "number",
-      "unit": "m/s"
+      "unit": "m/s",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 5,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "dwell_time",
       "name": "停留时间",
       "value_type": "number",
-      "unit": "s"
+      "unit": "s",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 6,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "material_threshold",
       "name": "材料响应阈值（未知时保持 null（未知值））",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "parameters",
+      "order": 7,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     }
   ],
   "metric_schemas": [
@@ -108,43 +186,92 @@
       "id": "coverage",
       "name": "声学代理覆盖 C",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 0,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "leakage",
       "name": "声学泄漏 L",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 1,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "outside_threshold_volume",
       "name": "目标外超阈值体积",
       "value_type": "number",
-      "unit": "m3"
+      "unit": "m3",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 2,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "outside_peak",
       "name": "目标外峰值",
       "value_type": "number",
-      "unit": "Pa"
+      "unit": "Pa",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 3,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "numerical_sensitivity",
       "name": "经验数值敏感性",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 4,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "psf_width",
       "name": "PSF 宽度",
       "value_type": "number",
-      "unit": "m"
+      "unit": "m",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 5,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     },
     {
       "id": "material_response",
       "name": "实测材料响应",
       "value_type": "number",
-      "unit": ""
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "metrics",
+      "order": 6,
+      "help_text": "未知值留空，不代表零。",
+      "visibility": "basic"
     }
   ],
   "research_stages": [
@@ -406,6 +533,1074 @@
     {
       "id": "phantom_ex_vivo",
       "name": "模型体与离体验证"
+    }
+  ],
+  "default_capabilities": [
+    "code_simulation",
+    "lab_experiment",
+    "hardware_system",
+    "measurement_imaging",
+    "literature_sources"
+  ],
+  "context_fields": [
+    {
+      "id": "repository",
+      "name": "代码仓库",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "branch",
+      "name": "分支",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "commit",
+      "name": "提交 SHA",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "config",
+      "name": "配置文件或配置说明",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "experiment_date",
+      "name": "实验日期",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "operator",
+      "name": "操作人",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "sample_batch",
+      "name": "样品 / 批次",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "equipment",
+      "name": "设备",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "equipment_settings",
+      "name": "设备设置",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "environment_conditions",
+      "name": "环境条件",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "unexpected_events",
+      "name": "异常与意外观察",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "system_version",
+      "name": "系统版本",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "prototype_version",
+      "name": "原型版本",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "components",
+      "name": "组件",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "bom",
+      "name": "BOM / 物料说明",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "assembly",
+      "name": "装配记录",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "wiring",
+      "name": "接线记录",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "calibration",
+      "name": "校准记录",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "bench_test",
+      "name": "台架测试",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "failure_record",
+      "name": "故障记录",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "device",
+      "name": "采集设备",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "calibration_record",
+      "name": "校准来源与日期",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "acquisition_config",
+      "name": "采集配置",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "measurement_conditions",
+      "name": "测量条件",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "raw_data_location",
+      "name": "原始数据说明",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "processed_result",
+      "name": "处理结果说明",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "source_scope",
+      "name": "文献来源与适用边界",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "literature_sources"
+    },
+    {
+      "id": "search_query",
+      "name": "检索范围",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "literature_sources"
+    }
+  ],
+  "run_forms": [
+    {
+      "run_type": "numerical_validation",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "controlled_probe_comparison",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "steering_test",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "scan_protocol_test",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "robustness_test",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "imaging_psf",
+      "capability": "measurement_imaging",
+      "groups": [
+        {
+          "id": "context",
+          "name": "测量与采集条件",
+          "fields": [
+            "device",
+            "calibration_record",
+            "acquisition_config",
+            "measurement_conditions",
+            "raw_data_location",
+            "processed_result"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "kwave_validation",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "hydrophone_measurement",
+      "capability": "measurement_imaging",
+      "groups": [
+        {
+          "id": "context",
+          "name": "测量与采集条件",
+          "fields": [
+            "device",
+            "calibration_record",
+            "acquisition_config",
+            "measurement_conditions",
+            "raw_data_location",
+            "processed_result"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "material_response",
+      "capability": "lab_experiment",
+      "groups": [
+        {
+          "id": "context",
+          "name": "实验条件与设备",
+          "fields": [
+            "experiment_date",
+            "operator",
+            "sample_batch",
+            "equipment",
+            "equipment_settings",
+            "environment_conditions",
+            "unexpected_events"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "thermal_flow_test",
+      "capability": "lab_experiment",
+      "groups": [
+        {
+          "id": "context",
+          "name": "实验条件与设备",
+          "fields": [
+            "experiment_date",
+            "operator",
+            "sample_batch",
+            "equipment",
+            "equipment_settings",
+            "environment_conditions",
+            "unexpected_events"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "prototype_validation",
+      "capability": "hardware_system",
+      "groups": [
+        {
+          "id": "context",
+          "name": "系统与原型记录",
+          "fields": [
+            "system_version",
+            "prototype_version",
+            "components",
+            "bom",
+            "assembly",
+            "wiring",
+            "calibration",
+            "bench_test",
+            "failure_record"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "phantom_test",
+      "capability": "lab_experiment",
+      "groups": [
+        {
+          "id": "context",
+          "name": "实验条件与设备",
+          "fields": [
+            "experiment_date",
+            "operator",
+            "sample_batch",
+            "equipment",
+            "equipment_settings",
+            "environment_conditions",
+            "unexpected_events"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "probe_assembly",
+      "capability": "hardware_system",
+      "groups": [
+        {
+          "id": "context",
+          "name": "系统与原型记录",
+          "fields": [
+            "system_version",
+            "prototype_version",
+            "components",
+            "bom",
+            "assembly",
+            "wiring",
+            "calibration",
+            "bench_test",
+            "failure_record"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "literature_review",
+      "capability": "literature_sources",
+      "groups": [
+        {
+          "id": "context",
+          "name": "文献与来源",
+          "fields": [
+            "source_scope",
+            "search_query"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "parameters",
+          "name": "输入参数与来源",
+          "fields": [
+            "frequency",
+            "element_count",
+            "pitch",
+            "source_velocity",
+            "roi",
+            "sound_speed",
+            "dwell_time",
+            "material_threshold"
+          ],
+          "visibility": "basic"
+        },
+        {
+          "id": "metrics",
+          "name": "输出指标",
+          "fields": [
+            "coverage",
+            "leakage",
+            "outside_threshold_volume",
+            "outside_peak",
+            "numerical_sensitivity",
+            "psf_width",
+            "material_response"
+          ],
+          "visibility": "basic"
+        }
+      ]
     }
   ]
 }

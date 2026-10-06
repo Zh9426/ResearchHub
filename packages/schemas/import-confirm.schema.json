@@ -1,0 +1,27 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "confirm": {
+      "const": true,
+      "title": "Confirm",
+      "type": "boolean"
+    },
+    "preview_id": {
+      "format": "uuid",
+      "title": "Preview Id",
+      "type": "string"
+    },
+    "digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "confirm",
+    "preview_id",
+    "digest"
+  ],
+  "title": "ImportConfirmInput",
+  "type": "object"
+}

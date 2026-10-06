@@ -1,0 +1,28 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "confirm": {
+      "const": true,
+      "title": "Confirm",
+      "type": "boolean"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    }
+  },
+  "required": [
+    "confirm"
+  ],
+  "title": "ActivityClearInput",
+  "type": "object"
+}

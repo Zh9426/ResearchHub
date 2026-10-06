@@ -10,10 +10,12 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Table,
     Text,
+    UniqueConstraint,
     event,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -86,6 +88,7 @@ class Project(Lifecycle, Record, Base):
     module_id: Mapped[str] = mapped_column(String(80))
     module_version: Mapped[str] = mapped_column(String(80))
     module_snapshot: Mapped[dict] = mapped_column(JSON)
+    enabled_capabilities: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String(30), default="active")
     current_stage: Mapped[str | None] = mapped_column(String(100), nullable=True)
     current_objective: Mapped[str] = mapped_column(Text, default="")
@@ -169,6 +172,16 @@ class ResearchRun(ProjectRecord, Base):
         DateTime(timezone=True), nullable=True
     )
     created_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    context_data: Mapped[dict] = mapped_column(JSON, default=dict)
+    is_highlighted: Mapped[bool] = mapped_column(Boolean, default=False)
+    highlight_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    highlight_note: Mapped[str] = mapped_column(Text, default="")
+    highlighted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    highlighted_by: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
 
 
 class Parameter(Lifecycle, Record, Base):
@@ -342,6 +355,33 @@ class ObjectDeletion(Record, Base):
     last_error: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 
+class ActivityPreference(Record, Base):
+    __tablename__ = "activity_preferences"
+    __table_args__ = (
+        UniqueConstraint("owner_id", "scope", name="uq_activity_owner_scope"),
+    )
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    # Empty scope is the global feed; project ids are independently clearable.
+    scope: Mapped[str] = mapped_column(String(36), default="")
+    hide_before: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ImportPreview(Record, Base):
+    __tablename__ = "import_previews"
+    owner_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    digest: Mapped[str] = mapped_column(String(64))
+    module_digest: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 for action in ("UPDATE", "DELETE"):
     event.listen(
         AuditLog.__table__,
@@ -365,6 +405,18 @@ for owner, target, k in [
     ("decisions", "evidence", "evidence_ids"),
     ("stage_gates", "evidence", "evidence_ids"),
     ("gate_criteria", "evidence", "evidence_ids"),
+    ("research_runs", "artifacts", "artifact_ids"),
+    *[
+        (owner, "tags", "tag_ids")
+        for owner in (
+            "research_runs",
+            "evidence",
+            "artifacts",
+            "notes",
+            "decisions",
+            "tasks",
+        )
+    ],
 ]:
     LINKS[(owner, k)] = Table(
         f"{owner}_{k}",
@@ -378,6 +430,33 @@ for owner, target, k in [
             primary_key=True,
         ),
     )
+    Index(f"ix_{owner}_{k}_target", LINKS[(owner, k)].c.target_id)
+
+for cls in (ResearchRun, Evidence, Artifact, Task, Note, Decision):
+    Index(
+        f"ix_{cls.__tablename__}_project_created",
+        cls.project_id,
+        cls.created_at,
+        cls.id,
+    )
+Index(
+    "ix_runs_project_filters",
+    ResearchRun.project_id,
+    ResearchRun.run_type,
+    ResearchRun.status,
+    ResearchRun.scientific_outcome,
+)
+Index(
+    "ix_runs_project_highlight",
+    ResearchRun.project_id,
+    ResearchRun.is_highlighted,
+    ResearchRun.created_at,
+)
+Index("ix_runs_parent", ResearchRun.parent_run_id)
+Index("ix_evidence_run", Evidence.linked_run_id)
+Index("ix_artifacts_run", Artifact.run_id)
+Index("ix_audit_owner_timestamp", AuditLog.owner_id, AuditLog.timestamp, AuditLog.id)
+Index("ix_audit_project_timestamp", AuditLog.project_id, AuditLog.timestamp)
 
 COLLECTIONS = {
     "runs": ResearchRun,

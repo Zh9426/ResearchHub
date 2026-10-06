@@ -25,7 +25,7 @@ def test_project_manifest_is_frozen_and_upgrade_explicit(client):
     pid = project(client)
     original = client.get(f"/api/projects/{pid}/context").json()["module"]
     latest = copy.deepcopy(original)
-    latest["version"] = "0.2.0"
+    latest["version"] = "0.2.1"
     latest["run_types"] = [{"id": "new_run", "name": "新类型"}]
     client.app.state.modules["generic"] = latest
     assert client.get(f"/api/projects/{pid}/context").json()["module"] == original
@@ -67,7 +67,7 @@ def test_project_manifest_is_frozen_and_upgrade_explicit(client):
     )
     assert (
         client.get(f"/api/projects/{pid}/context").json()["module"]["version"]
-        == "0.2.0"
+        == "0.2.1"
     )
 
 

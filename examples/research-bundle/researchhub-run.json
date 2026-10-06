@@ -1,0 +1,7 @@
+{
+  "title": "SYNTHETIC Bundle 声场仿真示例",
+  "run_type": "acoustic_simulation",
+  "objective": "仅验证 HDSP 软件导入工作流；不是科研实验或真实声场结果。",
+  "status": "planned",
+  "scientific_outcome": "unknown"
+}

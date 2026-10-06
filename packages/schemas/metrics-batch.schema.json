@@ -1,0 +1,100 @@
+{
+  "$defs": {
+    "MetricInput": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "metric_schema_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metric Schema Id"
+        },
+        "status": {
+          "default": "unknown",
+          "enum": [
+            "proposed",
+            "unknown",
+            "hypothesis",
+            "assumed",
+            "synthetic",
+            "simulated",
+            "measured",
+            "calibrated",
+            "validated",
+            "reproduced",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "MetricInput",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/MetricInput"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Metrics",
+      "type": "array"
+    }
+  },
+  "required": [
+    "metrics"
+  ],
+  "title": "MetricsBatch",
+  "type": "object"
+}

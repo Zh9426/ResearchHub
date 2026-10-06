@@ -1,0 +1,38 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "is_highlighted": {
+      "title": "Is Highlighted",
+      "type": "boolean"
+    },
+    "type": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Type"
+    },
+    "note": {
+      "default": "",
+      "maxLength": 10000,
+      "title": "Note",
+      "type": "string"
+    },
+    "user_requested": {
+      "default": false,
+      "title": "User Requested",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "is_highlighted"
+  ],
+  "title": "HighlightInput",
+  "type": "object"
+}

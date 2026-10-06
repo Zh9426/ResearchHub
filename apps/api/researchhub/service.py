@@ -8,7 +8,7 @@ from datetime import timedelta, timezone
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import ValidationError
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.inspection import inspect
 
 from . import models as m
@@ -120,9 +120,12 @@ def serialize(db, obj):
         data["metadata"] = data.pop("artifact_metadata")
     for (table, key), link in m.LINKS.items():
         if table == obj.__tablename__:
-            data[key] = list(
-                db.scalars(select(link.c.target_id).where(link.c.owner_id == obj.id))
-            )
+            query = select(link.c.target_id).where(link.c.owner_id == obj.id)
+            if key == "tag_ids":
+                query = query.join(m.Tag, m.Tag.id == link.c.target_id).where(
+                    *visible_records(m.Tag)
+                )
+            data[key] = list(db.scalars(query))
     if isinstance(obj, m.Gate):
         data["criteria"] = [
             {**serialize(db, c), "id": c.criterion_id}
@@ -235,9 +238,12 @@ def validate_links(db, obj, data, modules):
         "run_ids": m.ResearchRun,
         "artifact_ids": m.Artifact,
         "source_ids": m.Source,
+        "tag_ids": m.Tag,
     }.items():
         for rid in data.get(key, []):
-            reference(db, cls, rid, pid)
+            linked = reference(db, cls, rid, pid)
+            if key == "tag_ids" and linked.archived_at:
+                raise HTTPException(422, "Archived tags cannot be assigned")
     if isinstance(obj, m.ResearchRun):
         parent = data.get("parent_run_id")
         visited = {obj.id}
@@ -249,6 +255,14 @@ def validate_links(db, obj, data, modules):
         module = module_for(db.get(m.Project, pid))
         if data["run_type"] not in {r["id"] for r in module["run_types"]}:
             raise HTTPException(422, "Run type is not defined by this module")
+        from .workflow import validate_context
+
+        validate_context(
+            module,
+            data["run_type"],
+            data.get("context_data", {}),
+            data.get("status", "planned"),
+        )
     if isinstance(obj, m.Metric) and data.get("metric_schema_id"):
         module = module_for(db.get(m.Project, pid))
         if data["metric_schema_id"] not in {r["id"] for r in module["metric_schemas"]}:
@@ -348,6 +362,8 @@ def audit(db, actor, request, action, obj, before=None):
     pid = getattr(obj, "project_id", None)
     if isinstance(obj, m.Project):
         pid = obj.id
+    if isinstance(obj, m.ActivityPreference):
+        pid = obj.scope or None
     if isinstance(obj, (m.Parameter, m.Metric)):
         pid = db.get(m.ResearchRun, obj.run_id).project_id
     if isinstance(obj, m.GateCriterion):
@@ -488,7 +504,9 @@ def create_record(db, actor, request, kind, pid, payload, modules, run_id=None):
     return obj
 
 
-def project_context(db, actor, pid, modules):
+def project_context(db, actor, pid, modules, collections=None, limit=100):
+    from .workflow import audit_query
+
     p = project_for(db, actor, pid)
     return {
         "project": serialize(db, p),
@@ -503,46 +521,84 @@ def project_context(db, actor, pid, modules):
                         *visible_records(cls),
                     )
                     .order_by(cls.created_at)
+                    .limit(limit)
                 )
             ]
+            if collections is None or key in collections
+            else []
             for key, cls in m.COLLECTIONS.items()
         },
         "artifacts": [
             serialize(db, o)
             for o in db.scalars(
-                select(m.Artifact).where(
+                select(m.Artifact)
+                .where(
                     m.Artifact.project_id == pid,
                     *visible_records(m.Artifact),
                 )
+                .limit(limit)
             )
-        ],
-        "activity": [
-            serialize(db, o)
-            for o in db.scalars(
-                select(m.AuditLog)
-                .where(
-                    m.AuditLog.project_id == pid, m.AuditLog.owner_id == actor.user.id
-                )
-                .order_by(m.AuditLog.timestamp.desc())
-                .limit(100)
-            )
-        ],
+        ]
+        if collections is None or "artifacts" in collections
+        else [],
+        "activity": audit_query(
+            db, actor, {"project_id": pid, "limit": str(min(limit, 50))}, activity=True
+        )["items"]
+        if collections is None or "activity" in collections
+        else [],
     }
 
 
 def run_context(db, actor, rid):
     r = resource(db, actor, m.ResearchRun, rid)
+    project = project_for(db, actor, r.project_id)
+    module = module_for(project)
+
+    def worksheet_values(cls, schemas):
+        # Form values must be queried by schema names, independent of the custom-value page.
+        rows = list(
+            db.scalars(
+                select(cls)
+                .where(
+                    cls.run_id == rid,
+                    cls.name.in_([s["id"] for s in schemas]),
+                    *visible_records(cls),
+                )
+                .order_by(cls.created_at, cls.id)
+                .limit(101)
+            )
+        )
+        return [serialize(db, row) for row in rows[:100]], len(rows) > 100
+
+    worksheet_parameters, parameters_incomplete = worksheet_values(
+        m.Parameter, module["parameter_schemas"]
+    )
+    worksheet_metrics, metrics_incomplete = worksheet_values(
+        m.Metric, module["metric_schemas"]
+    )
+    parameters_total = db.scalar(
+        select(func.count())
+        .select_from(m.Parameter)
+        .where(m.Parameter.run_id == rid, *visible_records(m.Parameter))
+    )
+    metrics_total = db.scalar(
+        select(func.count())
+        .select_from(m.Metric)
+        .where(m.Metric.run_id == rid, *visible_records(m.Metric))
+    )
     parent = db.get(m.ResearchRun, r.parent_run_id) if r.parent_run_id else None
     if parent and parent.trashed_at:
         parent = None
     parameters = [
         serialize(db, p)
         for p in db.scalars(
-            select(m.Parameter).where(
+            select(m.Parameter)
+            .where(
                 m.Parameter.run_id == rid,
                 m.Parameter.trashed_at.is_(None),
                 m.Parameter.archived_at.is_(None),
             )
+            .limit(100)
         )
     ]
     differences = []
@@ -550,11 +606,13 @@ def run_context(db, actor, rid):
         old = {
             p.name: serialize(db, p)
             for p in db.scalars(
-                select(m.Parameter).where(
+                select(m.Parameter)
+                .where(
                     m.Parameter.run_id == parent.id,
                     m.Parameter.trashed_at.is_(None),
                     m.Parameter.archived_at.is_(None),
                 )
+                .limit(100)
             )
         }
         current = {p["name"]: p for p in parameters}
@@ -602,42 +660,84 @@ def run_context(db, actor, rid):
         "children": [
             serialize(db, o)
             for o in db.scalars(
-                select(m.ResearchRun).where(
+                select(m.ResearchRun)
+                .where(
                     m.ResearchRun.parent_run_id == rid,
                     m.ResearchRun.trashed_at.is_(None),
                     m.ResearchRun.archived_at.is_(None),
                 )
+                .limit(100)
             )
         ],
         "parameters": parameters,
+        "parameters_total": parameters_total,
+        "metrics_total": metrics_total,
+        "worksheet_parameters": worksheet_parameters,
+        "worksheet_metrics": worksheet_metrics,
+        "worksheet_parameters_incomplete": parameters_incomplete,
+        "worksheet_metrics_incomplete": metrics_incomplete,
+        "parameter_diff_incomplete": parameters_total > 100
+        or bool(
+            parent
+            and db.scalar(
+                select(func.count())
+                .select_from(m.Parameter)
+                .where(m.Parameter.run_id == parent.id, *visible_records(m.Parameter))
+            )
+            > 100
+        ),
         "metrics": [
             serialize(db, o)
             for o in db.scalars(
-                select(m.Metric).where(
+                select(m.Metric)
+                .where(
                     m.Metric.run_id == rid,
                     m.Metric.trashed_at.is_(None),
                     m.Metric.archived_at.is_(None),
                 )
+                .limit(100)
             )
         ],
         "artifacts": [
             serialize(db, o)
             for o in db.scalars(
-                select(m.Artifact).where(
+                select(m.Artifact)
+                .where(
                     m.Artifact.run_id == rid,
                     m.Artifact.trashed_at.is_(None),
                     m.Artifact.archived_at.is_(None),
                 )
+                .limit(100)
+            )
+        ],
+        "referenced_artifacts": [
+            serialize(db, obj)
+            for obj in db.scalars(
+                select(m.Artifact)
+                .where(
+                    m.Artifact.project_id == r.project_id,
+                    m.Artifact.id.in_(
+                        select(
+                            m.LINKS[("research_runs", "artifact_ids")].c.target_id
+                        ).where(
+                            m.LINKS[("research_runs", "artifact_ids")].c.owner_id == rid
+                        )
+                    ),
+                    *visible_records(m.Artifact),
+                )
+                .limit(100)
             )
         ],
         "evidence": [
             serialize(db, o)
             for o in db.scalars(
-                select(m.Evidence).where(
+                select(m.Evidence)
+                .where(
                     m.Evidence.linked_run_id == rid,
                     m.Evidence.trashed_at.is_(None),
                     m.Evidence.archived_at.is_(None),
                 )
+                .limit(100)
             )
         ],
         "changes_from_parent": {
@@ -760,11 +860,18 @@ def module_upgrade_preview(project, latest):
         "navigation",
         "artifact_categories",
         "dashboard_widgets",
+        "default_capabilities",
+        "context_fields",
+        "run_forms",
     ):
 
         def keyed(items):
             return (
-                {str(item.get("id")): item for item in items if isinstance(item, dict)}
+                {
+                    str(item.get("id", item.get("run_type"))): item
+                    for item in items
+                    if isinstance(item, dict)
+                }
                 if items and isinstance(items[0], dict)
                 else {str(item): item for item in items}
             )

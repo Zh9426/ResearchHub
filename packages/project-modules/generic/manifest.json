@@ -1,44 +1,73 @@
 {
   "id": "generic",
   "name": "通用科研",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "通用科研工作空间；不预置任何超声参数。",
   "run_types": [
     {
       "id": "simulation",
-      "name": "仿真"
+      "name": "仿真",
+      "capability": "code_simulation"
     },
     {
       "id": "numerical_validation",
-      "name": "数值验证"
+      "name": "数值验证",
+      "capability": "code_simulation"
     },
     {
       "id": "measurement",
-      "name": "测量"
+      "name": "测量",
+      "capability": "measurement_imaging"
     },
     {
       "id": "benchmark",
-      "name": "基准测试"
+      "name": "基准测试",
+      "capability": "code_simulation"
     },
     {
       "id": "optimization",
-      "name": "优化"
+      "name": "优化",
+      "capability": "code_simulation"
     },
     {
       "id": "physical_experiment",
-      "name": "物理实验"
+      "name": "物理实验",
+      "capability": "lab_experiment"
     },
     {
       "id": "parameter_sweep",
-      "name": "参数扫描"
+      "name": "参数扫描",
+      "capability": "code_simulation"
     },
     {
       "id": "material_test",
-      "name": "material_test"
+      "name": "材料测试",
+      "capability": "lab_experiment"
     },
     {
       "id": "imaging_test",
-      "name": "imaging_test"
+      "name": "成像测试",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "prototype",
+      "name": "硬件原型记录",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "fabrication",
+      "name": "制造记录",
+      "capability": "fabrication"
+    },
+    {
+      "id": "literature_review",
+      "name": "文献研究",
+      "capability": "literature_sources"
+    },
+    {
+      "id": "data_analysis",
+      "name": "数据分析",
+      "capability": "data_analysis"
     }
   ],
   "parameter_schemas": [],
@@ -127,5 +156,711 @@
       "name": "时间线"
     }
   ],
-  "custom_views": []
+  "custom_views": [],
+  "default_capabilities": [
+    "code_simulation",
+    "lab_experiment",
+    "hardware_system",
+    "measurement_imaging",
+    "fabrication",
+    "data_analysis",
+    "literature_sources"
+  ],
+  "context_fields": [
+    {
+      "id": "repository",
+      "name": "代码仓库",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "branch",
+      "name": "分支",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "commit",
+      "name": "提交 SHA",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "config",
+      "name": "配置文件或配置说明",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "code_simulation"
+    },
+    {
+      "id": "experiment_date",
+      "name": "实验日期",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "operator",
+      "name": "操作人",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "sample_batch",
+      "name": "样品 / 批次",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "equipment",
+      "name": "设备",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "equipment_settings",
+      "name": "设备设置",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "environment_conditions",
+      "name": "环境条件",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "unexpected_events",
+      "name": "异常与意外观察",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "lab_experiment"
+    },
+    {
+      "id": "system_version",
+      "name": "系统版本",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "prototype_version",
+      "name": "原型版本",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "components",
+      "name": "组件",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "bom",
+      "name": "BOM / 物料说明",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "assembly",
+      "name": "装配记录",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "wiring",
+      "name": "接线记录",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "calibration",
+      "name": "校准记录",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "bench_test",
+      "name": "台架测试",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "failure_record",
+      "name": "故障记录",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "hardware_system"
+    },
+    {
+      "id": "device",
+      "name": "采集设备",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "calibration_record",
+      "name": "校准来源与日期",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "acquisition_config",
+      "name": "采集配置",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "measurement_conditions",
+      "name": "测量条件",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "raw_data_location",
+      "name": "原始数据说明",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "processed_result",
+      "name": "处理结果说明",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "measurement_imaging"
+    },
+    {
+      "id": "fabrication_process",
+      "name": "制造工艺",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "fabrication"
+    },
+    {
+      "id": "fabrication_batch",
+      "name": "制造批次",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "fabrication"
+    },
+    {
+      "id": "design_revision",
+      "name": "设计版本",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "fabrication"
+    },
+    {
+      "id": "dataset",
+      "name": "数据集与版本",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "data_analysis"
+    },
+    {
+      "id": "analysis_method",
+      "name": "分析方法",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "data_analysis"
+    },
+    {
+      "id": "source_scope",
+      "name": "文献来源与适用边界",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "literature_sources"
+    },
+    {
+      "id": "search_query",
+      "name": "检索范围",
+      "value_type": "string",
+      "unit": "",
+      "required": false,
+      "optional": true,
+      "default": null,
+      "display_group": "context",
+      "order": 0,
+      "help_text": "",
+      "visibility": "basic",
+      "capability": "literature_sources"
+    }
+  ],
+  "run_forms": [
+    {
+      "run_type": "simulation",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "numerical_validation",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "measurement",
+      "capability": "measurement_imaging",
+      "groups": [
+        {
+          "id": "context",
+          "name": "测量与采集条件",
+          "fields": [
+            "device",
+            "calibration_record",
+            "acquisition_config",
+            "measurement_conditions",
+            "raw_data_location",
+            "processed_result"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "benchmark",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "optimization",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "physical_experiment",
+      "capability": "lab_experiment",
+      "groups": [
+        {
+          "id": "context",
+          "name": "实验条件与设备",
+          "fields": [
+            "experiment_date",
+            "operator",
+            "sample_batch",
+            "equipment",
+            "equipment_settings",
+            "environment_conditions",
+            "unexpected_events"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "parameter_sweep",
+      "capability": "code_simulation",
+      "groups": [
+        {
+          "id": "context",
+          "name": "代码与仿真来源",
+          "fields": [
+            "repository",
+            "branch",
+            "commit",
+            "config"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "material_test",
+      "capability": "lab_experiment",
+      "groups": [
+        {
+          "id": "context",
+          "name": "实验条件与设备",
+          "fields": [
+            "experiment_date",
+            "operator",
+            "sample_batch",
+            "equipment",
+            "equipment_settings",
+            "environment_conditions",
+            "unexpected_events"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "imaging_test",
+      "capability": "measurement_imaging",
+      "groups": [
+        {
+          "id": "context",
+          "name": "测量与采集条件",
+          "fields": [
+            "device",
+            "calibration_record",
+            "acquisition_config",
+            "measurement_conditions",
+            "raw_data_location",
+            "processed_result"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "prototype",
+      "capability": "hardware_system",
+      "groups": [
+        {
+          "id": "context",
+          "name": "系统与原型记录",
+          "fields": [
+            "system_version",
+            "prototype_version",
+            "components",
+            "bom",
+            "assembly",
+            "wiring",
+            "calibration",
+            "bench_test",
+            "failure_record"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "fabrication",
+      "capability": "fabrication",
+      "groups": [
+        {
+          "id": "context",
+          "name": "制造与设计记录",
+          "fields": [
+            "fabrication_process",
+            "fabrication_batch",
+            "design_revision"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "literature_review",
+      "capability": "literature_sources",
+      "groups": [
+        {
+          "id": "context",
+          "name": "文献与来源",
+          "fields": [
+            "source_scope",
+            "search_query"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    },
+    {
+      "run_type": "data_analysis",
+      "capability": "data_analysis",
+      "groups": [
+        {
+          "id": "context",
+          "name": "数据与分析",
+          "fields": [
+            "dataset",
+            "analysis_method"
+          ],
+          "visibility": "basic"
+        }
+      ]
+    }
+  ]
 }

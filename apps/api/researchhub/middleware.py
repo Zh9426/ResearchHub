@@ -13,7 +13,10 @@ class BodyLimitMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope["method"] not in ("POST", "PATCH", "PUT"):
             return await self.app(scope, receive, send)
-        upload = scope["path"].endswith("/artifacts") and scope["method"] == "POST"
+        upload = (
+            scope["path"].endswith(("/artifacts", "/imports/preview"))
+            and scope["method"] == "POST"
+        )
         limit = (
             int(os.getenv("MAX_UPLOAD_BYTES", "52428800")) + 1048576
             if upload

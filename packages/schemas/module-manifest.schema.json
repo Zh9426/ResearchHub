@@ -23,6 +23,54 @@
       "title": "Criterion",
       "type": "object"
     },
+    "FormGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capability"
+        },
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fields",
+          "type": "array"
+        },
+        "visibility": {
+          "default": "basic",
+          "enum": [
+            "basic",
+            "advanced"
+          ],
+          "title": "Visibility",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "fields"
+      ],
+      "title": "FormGroup",
+      "type": "object"
+    },
     "Named": {
       "additionalProperties": false,
       "properties": {
@@ -33,6 +81,18 @@
         "name": {
           "title": "Name",
           "type": "string"
+        },
+        "capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capability"
         }
       },
       "required": [
@@ -40,6 +100,40 @@
         "name"
       ],
       "title": "Named",
+      "type": "object"
+    },
+    "RunForm": {
+      "additionalProperties": false,
+      "properties": {
+        "run_type": {
+          "title": "Run Type",
+          "type": "string"
+        },
+        "capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capability"
+        },
+        "groups": {
+          "items": {
+            "$ref": "#/$defs/FormGroup"
+          },
+          "title": "Groups",
+          "type": "array"
+        }
+      },
+      "required": [
+        "run_type",
+        "groups"
+      ],
+      "title": "RunForm",
       "type": "object"
     },
     "Schema": {
@@ -52,6 +146,18 @@
         "name": {
           "title": "Name",
           "type": "string"
+        },
+        "capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capability"
         },
         "value_type": {
           "enum": [
@@ -66,6 +172,7 @@
           "type": "string"
         },
         "unit": {
+          "default": "",
           "title": "Unit",
           "type": "string"
         },
@@ -80,13 +187,50 @@
           ],
           "default": null,
           "title": "Description"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "optional": {
+          "default": true,
+          "title": "Optional",
+          "type": "boolean"
+        },
+        "default": {
+          "default": null,
+          "title": "Default"
+        },
+        "display_group": {
+          "default": "parameters",
+          "title": "Display Group",
+          "type": "string"
+        },
+        "order": {
+          "default": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "help_text": {
+          "default": "",
+          "title": "Help Text",
+          "type": "string"
+        },
+        "visibility": {
+          "default": "basic",
+          "enum": [
+            "basic",
+            "advanced"
+          ],
+          "title": "Visibility",
+          "type": "string"
         }
       },
       "required": [
         "id",
         "name",
-        "value_type",
-        "unit"
+        "value_type"
       ],
       "title": "Schema",
       "type": "object"
@@ -101,6 +245,18 @@
         "name": {
           "title": "Name",
           "type": "string"
+        },
+        "capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capability"
         },
         "description": {
           "title": "Description",
@@ -125,6 +281,18 @@
         "name": {
           "title": "Name",
           "type": "string"
+        },
+        "capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capability"
         },
         "description": {
           "title": "Description",
@@ -163,6 +331,18 @@
       "title": "Name",
       "type": "string"
     },
+    "capability": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Capability"
+    },
     "description": {
       "title": "Description",
       "type": "string"
@@ -170,6 +350,14 @@
     "version": {
       "title": "Version",
       "type": "string"
+    },
+    "default_capabilities": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Default Capabilities",
+      "type": "array"
     },
     "run_types": {
       "items": {
@@ -190,6 +378,22 @@
         "$ref": "#/$defs/Schema"
       },
       "title": "Metric Schemas",
+      "type": "array"
+    },
+    "context_fields": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Schema"
+      },
+      "title": "Context Fields",
+      "type": "array"
+    },
+    "run_forms": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/RunForm"
+      },
+      "title": "Run Forms",
       "type": "array"
     },
     "research_stages": {

@@ -1,0 +1,135 @@
+{
+  "$defs": {
+    "ParameterInput": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "default": null,
+          "title": "Value"
+        },
+        "value_type": {
+          "default": "number",
+          "enum": [
+            "number",
+            "integer",
+            "string",
+            "boolean",
+            "object",
+            "array"
+          ],
+          "title": "Value Type",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "source_kind": {
+          "default": "unknown",
+          "enum": [
+            "unknown",
+            "synthetic",
+            "assumed",
+            "literature",
+            "manufacturer",
+            "measured",
+            "calibrated",
+            "derived"
+          ],
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "source_location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Location"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uncertainty"
+        },
+        "valid_conditions": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Conditions"
+        },
+        "is_confirmed": {
+          "default": false,
+          "title": "Is Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ParameterInput",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "parameters": {
+      "items": {
+        "$ref": "#/$defs/ParameterInput"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Parameters",
+      "type": "array"
+    }
+  },
+  "required": [
+    "parameters"
+  ],
+  "title": "ParametersBatch",
+  "type": "object"
+}

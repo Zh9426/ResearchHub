@@ -3,7 +3,7 @@ import {zh} from './zh';
 export type FieldKind = 'text'|'textarea'|'select'|'multi'|'json'|'boolean'|'date'|'datetime-local'|'number'|'criteria';
 export interface Field {key:string;label:string;kind?:FieldKind;required?:boolean;options?:{value:string;label:string}[];default?:unknown;hint?:string;}
 export const options = (values:string[]) => values.map(value=>({value,label:zh(value)}));
-export const evidenceStatuses = ['unknown','hypothesis','assumed','synthetic','simulated','measured','calibrated','validated','reproduced','rejected'];
+export const evidenceStatuses = ['proposed','unknown','hypothesis','assumed','synthetic','simulated','measured','calibrated','validated','reproduced','rejected'];
 export const sourceKinds = ['unknown','synthetic','assumed','literature','manufacturer','measured','calibrated','derived'];
 export const f = (key:string,label:string,kind:FieldKind='text',extra:Partial<Field>={}):Field=>({key,label,kind,...extra});
 export function localDateTime(value:unknown):string {if(!value)return '';const date=new Date(String(value));if(Number.isNaN(date.getTime()))return '';return new Date(date.getTime()-date.getTimezoneOffset()*60_000).toISOString().slice(0,16);}
@@ -11,7 +11,7 @@ const status = (values:string[],value?:string) => f('status','状态','select',{
 const title = f('title','标题','text',{required:true});
 const description = f('description','描述','textarea');
 export function linkOptions(rows:RecordData[]) {return rows.map(x=>({value:x.id,label:String(x.title??x.name??x.id)}));}
-export function resourceFields(collection:string,ctx?:ProjectContext,manifest?:ModuleManifest):Field[] {
+function baseResourceFields(collection:string,ctx?:ProjectContext,manifest?:ModuleManifest):Field[] {
   const link=(key:string,label:string,rows:RecordData[]|undefined,multiple=false)=>f(key,label,multiple?'multi':'select',{options:linkOptions(rows??[])});
   switch(collection) {
     case 'projects': return [f('name','项目名称','text',{required:true}),description,f('module_id','项目类型','select',{required:true}),status(['active','paused','completed','archived','blocked']),f('current_stage',"当前研究阶段"),f('current_objective','当前目标','textarea')];
@@ -20,6 +20,7 @@ export function resourceFields(collection:string,ctx?:ProjectContext,manifest?:M
     case 'hypotheses':return [f('statement',"假设陈述",'textarea',{required:true}),link('research_question_id',"研究问题",ctx?.questions),status(['proposed','testing','supported','rejected','inconclusive']),f('evidence_status',"证据状态",'select',{options:options(evidenceStatuses),default:'unknown'})];
     case 'tasks':return [title,description,status(['todo','doing','blocked','done']),f('priority','优先级','select',{options:options(['low','medium','high','critical']),default:'medium'}),link('milestone_id',"里程碑",ctx?.milestones),f('due_date','截止日期','date')];
     case 'milestones':return [title,description,status(['not_started','in_progress','completed','blocked']),f('target_date','目标日期','date'),f('completed_at','完成时间','datetime-local')];
+    case 'tags':return [f('name','标签名称','text',{required:true}),f('color','显示颜色','select',{options:options(['gray','teal','blue','orange','red']),default:'gray'})];
     case 'sources':return [title,description,f('source_kind',"来源类别",'select',{options:options(sourceKinds),default:'unknown'}),f('url','URL'),f('doi','DOI'),f('source_location','来源位置'),f('citation',"文献引用",'textarea')];
     case 'evidence':return [title,description,f('evidence_type',"证据类型",'select',{options:options(['simulation','measurement','literature','artifact','observation','other']),default:'observation'}),status(evidenceStatuses),link('linked_run_id',"关联研究记录",ctx?.runs),link('linked_artifact_id',"关联文件",ctx?.artifacts),link('linked_source_id',"关联来源",ctx?.sources),f('limitations',"限制与证据边界",'textarea')];
     case 'claims':return [f('title',"论断标题"),f('statement',"科研论断",'textarea',{required:true}),status(['draft','supported','rejected','inconclusive']),link('evidence_ids',"证据",ctx?.evidence,true),link('run_ids',"研究记录",ctx?.runs,true),link('artifact_ids',"研究文件",ctx?.artifacts,true),link('source_ids',"来源",ctx?.sources,true),f('limitations',"适用限制",'textarea')];
@@ -46,4 +47,10 @@ export function parseFields(fields:Field[],form:HTMLFormElement):Record<string,u
     result[field.key]=raw||(nullable?null:'');
   }
   return result;
+}
+
+export function resourceFields(collection:string,ctx?:ProjectContext,manifest?:ModuleManifest):Field[]{
+ const fields=baseResourceFields(collection,ctx,manifest);
+ if(['runs','evidence','notes','decisions','tasks'].includes(collection))fields.push(f('tag_ids','标签','multi',{options:linkOptions(ctx?.tags??[])}));
+ return fields;
 }
