@@ -330,7 +330,9 @@ def test_cross_project_relationships_and_deletion(client):
     )
     child = run(client, a, parent_run_id=ar)
     assert client.delete(f"/api/runs/{ar}").status_code == 200
-    assert client.get(f"/api/runs/{child}").json()["parent_run_id"] is None
+    assert client.get(f"/api/runs/{child}").json()["parent_run_id"] == ar
+    # Reversible trash preserves lineage rather than changing the scientific graph.
+    assert client.get(f"/api/runs/{ar}").status_code == 404
     assert client.delete(f"/api/projects/{a}").status_code == 200
     assert client.get(f"/api/runs/{child}").status_code == 404
 
@@ -476,26 +478,34 @@ def passed_gate(client, pid, criterion_evidence, gate_evidence):
     return client.get(f"/api/gates/{gate['id']}").json()
 
 
-@pytest.mark.parametrize("mutation", ["unknown", "hypothesis", "assumed", "rejected", "delete"])
+@pytest.mark.parametrize(
+    "mutation", ["unknown", "hypothesis", "assumed", "rejected", "delete"]
+)
 @pytest.mark.parametrize("criterion_link", [True, False])
-def test_evidence_invalidation_reopens_gate_with_audit(client, mutation, criterion_link):
+def test_evidence_invalidation_reopens_gate_with_audit(
+    client, mutation, criterion_link
+):
     login(client)
     pid = project(client, "ice-sonocuring")
     target = client.post(
         f"/api/projects/{pid}/evidence", json={"title": "Target", "status": "validated"}
     ).json()
     independent = client.post(
-        f"/api/projects/{pid}/evidence", json={"title": "Independent", "status": "measured"}
+        f"/api/projects/{pid}/evidence",
+        json={"title": "Independent", "status": "measured"},
     ).json()
     gate = passed_gate(
-        client, pid,
+        client,
+        pid,
         [target["id"]] if criterion_link else [independent["id"]],
         [independent["id"]] if criterion_link else [target["id"]],
     )
     if mutation == "delete":
         response = client.delete(f"/api/evidence/{target['id']}")
     else:
-        response = client.patch(f"/api/evidence/{target['id']}", json={"status": mutation})
+        response = client.patch(
+            f"/api/evidence/{target['id']}", json={"status": mutation}
+        )
     assert response.status_code == 200, response.text
     changed = client.get(f"/api/gates/{gate['id']}").json()
     assert changed["status"] == "blocked"
@@ -519,29 +529,48 @@ def test_evidence_invalidation_reopens_gate_with_audit(client, mutation, criteri
         assert all(a["before"]["status"] == "passed" for a in criterion_changes)
         assert all(a["after"]["status"] == "in_progress" for a in criterion_changes)
         assert all(a["project_id"] == pid for a in criterion_changes)
-        assert all(a["request_id"] == response.headers["X-Request-ID"] for a in criterion_changes)
+        assert all(
+            a["request_id"] == response.headers["X-Request-ID"]
+            for a in criterion_changes
+        )
         if mutation == "delete":
-            assert all(a["before"]["evidence_ids"] == [target["id"]] for a in criterion_changes)
-            assert all(a["after"]["evidence_ids"] == [] for a in criterion_changes)
+            assert all(
+                a["before"]["evidence_ids"] == [target["id"]] for a in criterion_changes
+            )
+            assert all(
+                a["after"]["evidence_ids"] == [target["id"]] for a in criterion_changes
+            )
     else:
         assert criterion_changes == []
 
 
-def test_deleting_one_of_multiple_valid_evidence_preserves_passage(client):
+def test_trashing_supporting_evidence_preserves_links_but_requires_reapproval(client):
     login(client)
     pid = project(client, "ice-sonocuring")
     evidence = [
         client.post(
-            f"/api/projects/{pid}/evidence", json={"title": title, "status": "validated"}
+            f"/api/projects/{pid}/evidence",
+            json={"title": title, "status": "validated"},
         ).json()["id"]
         for title in ("First", "Retained")
     ]
     gate = passed_gate(client, pid, evidence, evidence)
     assert client.delete(f"/api/evidence/{evidence[0]}").status_code == 200
     retained = client.get(f"/api/gates/{gate['id']}").json()
-    assert retained["status"] == "passed" and retained["evidence_ids"] == [evidence[1]]
-    assert all(c["status"] == "passed" and c["evidence_ids"] == [evidence[1]] for c in retained["criteria"])
-    assert not any(a["action"] == "invalidate_gate_evidence" for a in client.get("/api/activity").json())
+    assert retained["status"] == "blocked" and set(retained["evidence_ids"]) == set(
+        evidence
+    )
+    assert all(
+        c["status"] == "in_progress" and set(c["evidence_ids"]) == set(evidence)
+        for c in retained["criteria"]
+    )
+    assert any(
+        a["action"] == "invalidate_gate_evidence"
+        for a in client.get("/api/activity").json()
+    )
+    assert [e["id"] for e in client.get(f"/api/projects/{pid}/evidence").json()] == [
+        evidence[1]
+    ]
 
 
 def test_rejecting_one_of_multiple_evidence_invalidates_passage(client):
@@ -549,12 +578,18 @@ def test_rejecting_one_of_multiple_evidence_invalidates_passage(client):
     pid = project(client, "ice-sonocuring")
     evidence = [
         client.post(
-            f"/api/projects/{pid}/evidence", json={"title": title, "status": "validated"}
+            f"/api/projects/{pid}/evidence",
+            json={"title": title, "status": "validated"},
         ).json()["id"]
         for title in ("Rejected", "Retained")
     ]
     gate = passed_gate(client, pid, evidence, evidence)
-    assert client.patch(f"/api/evidence/{evidence[0]}", json={"status": "rejected"}).status_code == 200
+    assert (
+        client.patch(
+            f"/api/evidence/{evidence[0]}", json={"status": "rejected"}
+        ).status_code
+        == 200
+    )
     changed = client.get(f"/api/gates/{gate['id']}").json()
     assert changed["status"] == "blocked"
     assert all(c["status"] == "in_progress" for c in changed["criteria"])
@@ -564,21 +599,28 @@ def test_valid_evidence_updates_do_not_reopen_gate(client):
     login(client)
     pid = project(client, "ice-sonocuring")
     evidence = client.post(
-        f"/api/projects/{pid}/evidence", json={"title": "Evidence", "status": "validated"}
+        f"/api/projects/{pid}/evidence",
+        json={"title": "Evidence", "status": "validated"},
     ).json()
     gate = passed_gate(client, pid, [evidence["id"]], [evidence["id"]])
     for payload in ({"description": "Clarified scope"}, {"status": "reproduced"}):
-        assert client.patch(f"/api/evidence/{evidence['id']}", json=payload).status_code == 200
+        assert (
+            client.patch(f"/api/evidence/{evidence['id']}", json=payload).status_code
+            == 200
+        )
         assert client.get(f"/api/gates/{gate['id']}").json() == gate
 
 
-def test_evidence_and_gate_changes_rollback_together_on_audit_failure(client, monkeypatch):
+def test_evidence_and_gate_changes_rollback_together_on_audit_failure(
+    client, monkeypatch
+):
     from apps.api.researchhub import service as svc
 
     login(client)
     pid = project(client, "ice-sonocuring")
     evidence = client.post(
-        f"/api/projects/{pid}/evidence", json={"title": "Evidence", "status": "validated"}
+        f"/api/projects/{pid}/evidence",
+        json={"title": "Evidence", "status": "validated"},
     ).json()
     gate = passed_gate(client, pid, [evidence["id"]], [evidence["id"]])
     original = svc.audit
@@ -596,7 +638,9 @@ def test_evidence_and_gate_changes_rollback_together_on_audit_failure(client, mo
     assert client.get(f"/api/gates/{gate['id']}").json() == gate
 
 
-def test_chunked_request_without_content_length_is_bounded_and_replayed(client, monkeypatch):
+def test_chunked_request_without_content_length_is_bounded_and_replayed(
+    client, monkeypatch
+):
     login(client)
     pid = project(client)
     monkeypatch.setenv("MAX_UPLOAD_BYTES", "4")

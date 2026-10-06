@@ -74,7 +74,7 @@ try {
     if (-not $ready) { throw 'Native app did not become ready.' }
     $state=@{api_pid=$apiProcess.Id;web_pid=$webProcess.Id;node_executable=$nodeExe;qa=[bool]$Qa;web_url='http://localhost:3000';api_url='http://127.0.0.1:8000'}
     [IO.File]::WriteAllText($statePath,($state | ConvertTo-Json),(New-Object Text.UTF8Encoding $false))
-    Write-Host 'Native Research Hub ready at http://localhost:3000. No account or demo data was automatically created. Docker deployment remains separately unverified.'
+    Write-Host 'Native Research Hub ready at http://localhost:3000. No account or demo data was automatically created.'
 } catch {
     foreach ($process in @($apiProcess,$webProcess)) { if ($process -and -not $process.HasExited) { & taskkill.exe /PID $process.Id /T /F | Out-Null } }
     throw

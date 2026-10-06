@@ -55,6 +55,7 @@
     "status": {
       "default": "unknown",
       "enum": [
+        "proposed",
         "unknown",
         "hypothesis",
         "assumed",

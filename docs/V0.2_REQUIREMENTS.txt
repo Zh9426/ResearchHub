@@ -1,0 +1,2506 @@
+你现在需要在现有 Research Hub v0.1 基础上继续开发：
+
+Research Hub v0.2
+Connected & Modular Research Workspace
+
+不要重新创建项目，不要推翻 v0.1。
+
+首先检查当前仓库、v0.1 开发分支、数据库 Migration、现有测试和文档。
+
+在开始开发前：
+
+1. 将稳定的 v0.1 状态作为明确基线；
+2. 创建独立 v0.2 开发分支；
+3. 所有数据库变化必须通过新的 Alembic migration；
+4. 禁止修改已经部署过的 0001 初始 migration；
+5. v0.1 中已有科研数据必须能够无损迁移到 v0.2。
+
+==================================================
+0. V0.2 PRODUCT DEFINITION
+==================================================
+
+v0.1 主要解决：
+
+“科研事实如何被结构化保存。”
+
+v0.2 主要解决：
+
+“不同类型科研工作如何以更自然的方式进入 Research Hub，
+并被研究者、Codex 和 ChatGPT 安全、低成本地共同使用。”
+
+最终结构：
+
+Researcher
+     ↕
+Human-first UI
+     ↕
+Research Hub
+     ↕
+Structured MCP
+     ↕
+ChatGPT / Codex
+
+
+Research Hub 仍然是 Source of Truth。
+
+不得把：
+
+ChatGPT Memory
+Codex 对话
+GitHub
+Markdown
+AI Analysis
+
+作为科研事实数据库的替代品。
+
+==================================================
+1. V0.2 CORE PRINCIPLES
+==================================================
+
+必须保留 v0.1 已经正确建立的：
+
+Research Hub Core
+
+Workflow Engine
+
+Project Module
+
+Evidence-first model
+
+ResearchRun
+
+Parameter provenance
+
+Scientific outcome
+
+Human Conclusion / AI Analysis separation
+
+AuditLog
+
+PostgreSQL
+
+MinIO
+
+PWA
+
+MCP Application Service boundary
+
+
+v0.2 不得破坏这些基础。
+
+==================================================
+2. PROJECT CUSTOMIZATION MODEL
+==================================================
+
+当前 Generic / HDSP / ICE Module 的方向正确。
+
+但 v0.2 需要进一步引入：
+
+Composable Research Capabilities
+
+不要变成：
+
+每个课题开发一套独立 App。
+
+应采用：
+
+Research Hub Core
+        +
+Capability Modules
+        +
+Project Preset
+        +
+Domain Workflow
+
+
+定义通用 Capability 概念。
+
+第一批建议：
+
+code_simulation
+
+lab_experiment
+
+hardware_system
+
+measurement_imaging
+
+fabrication
+
+data_analysis
+
+literature_sources
+
+
+具体命名可优化。
+
+Capability 的目标是：
+
+同一种科研工作方式可以被多个 Project Module 复用。
+
+例如：
+
+ICE：
+
+code_simulation
+lab_experiment
+hardware_system
+measurement_imaging
+literature_sources
+
+
+HDSP：
+
+code_simulation
+fabrication
+lab_experiment
+data_analysis
+literature_sources
+
+
+Generic：
+
+用户自行选择。
+
+
+Project Module 决定默认 Capability。
+
+但项目创建后，允许用户：
+
+enable capability
+
+disable / hide capability
+
+不要完全锁死。
+
+
+注意：
+
+Capability ≠ Project Module。
+
+Project Module 描述：
+
+“研究什么。”
+
+Capability 描述：
+
+“以什么科研方式开展工作。”
+
+==================================================
+3. MODULE VERSIONING — P0
+==================================================
+
+这是必须完成的架构修复。
+
+当前 Project 只有：
+
+module_id
+
+不足以保证长期科研数据解释稳定。
+
+增加：
+
+module_version
+
+module_snapshot / module_definition reference
+
+项目创建时必须冻结：
+
+Module ID
+Module Version
+有效 Manifest 定义
+
+
+以后 manifest 升级时：
+
+旧项目不能自动被新定义重新解释。
+
+
+例如：
+
+ICE Module v0.1
+
+未来：
+
+ICE Module v0.2
+
+
+原项目默认继续使用：
+
+v0.1
+
+
+只有用户主动执行：
+
+Upgrade Module
+
+才进行迁移。
+
+
+升级必须：
+
+显示差异
+
+说明：
+
+Run Types
+Parameters
+Metrics
+Stages
+Gates
+Views
+
+发生了什么变化。
+
+
+升级必须产生 AuditLog。
+
+不要 v0.2 自动替所有旧项目升级。
+
+==================================================
+4. HUMAN / AI AUTHORITY MODEL — P0
+==================================================
+
+v0.1 的 research:read / research:write 粒度不足。
+
+v0.2 必须建立科研语义上的 Human / AI 权限边界。
+
+AI 可以：
+
+创建 ResearchRun
+
+保存 Parameter
+
+保存 Metric
+
+上传 Artifact
+
+创建 Note
+
+创建 Task
+
+填写 AI Analysis
+
+创建 proposed Evidence
+
+创建 proposed Decision
+
+
+AI 不应该自动执行：
+
+填写 Human Conclusion
+
+把 Parameter 标记为最终人工确认
+
+把 Evidence 直接标记为 validated / reproduced
+
+把 Gate 设置为最终 passed
+
+删除科研事实
+
+清空 Audit
+
+执行科研最终确认
+
+
+为重要科研状态建立：
+
+Human approval / confirmation rule。
+
+
+至少确保：
+
+Human Conclusion
+
+Evidence validation
+
+Gate passage
+
+final parameter confirmation
+
+只能由 human session 完成。
+
+
+MCP 使用 API Token 时必须继续标记：
+
+actor_type = codex / chatgpt
+
+
+所有写操作继续进入 Audit。
+
+==================================================
+5. RESEARCH RUN IMPORTANCE / STAR — P0
+==================================================
+
+ResearchRun 增加独立的重要性标记能力。
+
+这是科研语义，不是 Evidence 状态。
+
+一条 Run 可以因为以下原因很重要：
+
+重大代码版本
+
+关键实验
+
+重点突破
+
+失败但揭示关键问题
+
+基准实验
+
+阶段代表结果
+
+重要阴性结果
+
+
+增加类似：
+
+is_highlighted: boolean
+
+highlight_type: optional enum/string
+
+highlight_note: optional text
+
+highlighted_at
+
+highlighted_by
+
+
+建议 highlight_type：
+
+major_version
+
+breakthrough
+
+key_result
+
+reference
+
+negative_key_result
+
+other
+
+
+但前端不能强迫用户填写这些字段。
+
+默认操作应该非常简单：
+
+☆ → ★
+
+
+点击一次即可星标。
+
+可选：
+
+“添加星标说明”。
+
+
+重要：
+
+Highlight 与以下字段完全独立：
+
+status
+
+scientific_outcome
+
+Evidence status
+
+Gate status
+
+
+例如：
+
+Run：
+status = completed
+
+scientific_outcome = negative_result
+
+is_highlighted = true
+
+
+完全合法。
+
+
+UI 要求：
+
+Run List 显示星标。
+
+Run Detail Header 显示星标按钮。
+
+支持：
+
+只看星标记录
+
+星标优先查看
+
+Project Overview 增加：
+
+Highlighted / Key Runs
+
+但不要把所有星标记录永久固定在列表最顶部导致时间排序失效。
+
+建议提供 Filter：
+
+All
+
+Highlighted
+
+
+允许 MCP 查询星标 Run。
+
+AI 可以在用户明确要求时设置 Highlight。
+
+所有 Highlight 修改写入 AuditLog。
+
+==================================================
+6. HUMAN-FIRST RUN CREATION — P0
+==================================================
+
+当前“新建研究记录”大型通用 Modal 需要重构。
+
+不要继续一次显示：
+
+标题
+
+Run Type
+
+Parent
+
+Objective
+
+Hypothesis
+
+Status
+
+Outcome
+
+Changes
+
+Protocol
+
+Observation
+
+AI Analysis
+
+Human Conclusion
+
+Next Step
+
+Environment
+
+Software Version
+
+Code Revision
+
+Start / End Time
+
+全部字段。
+
+
+使用 Progressive Disclosure。
+
+
+Quick Create 第一层只需要：
+
+Run Type
+
+Title
+
+Objective
+
+Parent Run（可选）
+
+
+然后：
+
+Create & Continue
+
+
+创建后再根据：
+
+Run Type
+
+Capability
+
+Project Module
+
+显示具体工作表单。
+
+
+高级字段进入：
+
+Advanced / More Details
+
+
+目标：
+
+普通科研记录应该可以在几十秒内开始创建。
+
+==================================================
+7. CONTEXT-SPECIFIC RUN EXPERIENCE
+==================================================
+
+不同科研类型不能共用完全相同的人类录入界面。
+
+
+--------------------------------
+A. CODE / SIMULATION
+--------------------------------
+
+重点展示：
+
+Repository
+
+Branch
+
+Commit
+
+Environment
+
+Software Version
+
+Config
+
+Input Parameters
+
+Output Metrics
+
+Artifacts
+
+Logs
+
+Figures
+
+Parent Run
+
+Parameter differences
+
+
+--------------------------------
+B. LAB EXPERIMENT
+--------------------------------
+
+重点展示：
+
+Experiment Date
+
+Operator
+
+Sample / Batch
+
+Equipment
+
+Equipment Settings
+
+Protocol
+
+Environment Conditions
+
+Measurements
+
+Observation
+
+Unexpected Events
+
+Photos
+
+Videos
+
+Raw Data
+
+Conclusion
+
+
+手机端必须特别优化：
+
+拍照
+
+上传照片
+
+快速写 Observation
+
+
+--------------------------------
+C. HARDWARE / SYSTEM
+--------------------------------
+
+重点展示：
+
+System Version
+
+Prototype Version
+
+Component
+
+BOM
+
+CAD / PCB / Firmware / Driver Artifact
+
+Assembly
+
+Wiring
+
+Calibration
+
+Bench Test
+
+Failure Record
+
+Related Runs
+
+
+--------------------------------
+D. MEASUREMENT / IMAGING
+--------------------------------
+
+重点展示：
+
+Device
+
+Calibration
+
+Acquisition Config
+
+Measurement Conditions
+
+Raw Data
+
+Processed Result
+
+Metrics
+
+Images
+
+
+这些只是 UX / capability 视图。
+
+底层仍然尽量复用 Core：
+
+Run
+
+Parameter
+
+Metric
+
+Artifact
+
+Evidence
+
+Source
+
+Decision
+
+
+不要为了 UI 便利复制大量数据库实体。
+
+==================================================
+8. RUN TEMPLATE & CLONE
+==================================================
+
+增加：
+
+Clone Run
+
+Based on Run
+
+
+从父 Run 创建新 Run 时允许继承：
+
+Parameters
+
+Protocol
+
+Environment
+
+Software Version
+
+Code Revision
+
+部分 Artifact references（不要复制大文件）
+
+
+创建后自动计算：
+
+Changes from Parent
+
+
+例如：
+
+pressure
+1.4 → 1.6 MPa
+
+phase_levels
+12 → 16
+
+
+不要主要依赖用户自己写 changes_from_parent 文本。
+
+人工文字可以作为额外说明。
+
+==================================================
+9. MODULE-DRIVEN RUN FORM
+==================================================
+
+v0.1 manifest 已经包含：
+
+parameter_schemas
+
+metric_schemas
+
+run_types
+
+
+v0.2 应真正用它驱动 Run UI。
+
+
+例如：
+
+HDSP acoustic_simulation
+
+直接展示：
+
+frequency
+z_target
+pressure
+algorithm
+iterations
+phase_levels
+
+
+而不是创建 Run 后逐个添加。
+
+
+ICE hydrophone_measurement
+
+展示它自己的相关参数与结果。
+
+
+Manifest 可以定义：
+
+required
+
+optional
+
+default
+
+unit
+
+display_group
+
+order
+
+help_text
+
+visibility
+
+capability
+
+
+不要把这些科学字段写进 Core 固定 Column。
+
+==================================================
+10. RESEARCH RUN BUNDLE
+==================================================
+
+实现标准化导入格式：
+
+Research Run Bundle
+
+
+建议：
+
+run-bundle/
+├── researchhub-run.json
+├── parameters.json
+├── metrics.json
+├── artifacts/
+└── manifest.json
+
+
+用于：
+
+Python
+
+MATLAB
+
+Codex
+
+其他实验程序
+
+
+导入流程：
+
+Select Bundle
+
+↓
+
+Parse
+
+↓
+
+Validate
+
+↓
+
+Preview
+
+↓
+
+Conflict Check
+
+↓
+
+User Confirm
+
+↓
+
+Create Run
+
+↓
+
+Parameters
+
+Metrics
+
+Artifacts
+
+
+绝对不要：
+
+上传以后不预览直接修改数据库。
+
+
+Import 必须记录来源与 Audit。
+
+
+为未来 Desktop Agent 奠定基础。
+
+==================================================
+11. ACTIVITY VS AUDIT
+==================================================
+
+必须区分：
+
+Activity Feed
+
+Audit Trail
+
+
+--------------------------------
+Activity Feed
+--------------------------------
+
+是给人使用的最近操作信息流。
+
+要求：
+
+Global Activity
+
+Project Activity
+
+
+项目中增加：
+
+Activity
+
+
+支持：
+
+按时间
+
+按 Actor
+
+按 Resource
+
+按 Action
+
+过滤。
+
+
+Activity 可以：
+
+清除 UI 历史
+
+隐藏旧记录
+
+设置显示范围
+
+例如：
+
+7 days
+30 days
+90 days
+All
+
+
+这里的“清除”是：
+
+清除 / 隐藏 Activity Feed 展示历史
+
+不能破坏 Audit 数据。
+
+
+--------------------------------
+Audit Trail
+--------------------------------
+
+Audit 是科研 provenance。
+
+要求：
+
+Append-only
+
+普通 UI 不允许一键清空
+
+普通 AI 不允许删除
+
+
+必须保留：
+
+Actor
+
+Actor Type
+
+Action
+
+Resource
+
+Before
+
+After
+
+Timestamp
+
+Request ID
+
+Project
+
+
+继续区分：
+
+human
+codex
+chatgpt
+system
+
+
+可以导出。
+
+==================================================
+12. PROJECT-SCOPED AUDIT
+==================================================
+
+v0.1 底层已有 project_id。
+
+v0.2 完善 UI：
+
+Project
+→ Activity
+→ Audit
+
+
+Global Activity 仍然保留。
+
+
+Project Audit 支持：
+
+Search
+
+Date Filter
+
+Actor Filter
+
+Action Filter
+
+Resource Filter
+
+
+例如：
+
+Only Codex
+
+Only Evidence
+
+Only Run
+
+Last 30 days
+
+==================================================
+13. PROJECT EXPORT
+==================================================
+
+增加：
+
+Export Project Research Record
+
+
+不要仅导出界面。
+
+至少支持生成：
+
+project metadata
+
+runs
+
+parameters
+
+metrics
+
+evidence
+
+claims
+
+decisions
+
+sources
+
+activity
+
+audit
+
+module information
+
+
+建议：
+
+ZIP
+
+├── project.json
+├── runs.csv
+├── parameters.csv
+├── metrics.csv
+├── evidence.csv
+├── claims.csv
+├── decisions.csv
+├── activity.csv
+├── audit.jsonl
+├── module-manifest.json
+└── README.md
+
+
+大型 Artifact：
+
+允许：
+
+metadata only
+
+或：
+
+include files
+
+
+由用户选择。
+
+
+还可以提供：
+
+Export Research Log
+
+生成 Markdown。
+
+
+注意：
+
+Export 不得改变科研数据。
+
+==================================================
+14. ARCHIVE / TRASH / RESTORE — P0
+==================================================
+
+减少科研数据 Hard Delete。
+
+Project / Run / Evidence 等核心对象优先：
+
+Archive
+
+
+如果需要删除：
+
+Trash
+
+→ retention
+
+→ explicit permanent delete
+
+
+普通主界面不要提供危险的直接 hard delete。
+
+
+尤其 Project 删除：
+
+必须经过明显二次确认。
+
+
+Artifact 删除时：
+
+数据库对象与 MinIO object 必须一致处理。
+
+
+实现：
+
+Artifact cleanup / GC
+
+
+避免：
+
+数据库记录删除
+
+但 MinIO 留下 orphan object。
+
+==================================================
+15. SEARCH / FILTER / PAGINATION
+==================================================
+
+v0.1 不应继续依赖巨大 Project Context。
+
+
+增加：
+
+Pagination
+
+Filter
+
+Sort
+
+Search
+
+
+至少：
+
+Runs
+
+Evidence
+
+Artifacts
+
+Tasks
+
+Activity
+
+Audit
+
+
+Run Filter：
+
+Run Type
+
+Status
+
+Scientific Outcome
+
+Highlighted
+
+Date
+
+Parent
+
+Tag
+
+
+Evidence：
+
+Status
+
+Type
+
+Linked Run
+
+Date
+
+
+Artifacts：
+
+Type
+
+Category
+
+Run
+
+Date
+
+
+实现合理数据库 Index。
+
+
+项目 Overview Context 应变轻量。
+
+不要把几百个 Runs 和 Evidence 全部一次返回。
+
+==================================================
+16. TAG SYSTEM
+==================================================
+
+v0.1 已有 Tag 表，但功能未充分利用。
+
+v0.2 完成 Tag 关联。
+
+
+允许：
+
+Run
+
+Evidence
+
+Artifact
+
+Note
+
+Decision
+
+Task
+
+使用 Tag。
+
+
+例如：
+
+baseline
+
+candidate-A
+
+major-version
+
+validation
+
+failed
+
+paper-figure
+
+important
+
+
+Tag 不替代 Highlight。
+
+==================================================
+17. EXPERIMENT / RESEARCH LINEAGE
+==================================================
+
+基于现有 parent_run_id，实现真正的谱系视图。
+
+
+例如：
+
+#041
+├── #042
+│   ├── #043 ★
+│   └── #044
+└── #045
+
+
+节点显示：
+
+Run ID
+
+Title
+
+Run Type
+
+Status
+
+Scientific Outcome
+
+Highlight
+
+
+点击节点打开：
+
+Run Detail
+
+
+边上可以显示：
+
+parameter change summary
+
+
+不要第一版制造非常复杂的图编辑器。
+
+重点是：
+
+清晰
+
+可读
+
+可导航。
+
+==================================================
+18. EVIDENCE TRACEABILITY
+==================================================
+
+增强：
+
+Claim
+→ Evidence
+→ Run
+→ Artifact / Source
+
+
+同时提供反向查询：
+
+Run supports which Claims?
+
+Evidence supports which Gates?
+
+Artifact participates in which Evidence?
+
+Source supports which Parameters?
+
+
+增加：
+
+Impact View
+
+
+当 Evidence 降级、删除或失效时：
+
+显示受影响的：
+
+Claim
+
+Criterion
+
+Gate
+
+Decision
+
+
+现有自动 reopen Gate 逻辑必须保留。
+
+==================================================
+19. PARAMETER / METRIC HISTORY
+==================================================
+
+增加科研版本历史视图。
+
+Parameter：
+
+Value
+
+Source
+
+Uncertainty
+
+Valid Conditions
+
+Confirmed
+
+Modified At
+
+Actor
+
+
+Metric：
+
+Value
+
+Unit
+
+Status
+
+Source / derivation
+
+Uncertainty
+
+Valid Conditions
+
+
+Metric provenance 应升级到接近 Parameter 的水平。
+
+
+例如：
+
+material_threshold
+
+unknown
+
+↓
+
+assumed
+
+↓
+
+measured
+
+↓
+
+calibrated
+
+
+用户应该能清楚看到变化轨迹。
+
+==================================================
+20. MANIFEST-DRIVEN UI
+==================================================
+
+这是 v0.2 的重要架构目标。
+
+当前前端仍存在：
+
+isIce
+
+isHdsp
+
+ICE custom view hardcode
+
+HDSP best metric hardcode
+
+
+必须逐步减少。
+
+
+让 Module Manifest 真正驱动：
+
+navigation
+
+dashboard_widgets
+
+custom_views
+
+run_type forms
+
+parameter groups
+
+metric groups
+
+capability mapping
+
+
+custom_view 可以定义：
+
+id
+
+name
+
+description
+
+run_types
+
+metric_ids
+
+artifact_categories
+
+evidence_filters
+
+layout_type
+
+
+Dashboard Widget 可以通过 Registry 渲染。
+
+
+验收标准：
+
+未来添加一个新 Module 时，
+
+尽量不修改：
+
+overview.tsx
+
+domain-view.tsx
+
+project-workspace.tsx
+
+
+仅：
+
+新增 Manifest
+
+必要的小型专属组件
+
+即可运行。
+
+==================================================
+21. HDSP WORKSPACE V0.2
+==================================================
+
+HDSP 推荐 Capability：
+
+Code / Simulation
+
+Fabrication
+
+Lab Experiment
+
+Data Analysis
+
+
+重点体验：
+
+Simulation Run
+
+Optimization Lineage
+
+Highlighted Major Runs
+
+Phase Plate Version
+
+Physical Experiment
+
+Metrics Trend
+
+
+Overview 增加：
+
+Current Objective
+
+Highlighted Runs
+
+Recent Runs
+
+Best / Representative Metrics
+
+Physical Validation Status
+
+Current Tasks
+
+Evidence Summary
+
+
+注意：
+
+“Best” 不要在不知道指标方向的情况下自动推断。
+
+
+Metric Schema 可增加：
+
+optimization_direction
+
+maximize
+minimize
+target_range
+informational
+
+==================================================
+22. ICE WORKSPACE V0.2
+==================================================
+
+ICE 推荐 Capability：
+
+Code / Simulation
+
+Lab Experiment
+
+Hardware System
+
+Measurement / Imaging
+
+Evidence / Validation
+
+
+ICE Workspace 应突出：
+
+Current Stage
+
+Current Gate
+
+Blocking Issues
+
+Probe / Prototype Version
+
+Highlighted Runs
+
+Validation Progress
+
+Open Risks
+
+Evidence Boundary
+
+
+Hardware Workspace 应能够表达：
+
+Probe Architecture
+
+Prototype
+
+Component
+
+Hardware Files
+
+Calibration
+
+Bench Test
+
+
+Lab Workspace：
+
+Hydrophone
+
+Material
+
+Tank Test
+
+Phantom / Ex-vivo
+
+
+ICE 仍须保持：
+
+声学覆盖 ≠ 实测固化覆盖
+
+simulation ≠ validation
+
+unknown ≠ zero
+
+negative result ≠ software failure
+
+==================================================
+23. MOBILE UX
+==================================================
+
+v0.2 手机端重点不是完整复制桌面端。
+
+
+重点：
+
+Quick Capture
+
+
+手机首页提供：
+
+Quick Note
+
+New Lab Record
+
+New Run
+
+Photo Upload
+
+Complete Task
+
+
+Lab Experiment：
+
+允许手机相机直接添加照片。
+
+
+大表格：
+
+不要硬缩放。
+
+改为：
+
+List / Card-like row
+
+或横向滚动。
+
+
+Modal 太长时：
+
+改为 Page / Sheet / Step Flow。
+
+
+尤其新建 Research Run：
+
+不要继续采用当前巨大单页 Modal。
+
+==================================================
+24. FRONTEND QUALITY
+==================================================
+
+已提供：
+
+frontend-app-builder
+
+ui-ux-pro-max
+
+
+在 v0.2 UI 开发前重新读取两个 Skill。
+
+
+必须执行：
+
+Existing UI Review
+
+↓
+
+Design System Update
+
+↓
+
+Interaction Architecture
+
+↓
+
+Desktop Implementation
+
+↓
+
+Mobile Implementation
+
+↓
+
+Real Browser Review
+
+↓
+
+Refinement
+
+
+不要只运行单元测试。
+
+
+重点改善：
+
+长表单
+
+信息层次
+
+研究记录创建成本
+
+Workspace 个性化
+
+Mobile Capture
+
+Run Importance
+
+Lineage
+
+Evidence Trace
+
+
+避免：
+
+AI Dashboard aesthetic
+
+everything-is-card
+
+oversized whitespace
+
+decorative KPI
+
+unnecessary gradients
+
+glassmorphism
+
+marketing UI
+
+==================================================
+25. MCP V0.2
+==================================================
+
+保留 v0.1 MCP 原则：
+
+No SQL
+
+No shell
+
+No arbitrary server files
+
+
+升级 MCP Tool 设计。
+
+
+READ：
+
+get_projects
+
+get_project_summary
+
+search_research
+
+query_runs
+
+get_run
+
+compare_runs
+
+get_highlighted_runs
+
+get_current_blockers
+
+get_evidence_trace
+
+
+WRITE：
+
+create_run
+
+clone_run
+
+upsert_run_parameters
+
+save_run_metrics
+
+create_note
+
+create_task
+
+upload/register artifact where safely supported
+
+create_proposed_evidence
+
+set_run_highlight
+
+
+AI 权限规则必须遵守 Human / AI Authority Model。
+
+
+不要通过通用：
+
+update_any_resource
+
+实现所有操作。
+
+每个 MCP Tool 必须语义明确。
+
+==================================================
+26. CODEX INTEGRATION
+==================================================
+
+第一目标：
+
+真正验证 Codex → local MCP → Research Hub。
+
+
+不是只有协议测试。
+
+
+至少完成一次真实 Acceptance Scenario：
+
+Codex：
+
+1. 查询项目
+2. 创建 Run
+3. 保存参数
+4. 保存指标
+5. 添加 Note
+6. 设置 Highlight
+7. Research Hub UI 能看到
+8. Audit actor_type = codex
+
+
+如果实际环境不允许连接：
+
+标记：
+
+NOT VERIFIED
+
+
+不能虚构。
+
+==================================================
+27. CHATGPT INTEGRATION
+==================================================
+
+研究当前 OpenAI 官方 MCP / Plugin 能力。
+
+优先保持：
+
+Research Hub Local Data
+
+PostgreSQL
+
+MinIO
+
+
+不要为了 ChatGPT 连接把科研数据迁移到第三方云。
+
+
+评估：
+
+Secure MCP Tunnel
+
+Remote MCP HTTPS
+
+OAuth
+
+Plugin Packaging
+
+
+目标：
+
+ChatGPT Web / Desktop / Mobile 能够安全访问 Research Hub。
+
+
+但数据存储仍归 Research Hub 控制。
+
+
+未真实连接成功：
+
+必须标记：
+
+NOT VERIFIED。
+
+==================================================
+28. GITHUB INTEGRATION
+==================================================
+
+作为 v0.2 后半阶段功能。
+
+Project 可以关联：
+
+Repository
+
+
+ResearchRun 可以保存：
+
+repository
+
+branch
+
+commit SHA
+
+
+如果可能：
+
+显示：
+
+Related Commit
+
+Issue
+
+Pull Request
+
+
+不要把 GitHub 当 Research Hub Source of Truth。
+
+
+GitHub 是：
+
+Code Provenance Source。
+
+
+Run Compare 可以未来加入：
+
+Parameter Diff
+
+Metric Diff
+
+Code Revision Diff
+
+==================================================
+29. PERFORMANCE REFACTORING
+==================================================
+
+后端继续拆分。
+
+当前大文件：
+
+main.py
+
+service.py
+
+
+v0.2 可重构为：
+
+routers/
+
+services/
+
+repositories/
+
+domain/
+
+schemas/
+
+
+但：
+
+不要为了架构美观进行无意义的大规模重写。
+
+
+只有在：
+
+分页
+
+搜索
+
+Capability
+
+权限
+
+MCP
+
+模块化
+
+确实需要时拆分。
+
+==================================================
+30. CI
+==================================================
+
+增加 GitHub CI：
+
+Backend tests
+
+MCP tests
+
+Frontend tests
+
+Frontend build
+
+Migration check
+
+
+不得包含：
+
+真实 Secret
+
+真实科研数据。
+
+==================================================
+31. DEPLOYMENT ACCEPTANCE
+==================================================
+
+完成 v0.1 遗留：
+
+Docker Compose 实际启动验证
+
+PostgreSQL
+
+MinIO
+
+API
+
+Web
+
+
+完成：
+
+容器重启持久化测试
+
+backup
+
+restore
+
+
+完成：
+
+真实手机 / 平板访问测试
+
+PWA install
+
+
+如果设备条件阻止：
+
+明确记录 NOT VERIFIED。
+
+==================================================
+32. OUT OF SCOPE
+==================================================
+
+v0.2 不做：
+
+完整 MATLAB Desktop Agent
+
+完整 COMSOL Agent
+
+Verasonics Agent
+
+仪器直接控制
+
+团队 SaaS
+
+多人协作权限体系
+
+Billing
+
+论文编辑器
+
+完整 Zotero Clone
+
+复杂知识图谱
+
+自主科研结论确认
+
+自主 Gate validation
+
+自主临床判断
+
+
+不要扩大 Scope。
+
+==================================================
+33. DEVELOPMENT PHASES
+==================================================
+
+严格分阶段实施。
+
+
+================================
+SPRINT 0 — FOUNDATION
+================================
+
+Module Versioning
+
+Human / AI Authority
+
+Archive / Trash
+
+Artifact GC
+
+Migration
+
+Backend refactor where necessary
+
+CI
+
+Docker / persistence verification
+
+
+完成后运行完整测试。
+
+
+================================
+SPRINT 1 — HUMAN RESEARCH WORKFLOW
+================================
+
+Capability Modules
+
+Quick Create
+
+Progressive Run Form
+
+Context-specific Run UI
+
+Clone Run
+
+Highlight / Star
+
+Tag
+
+Search
+
+Filter
+
+Pagination
+
+Activity vs Audit
+
+Project Export
+
+
+================================
+SPRINT 2 — RESEARCH INTELLIGENCE UX
+================================
+
+Lineage
+
+Evidence Impact
+
+Parameter History
+
+Metric History
+
+Manifest-driven UI
+
+HDSP workspace refinement
+
+ICE workspace refinement
+
+Mobile Quick Capture
+
+
+================================
+SPRINT 3 — CONNECTIVITY
+================================
+
+MCP Tool redesign
+
+Codex real integration
+
+Plugin / Skill packaging
+
+ChatGPT secure integration evaluation
+
+GitHub provenance integration
+
+
+不要一次修改所有系统。
+
+
+每个 Sprint：
+
+Implement
+
+Test
+
+Run
+
+Inspect UI
+
+Fix
+
+Document
+
+Commit
+
+
+然后再进入下一阶段。
+
+==================================================
+34. ACCEPTANCE SCENARIOS
+==================================================
+
+至少实际验证以下场景。
+
+
+SCENARIO A
+
+创建 HDSP Project。
+
+创建 acoustic simulation。
+
+基于 Parent Clone。
+
+修改 pressure。
+
+系统自动显示 Parameter Difference。
+
+设置 Run 为 Highlight。
+
+Overview 出现 Key Run。
+
+
+SCENARIO B
+
+创建 ICE Project。
+
+进入 Lab Experiment。
+
+手机创建 Hydrophone Record。
+
+上传照片与原始数据。
+
+保存 Observation。
+
+结果为 negative_result。
+
+设置 Highlight。
+
+系统不得把 negative 解释为 failed。
+
+
+SCENARIO C
+
+Codex MCP：
+
+创建 Run
+
+保存 Metrics
+
+创建 Note
+
+Highlight Run
+
+
+Audit：
+
+actor_type = codex
+
+
+SCENARIO D
+
+Evidence 支撑 Gate。
+
+Gate Passed。
+
+Evidence 降级。
+
+系统显示 Impact。
+
+Gate 自动重新进入非通过状态。
+
+
+SCENARIO E
+
+Project Activity 清理显示历史。
+
+Audit 数据仍然存在。
+
+导出 Audit。
+
+
+SCENARIO F
+
+导出 Project。
+
+验证：
+
+Runs
+
+Parameters
+
+Metrics
+
+Evidence
+
+Audit
+
+Module Version
+
+均存在。
+
+
+SCENARIO G
+
+升级 Module Manifest。
+
+旧 Project 不自动改变。
+
+用户主动执行 Module Upgrade 后才迁移。
+
+==================================================
+35. UI ACCEPTANCE
+==================================================
+
+特别检查 v0.1 当前问题：
+
+“新建研究记录”不能继续是一个巨大万能 Modal。
+
+
+必须检查：
+
+Desktop Quick Create
+
+Desktop Simulation Run
+
+Desktop Lab Experiment
+
+Desktop Hardware Workspace
+
+Run Highlight
+
+Run Lineage
+
+Project Activity
+
+Audit
+
+Mobile Quick Note
+
+Mobile Lab Record
+
+Mobile Photo Upload
+
+
+使用：
+
+frontend-app-builder
+
+ui-ux-pro-max
+
+进行最终二次审查。
+
+==================================================
+36. FINAL REPORT
+==================================================
+
+完成后创建：
+
+docs/V0.2_REPORT.md
+
+
+必须明确分为：
+
+IMPLEMENTED
+
+TESTED
+
+NOT VERIFIED
+
+NOT IMPLEMENTED
+
+
+报告：
+
+1. Architecture changes
+
+2. Database migrations
+
+3. Module versioning
+
+4. Capability system
+
+5. Human / AI authority
+
+6. Research Run UX
+
+7. Highlight system
+
+8. Activity / Audit
+
+9. Search / pagination
+
+10. Export
+
+11. Lineage
+
+12. Evidence traceability
+
+13. Mobile
+
+14. MCP
+
+15. Codex integration
+
+16. ChatGPT integration
+
+17. GitHub integration
+
+18. Test results
+
+19. Known issues
+
+20. Technical debt
+
+21. Recommended v0.3 scope
+
+
+不要把设计计划写成已实现结果。
+
+==================================================
+37. IMPORTANT PRODUCT PRINCIPLE
+==================================================
+
+Research Hub v0.2 应同时服务两种用户：
+
+A. Researcher
+
+需要：
+
+简单
+
+快速
+
+清晰
+
+专业
+
+尽可能少的手工录入
+
+
+B. AI Agent
+
+需要：
+
+结构化
+
+明确 Schema
+
+明确权限
+
+可审计
+
+可追溯
+
+
+因此必须遵守：
+
+Human UI ≠ AI API
+
+
+人类不应该被迫填写数据库表。
+
+AI 不应该模拟点击网页。
+
+
+最终目标：
+
+研究者负责科研判断。
+
+Codex 负责执行与结构化记录。
+
+ChatGPT 负责理解、分析和规划。
+
+Research Hub 负责保存长期、可验证、可追溯的科研事实。
+
+
+现在开始 Research Hub v0.2 开发。

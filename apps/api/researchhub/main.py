@@ -1,5 +1,6 @@
 # FastAPI dependency and field declarations intentionally use call defaults.
 # ruff: noqa: B008
+import copy
 import hashlib
 import hmac
 import json
@@ -33,7 +34,16 @@ from . import models as m
 from . import service as svc
 from .middleware import BodyLimitMiddleware
 from .modules import load_modules
-from .schemas import SCHEMAS, AuthInput, MetricsBatch, TokenInput
+from .schemas import (
+    SCHEMAS,
+    AuthInput,
+    LifecycleInput,
+    MetricsBatch,
+    ModuleUpgradeInput,
+    PurgeInput,
+    StorageGCInput,
+    TokenInput,
+)
 from .security import LoginAttempts
 from .storage import S3Objects
 
@@ -62,7 +72,7 @@ def password_valid(password, stored):
 
 
 def create_app(database_url=None, initialize=False):
-    app = FastAPI(title="Research Hub", version="0.1.0")
+    app = FastAPI(title="Research Hub", version="0.2.0")
     url = database_url or os.getenv(
         "DATABASE_URL", "postgresql+psycopg://localhost/researchhub"
     )
@@ -213,7 +223,7 @@ def create_app(database_url=None, initialize=False):
             "database": "postgresql"
             if engine.dialect.name == "postgresql"
             else "sqlite-unit-test",
-            "version": "0.1.0",
+            "version": "0.2.0",
         }
 
     @app.get("/api/auth/status")
@@ -355,18 +365,35 @@ def create_app(database_url=None, initialize=False):
         return app.state.modules[mid]
 
     @app.get("/api/projects")
-    def projects(actor=Depends(actor_dep), db=Depends(db_dep)):
+    def projects(
+        include_archived: bool = False, actor=Depends(actor_dep), db=Depends(db_dep)
+    ):
         return [
             svc.serialize(db, p)
             for p in db.scalars(
                 select(m.Project)
-                .where(m.Project.owner_id == actor.user.id)
+                .where(
+                    m.Project.owner_id == actor.user.id,
+                    m.Project.trashed_at.is_(None),
+                    *(
+                        []
+                        if include_archived
+                        else [
+                            m.Project.archived_at.is_(None),
+                            m.Project.status != "archived",
+                        ]
+                    ),
+                )
                 .order_by(m.Project.updated_at.desc())
             )
         ]
 
     def make_project(db, actor, request, payload, is_demo=False):
         data = svc.parsed("projects", payload)
+        initially_archived = data["status"] == "archived"
+        if initially_archived:
+            svc.require_human(actor)
+            data["status"] = "active"
         module = app.state.modules.get(data["module_id"])
         if not module:
             raise HTTPException(422, "Unknown module")
@@ -374,7 +401,13 @@ def create_app(database_url=None, initialize=False):
             s["id"] for s in module["research_stages"]
         }:
             raise HTTPException(422, "Unknown stage")
-        p = m.Project(owner_id=actor.user.id, is_demo=is_demo, **data)
+        p = m.Project(
+            owner_id=actor.user.id,
+            is_demo=is_demo,
+            module_version=module["version"],
+            module_snapshot=copy.deepcopy(module),
+            **data,
+        )
         db.add(p)
         db.flush()
         svc.audit(db, actor, request, "create_project", p)
@@ -397,6 +430,12 @@ def create_app(database_url=None, initialize=False):
                 },
                 app.state.modules,
             )
+        if initially_archived:
+            before = svc.serialize(db, p)
+            p.status = "archived"
+            p.archived_at = m.now()
+            db.flush()
+            svc.audit(db, actor, request, "archive_projects", p, before)
         return p
 
     @app.post("/api/projects")
@@ -426,8 +465,10 @@ def create_app(database_url=None, initialize=False):
         actor=Depends(actor_dep),
         db=Depends(db_dep),
     ):
-        p = svc.project_for(db, actor, str(pid))
+        p = svc.project_for(db, actor, str(pid), write=True)
         before = svc.serialize(db, p)
+        if payload.get("status") == "archived":
+            svc.require_human(actor)
         if "module_id" in payload and payload["module_id"] != p.module_id:
             raise HTTPException(422, "Project module cannot change after creation")
         data = svc.parsed(
@@ -435,10 +476,13 @@ def create_app(database_url=None, initialize=False):
             {**{k: before[k] for k in SCHEMAS["projects"].model_fields}, **payload},
         )
         if data["current_stage"] and data["current_stage"] not in {
-            s["id"] for s in app.state.modules[p.module_id]["research_stages"]
+            s["id"] for s in svc.module_for(p)["research_stages"]
         }:
             raise HTTPException(422, "Unknown stage")
         svc.apply_data(db, p, data)
+        if data["status"] == "archived" and p.archived_at is None:
+            p.archived_at = m.now()
+            db.flush()
         svc.audit(db, actor, request, "update_project", p, before)
         db.commit()
         return svc.serialize(db, p)
@@ -447,11 +491,7 @@ def create_app(database_url=None, initialize=False):
     def delete_project(
         pid: UUID, request: Request, actor=Depends(actor_dep), db=Depends(db_dep)
     ):
-        p = svc.project_for(db, actor, str(pid))
-        before = svc.serialize(db, p)
-        svc.audit(db, actor, request, "delete_project", p, before)
-        db.flush()
-        db.delete(p)
+        svc.lifecycle(db, actor, request, "projects", str(pid), "trash")
         db.commit()
         return {"ok": True}
 
@@ -474,7 +514,13 @@ def create_app(database_url=None, initialize=False):
             for t in db.scalars(
                 select(m.Task)
                 .join(m.Project)
-                .where(m.Project.owner_id == actor.user.id)
+                .where(
+                    m.Project.owner_id == actor.user.id,
+                    m.Project.trashed_at.is_(None),
+                    m.Project.archived_at.is_(None),
+                    m.Task.trashed_at.is_(None),
+                    m.Task.archived_at.is_(None),
+                )
             )
         ]
 
@@ -489,7 +535,10 @@ def create_app(database_url=None, initialize=False):
                 svc.serialize(db, o)
                 for o in db.scalars(
                     select(cls)
-                    .where(cls.project_id == str(pid))
+                    .where(
+                        cls.project_id == str(pid),
+                        *svc.visible_records(cls),
+                    )
                     .order_by(cls.created_at)
                 )
             ]
@@ -501,7 +550,7 @@ def create_app(database_url=None, initialize=False):
             actor=Depends(actor_dep),
             db=Depends(db_dep),
         ):
-            svc.project_for(db, actor, str(pid))
+            svc.project_for(db, actor, str(pid), write=True)
             obj = svc.create_record(
                 db, actor, request, kind, str(pid), payload, app.state.modules
             )
@@ -518,10 +567,14 @@ def create_app(database_url=None, initialize=False):
             actor=Depends(actor_dep),
             db=Depends(db_dep),
         ):
-            obj = svc.resource(db, actor, cls, str(rid))
+            obj = svc.resource(db, actor, cls, str(rid), write=True)
             before = svc.serialize(db, obj)
+            svc.scientific_authority(actor, kind, payload, existing=obj)
             data = svc.parsed(
                 kind, {**{k: before[k] for k in SCHEMAS[kind].model_fields}, **payload}
+            )
+            svc.scientific_authority(
+                actor, kind, {key: data[key] for key in payload}, existing=obj
             )
             svc.validate_links(db, obj, data, app.state.modules)
             dependents = (
@@ -535,7 +588,11 @@ def create_app(database_url=None, initialize=False):
             svc.audit(db, actor, request, "update_" + kind, obj, before)
             if dependents:
                 svc.reconcile_evidence_dependents(
-                    db, actor, request, dependents, obj.id,
+                    db,
+                    actor,
+                    request,
+                    dependents,
+                    obj.id,
                     f"状态已变为 {obj.status}",
                 )
             db.commit()
@@ -544,18 +601,7 @@ def create_app(database_url=None, initialize=False):
         def delete_record(
             rid: UUID, request: Request, actor=Depends(actor_dep), db=Depends(db_dep)
         ):
-            obj = svc.resource(db, actor, cls, str(rid))
-            dependents = (
-                svc.evidence_dependents(db, obj) if isinstance(obj, m.Evidence) else []
-            )
-            svc.audit(db, actor, request, "delete_" + kind, obj, svc.serialize(db, obj))
-            db.flush()
-            db.delete(obj)
-            db.flush()
-            if dependents:
-                svc.reconcile_evidence_dependents(
-                    db, actor, request, dependents, obj.id, "已删除",
-                )
+            svc.lifecycle(db, actor, request, kind, str(rid), "trash")
             db.commit()
             return {"ok": True}
 
@@ -595,7 +641,13 @@ def create_app(database_url=None, initialize=False):
             svc.resource(db, actor, m.ResearchRun, str(rid))
             return [
                 svc.serialize(db, o)
-                for o in db.scalars(select(cls).where(cls.run_id == str(rid)))
+                for o in db.scalars(
+                    select(cls).where(
+                        cls.run_id == str(rid),
+                        cls.trashed_at.is_(None),
+                        cls.archived_at.is_(None),
+                    )
+                )
             ]
 
         def creating(
@@ -605,7 +657,7 @@ def create_app(database_url=None, initialize=False):
             actor=Depends(actor_dep),
             db=Depends(db_dep),
         ):
-            r = svc.resource(db, actor, m.ResearchRun, str(rid))
+            r = svc.resource(db, actor, m.ResearchRun, str(rid), write=True)
             obj = svc.create_record(
                 db,
                 actor,
@@ -626,10 +678,14 @@ def create_app(database_url=None, initialize=False):
             actor=Depends(actor_dep),
             db=Depends(db_dep),
         ):
-            obj = svc.resource(db, actor, cls, str(rid))
+            obj = svc.resource(db, actor, cls, str(rid), write=True)
             before = svc.serialize(db, obj)
+            svc.scientific_authority(actor, kind, payload, existing=obj)
             data = svc.parsed(
                 kind, {**{k: before[k] for k in SCHEMAS[kind].model_fields}, **payload}
+            )
+            svc.scientific_authority(
+                actor, kind, {key: data[key] for key in payload}, existing=obj
             )
             svc.validate_links(db, obj, data, app.state.modules)
             svc.apply_data(db, obj, data)
@@ -640,10 +696,7 @@ def create_app(database_url=None, initialize=False):
         def deleting(
             rid: UUID, request: Request, actor=Depends(actor_dep), db=Depends(db_dep)
         ):
-            obj = svc.resource(db, actor, cls, str(rid))
-            svc.audit(db, actor, request, "delete_" + kind, obj, svc.serialize(db, obj))
-            db.flush()
-            db.delete(obj)
+            svc.lifecycle(db, actor, request, kind, str(rid), "trash")
             db.commit()
             return {"ok": True}
 
@@ -674,7 +727,7 @@ def create_app(database_url=None, initialize=False):
         actor=Depends(actor_dep),
         db=Depends(db_dep),
     ):
-        r = svc.resource(db, actor, m.ResearchRun, str(rid))
+        r = svc.resource(db, actor, m.ResearchRun, str(rid), write=True)
         objs = [
             svc.create_record(
                 db,
@@ -696,13 +749,223 @@ def create_app(database_url=None, initialize=False):
             app.state.objects = S3Objects()
         return app.state.objects
 
+    @app.get("/api/projects/{pid}/module-upgrade/preview")
+    def module_upgrade_preview(pid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
+        p = svc.project_for(db, actor, str(pid))
+        return svc.module_upgrade_preview(p, app.state.modules[p.module_id])
+
+    @app.post("/api/projects/{pid}/module-upgrade")
+    def module_upgrade(
+        pid: UUID,
+        payload: ModuleUpgradeInput,
+        request: Request,
+        actor=Depends(actor_dep),
+        db=Depends(db_dep),
+    ):
+        svc.require_human(actor)
+        p = svc.project_for(db, actor, str(pid), write=True)
+        # Serialize upgrade transactions so two tabs cannot silently overwrite each other.
+        p = db.scalar(
+            select(m.Project)
+            .where(m.Project.id == p.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        svc.upgrade_module(
+            db,
+            actor,
+            request,
+            p,
+            app.state.modules[p.module_id],
+            payload.expected_version,
+            payload.expected_target_digest,
+            app.state.modules,
+        )
+        db.commit()
+        return svc.serialize(db, p)
+
+    @app.get("/api/lifecycle/{kind}")
+    def lifecycle_listing(
+        kind: str,
+        state: str = "trashed",
+        limit: int = 100,
+        offset: int = 0,
+        actor=Depends(actor_dep),
+        db=Depends(db_dep),
+    ):
+        cls = svc.LIFECYCLE_COLLECTIONS.get(kind)
+        if cls is None or state not in {"trashed", "archived"}:
+            raise HTTPException(422, "Invalid lifecycle resource type or state")
+        if not 1 <= limit <= 100 or offset < 0:
+            raise HTTPException(422, "Invalid pagination")
+        query = select(cls)
+        if cls is m.Project:
+            query = query.where(m.Project.owner_id == actor.user.id)
+        elif cls in (m.Parameter, m.Metric):
+            query = (
+                query.join(m.ResearchRun)
+                .join(m.Project)
+                .where(m.Project.owner_id == actor.user.id)
+            )
+        else:
+            query = query.join(m.Project).where(m.Project.owner_id == actor.user.id)
+        stamp = cls.trashed_at if state == "trashed" else cls.archived_at
+        return [
+            svc.serialize(db, obj)
+            for obj in db.scalars(
+                query.where(stamp.is_not(None))
+                .order_by(stamp.desc(), cls.id)
+                .limit(limit)
+                .offset(offset)
+            )
+        ]
+
+    @app.get("/api/projects/{pid}/lifecycle")
+    def project_lifecycle(
+        pid: UUID,
+        kind: str = "runs",
+        limit: int = 100,
+        offset: int = 0,
+        actor=Depends(actor_dep),
+        db=Depends(db_dep),
+    ):
+        svc.project_for(db, actor, str(pid), include_trashed=True)
+        cls = svc.LIFECYCLE_COLLECTIONS.get(kind)
+        if cls is None or not 1 <= limit <= 100 or offset < 0:
+            raise HTTPException(422, "Invalid lifecycle type or pagination")
+        query = select(cls)
+        if cls is m.Project:
+            query = query.where(m.Project.id == str(pid))
+        elif cls in (m.Parameter, m.Metric):
+            query = query.join(m.ResearchRun).where(
+                m.ResearchRun.project_id == str(pid)
+            )
+        else:
+            query = query.where(cls.project_id == str(pid))
+        query = (
+            query.where((cls.archived_at.is_not(None)) | (cls.trashed_at.is_not(None)))
+            .order_by(cls.updated_at.desc(), cls.id)
+            .limit(limit)
+            .offset(offset)
+        )
+        return [svc.serialize(db, obj) for obj in db.scalars(query)]
+
+    @app.patch("/api/lifecycle/{kind}/{rid}")
+    def change_lifecycle(
+        kind: str,
+        rid: UUID,
+        payload: LifecycleInput,
+        request: Request,
+        actor=Depends(actor_dep),
+        db=Depends(db_dep),
+    ):
+        obj = svc.lifecycle(db, actor, request, kind, str(rid), payload.action)
+        db.commit()
+        return svc.serialize(db, obj)
+
+    @app.post("/api/lifecycle/{kind}/{rid}/purge")
+    def purge_resource(
+        kind: str,
+        rid: UUID,
+        payload: PurgeInput,
+        request: Request,
+        actor=Depends(actor_dep),
+        db=Depends(db_dep),
+    ):
+        svc.purge(db, actor, request, kind, str(rid))
+        db.commit()
+        return {"ok": True, "object_cleanup": "queued"}
+
+    @app.get("/api/storage/gc-preview")
+    def gc_preview(actor=Depends(actor_dep), db=Depends(db_dep)):
+        svc.require_human(actor)
+        items = list(
+            db.scalars(
+                select(m.ObjectDeletion)
+                .where(
+                    m.ObjectDeletion.owner_id == actor.user.id,
+                    m.ObjectDeletion.status != "deleted",
+                )
+                .order_by(m.ObjectDeletion.created_at)
+                .limit(100)
+            )
+        )
+        return {
+            "items": [
+                {
+                    **svc.serialize(db, item),
+                    "has_live_reference": db.scalar(
+                        select(m.Artifact.id)
+                        .where(m.Artifact.object_key == item.object_key)
+                        .limit(1)
+                    )
+                    is not None,
+                }
+                for item in items
+            ],
+            "limit": 100,
+            "scan_bucket": False,
+        }
+
+    @app.post("/api/storage/gc")
+    def storage_gc(
+        payload: StorageGCInput,
+        request: Request,
+        actor=Depends(actor_dep),
+        db=Depends(db_dep),
+    ):
+        svc.require_human(actor)
+        items = list(
+            db.scalars(
+                select(m.ObjectDeletion)
+                .where(
+                    m.ObjectDeletion.owner_id == actor.user.id,
+                    m.ObjectDeletion.object_key.in_(payload.object_keys),
+                )
+                .with_for_update()
+            )
+        )
+        if {item.object_key for item in items} != set(payload.object_keys):
+            raise HTTPException(
+                422, "Only owned, queued object keys from GC preview may be deleted"
+            )
+        result = {"deleted": 0, "failed": 0, "skipped_live": 0}
+        for item in items:
+            if db.scalar(
+                select(m.Artifact.id)
+                .where(m.Artifact.object_key == item.object_key)
+                .limit(1)
+            ):
+                result["skipped_live"] += 1
+                continue
+            if item.status == "deleted":
+                continue
+            before = svc.serialize(db, item)
+            item.attempts += 1
+            try:
+                objects().delete(item.object_key)
+                item.status = "deleted"
+                item.last_error = None
+                result["deleted"] += 1
+            except (BotoCoreError, ClientError, ValueError, OSError):
+                item.status = "failed"
+                item.last_error = "object_storage_unavailable"
+                result["failed"] += 1
+            db.flush()
+            svc.audit(db, actor, request, "storage_gc_" + item.status, item, before)
+        db.commit()
+        return result
+
     @app.get("/api/projects/{pid}/artifacts")
     def artifacts(pid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
         svc.project_for(db, actor, str(pid))
         return [
             svc.serialize(db, o)
             for o in db.scalars(
-                select(m.Artifact).where(m.Artifact.project_id == str(pid))
+                select(m.Artifact).where(
+                    m.Artifact.project_id == str(pid),
+                    *svc.visible_records(m.Artifact),
+                )
             )
         ]
 
@@ -718,8 +981,10 @@ def create_app(database_url=None, initialize=False):
         actor=Depends(actor_dep),
         db=Depends(db_dep),
     ):
-        p = svc.project_for(db, actor, str(pid))
+        p = svc.project_for(db, actor, str(pid), write=True)
         svc.reference(db, m.ResearchRun, run_id, p.id)
+        if run_id:
+            svc.resource(db, actor, m.ResearchRun, run_id, write=True)
         filename = file.filename or ""
         if (
             not filename
@@ -745,7 +1010,7 @@ def create_app(database_url=None, initialize=False):
         mime = file.content_type or "application/octet-stream"
         if ext not in allowed or mime not in allowed[ext]:
             raise HTTPException(422, "Unsupported extension or MIME type")
-        if category not in app.state.modules[p.module_id]["artifact_categories"]:
+        if category not in svc.module_for(p)["artifact_categories"]:
             raise HTTPException(422, "Unknown artifact category")
         try:
             meta = json.loads(metadata)
@@ -787,6 +1052,11 @@ def create_app(database_url=None, initialize=False):
             try:
                 objects().put(key, stream, size, mime)
             except (BotoCoreError, ClientError, ValueError, OSError):
+                # The store may have persisted bytes before a timeout/lost reply.
+                # Persist intent before returning 503; GC rechecks live references.
+                db.rollback()
+                svc.enqueue_object_deletion(db, actor.user.id, p.id, key)
+                db.commit()
                 raise HTTPException(503, "Object storage is unavailable")
         artifact = m.Artifact(
             id=aid,
@@ -807,7 +1077,11 @@ def create_app(database_url=None, initialize=False):
             svc.audit(db, actor, request, "upload_artifact", artifact)
             db.commit()
         except Exception:
-            objects().delete(key)
+            db.rollback()
+            # Persist an orphan cleanup intent independently of the failed metadata transaction.
+            # GC will recheck that no live metadata refers to this exact key.
+            svc.enqueue_object_deletion(db, actor.user.id, p.id, key)
+            db.commit()
             raise
         return svc.serialize(db, artifact)
 
@@ -839,6 +1113,14 @@ def create_app(database_url=None, initialize=False):
     @app.get("/api/artifacts/{aid}")
     def artifact_metadata(aid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
         return svc.serialize(db, svc.resource(db, actor, m.Artifact, str(aid)))
+
+    @app.delete("/api/artifacts/{aid}")
+    def delete_artifact(
+        aid: UUID, request: Request, actor=Depends(actor_dep), db=Depends(db_dep)
+    ):
+        svc.lifecycle(db, actor, request, "artifacts", str(aid), "trash")
+        db.commit()
+        return {"ok": True}
 
     @app.post("/api/demo/seed")
     def seed(request: Request, actor=Depends(actor_dep), db=Depends(db_dep)):

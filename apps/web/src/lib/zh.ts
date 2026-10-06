@@ -312,6 +312,10 @@ const labels: Record<string,string> = {
   "create": "创建",
   "update": "更新",
   "delete": "删除",
+  "archive": "归档",
+  "trash": "移入回收站：",
+  "restore": "恢复",
+  "purge": "永久删除",
   "create_run": "创建研究记录",
   "upload_artifact": "上传文件",
   "create_token": "创建令牌",
@@ -355,12 +359,24 @@ const labels: Record<string,string> = {
 export function zh(value:unknown):string {
   const text=String(value??'unknown');
   if(labels[text])return labels[text];
-  const action=/^(create|update|delete)_(.+)$/.exec(text);
+  const action=/^(create|update|delete|archive|trash|restore|purge)_(.+)$/.exec(text);
   if(action)return `${labels[action[1]]}${zh(action[2])}`;
   return text;
 }
 export function provenanceLabel(value:unknown):string {return zh(value).replace(/^proposed:/,"拟议依据：");}
 const errors:Record<string,string>={
+  'Human session required for scientific confirmation or lifecycle administration':'科研确认与数据恢复管理需要本人登录。',
+  'Archived or trashed resources cannot be modified; restore first':'记录已归档或在回收站中，请恢复后再编辑。',
+  'Restore from trash before archiving':'请先从回收站恢复，再归档。',
+  'Permanent deletion requires 30 days in trash':'移入回收站满 30 天后才可永久删除。',
+  'Project module version changed; preview again':'项目模块版本已变化，请重新预览。',
+  'Target module definition changed; preview again':'目标模块定义已变化，请重新预览差异。',
+  'Changed module definition requires a new version':'模块定义发生变化时必须使用新版本号。',
+  'Module upgrade would invalidate existing research records; keep the frozen definition':'此次升级会使既有科研记录失去有效定义，请保留当前冻结版本。',
+  'Invalid pagination':'分页范围无效。',
+  'Invalid lifecycle resource type or state':'数据管理的记录类型或状态无效。',
+  'Lifecycle resource type not found':'未找到此记录类型。',
+  'Only owned, queued object keys from GC preview may be deleted':'只能清理本人预览中已入队且无存活引用的文件。',
   'Authentication required':'请先登录。','Invalid credentials':'邮箱或密码不正确。','Invalid API token':'访问令牌无效。',
   'Token scope does not allow this action':'令牌没有此操作的权限。','CSRF token required':'登录校验已失效，请刷新页面或重新登录。',
   'Human session required for account administration':'账号管理需要本人登录。','Account already initialized':'账号已创建，请登录。',

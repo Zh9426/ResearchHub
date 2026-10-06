@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 EvidenceState = Literal[
+    "proposed",
     "unknown",
     "hypothesis",
     "assumed",
@@ -46,6 +47,23 @@ class TokenInput(Input):
     name: str = Field(min_length=1, max_length=100)
     scopes: list[Literal["research:read", "research:write"]] = Field(min_length=1)
     actor_type: Literal["codex", "chatgpt"] = "codex"
+
+
+class LifecycleInput(Input):
+    action: Literal["archive", "trash", "restore"]
+
+
+class PurgeInput(Input):
+    confirm: Literal[True]
+
+
+class ModuleUpgradeInput(PurgeInput):
+    expected_version: str
+    expected_target_digest: str = Field(min_length=64, max_length=64)
+
+
+class StorageGCInput(PurgeInput):
+    object_keys: list[str] = Field(min_length=1, max_length=100)
 
 
 class ProjectInput(Input):

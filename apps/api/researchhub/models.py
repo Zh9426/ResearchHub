@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    DDL,
     JSON,
     Boolean,
     Column,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    event,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -34,6 +36,17 @@ class Record:
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=now, onupdate=now
+    )
+
+
+class Lifecycle:
+    """Storage lifecycle is independent from a record's scientific status."""
+
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    trashed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
     )
 
 
@@ -65,19 +78,21 @@ class ApiToken(Record, Base):
     revoked: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
-class Project(Record, Base):
+class Project(Lifecycle, Record, Base):
     __tablename__ = "projects"
     owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
     module_id: Mapped[str] = mapped_column(String(80))
+    module_version: Mapped[str] = mapped_column(String(80))
+    module_snapshot: Mapped[dict] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(30), default="active")
     current_stage: Mapped[str | None] = mapped_column(String(100), nullable=True)
     current_objective: Mapped[str] = mapped_column(Text, default="")
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
-class ProjectRecord(Record):
+class ProjectRecord(Lifecycle, Record):
     project_id: Mapped[str] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
@@ -156,7 +171,7 @@ class ResearchRun(ProjectRecord, Base):
     created_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
 
 
-class Parameter(Record, Base):
+class Parameter(Lifecycle, Record, Base):
     __tablename__ = "parameters"
     run_id: Mapped[str] = mapped_column(
         ForeignKey("research_runs.id", ondelete="CASCADE"), index=True
@@ -175,7 +190,7 @@ class Parameter(Record, Base):
     is_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
-class Metric(Record, Base):
+class Metric(Lifecycle, Record, Base):
     __tablename__ = "metrics"
     run_id: Mapped[str] = mapped_column(
         ForeignKey("research_runs.id", ondelete="CASCADE"), index=True
@@ -286,7 +301,7 @@ class Gate(ProjectRecord, Base):
     blocking_reason: Mapped[str] = mapped_column(Text, default="")
 
 
-class GateCriterion(Record, Base):
+class GateCriterion(Lifecycle, Record, Base):
     __tablename__ = "gate_criteria"
     gate_id: Mapped[str] = mapped_column(
         ForeignKey("stage_gates.id", ondelete="CASCADE")
@@ -313,6 +328,32 @@ class AuditLog(Record, Base):
     source: Mapped[str] = mapped_column(String(50))
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     request_id: Mapped[str] = mapped_column(String(100))
+
+
+class ObjectDeletion(Record, Base):
+    """Durable outbox survives metadata purge and transient object store failure."""
+
+    __tablename__ = "object_deletions"
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    project_id: Mapped[str] = mapped_column(String(36), index=True)
+    object_key: Mapped[str] = mapped_column(String(500), unique=True)
+    status: Mapped[str] = mapped_column(String(30), default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+for action in ("UPDATE", "DELETE"):
+    event.listen(
+        AuditLog.__table__,
+        "after_create",
+        DDL(
+            "CREATE TRIGGER audit_logs_no_"
+            + action.lower()
+            + " BEFORE "
+            + action
+            + " ON audit_logs BEGIN SELECT RAISE(ABORT, 'audit_logs is append-only'); END"
+        ).execute_if(dialect="sqlite"),
+    )
 
 
 LINKS = {}

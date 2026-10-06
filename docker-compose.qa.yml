@@ -1,0 +1,15 @@
+# 隔离验收空间；与个人原生服务/默认 Compose 均使用不同端口、项目名和卷。
+# docker compose -p researchhub-v02-qa --env-file .env.qa -f docker-compose.yml -f docker-compose.qa.yml up -d --build
+services:
+  db:
+    ports:
+      - "127.0.0.1:35432:5432"
+  minio:
+    ports:
+      - "127.0.0.1:39000:9000"
+  api:
+    ports:
+      - "127.0.0.1:38000:8000"
+  web:
+    ports: !override
+      - "127.0.0.1:3300:3000"

@@ -15,13 +15,14 @@ import {Compare} from './compare';
 import {Files} from './files';
 import {ActivityList} from './activity';
 import {DomainView} from './domain-view';
+import {DataManagement} from './data-management';
 const baseTabs=[['overview',"概览"],['research',"研究"],['runs',"研究记录"],['evidence',"证据"],['tasks',"任务"],['files',"文件"],['notes',"笔记"],['decisions',"决策"],['workflow',"工作流"]];
 export function ProjectWorkspace({id,tab='overview',onProjectsChange}:{id:string;tab?:string;onProjectsChange:()=>void}){
  const result=useData<ProjectContext>(`/projects/${id}/context`),[newRun,setNewRun]=useState(false),[editProject,setEditProject]=useState(false);
  if(!result.data)return <Feedback loading={result.loading} error={result.error}/>;
  const context=result.data,{project,module}=context;
  const views=(module.custom_views??[]).map(v=>typeof v==='string'?{id:v,name:v}:{id:v.id,name:(v.name??v.label??v.id).replaceAll('_',' ')});
- const tabs=[...baseTabs,...views.map(v=>[v.id,v.name]),['timeline',"时间线"]];
+ const tabs=[...baseTabs,...views.map(v=>[v.id,v.name]),['manage','数据管理'],['timeline',"时间线"]];
  const resource=(collection:keyof ProjectContext,title:string)=><ResourceList key={collection} title={title} collection={collection} rows={context[collection] as never[]} fields={resourceFields(collection,context,module)} createPath={`/projects/${id}/${collection}`} onChange={result.refresh}/>;
  let content;
  if(tab==='overview')content=<Overview context={context}/>;
@@ -34,6 +35,7 @@ export function ProjectWorkspace({id,tab='overview',onProjectsChange}:{id:string
  else if(tab==='decisions')content=resource('decisions',"决策");
  else if(tab==='files')content=<Files projectId={id} rows={context.artifacts} manifest={module} onChange={result.refresh}/>;
  else if(tab==='workflow')content=<Workflow context={context} onChange={result.refresh}/>;
+ else if(tab==='manage')content=<DataManagement project={project} onChange={()=>{result.refresh();onProjectsChange();}}/>;
  else if(tab==='timeline')content=<Panel title="项目时间线"><ActivityList rows={context.activity}/></Panel>;
  else content=<DomainView id={tab} context={context}/>;
  const projectFields=[f('name','项目名称','text',{required:true}),f('description','描述','textarea'),f('current_objective','当前目标','textarea'),f('status','项目状态','select',{options:['active','paused','completed','archived','blocked'].map(value=>({value,label:zh(value)}))}),f('current_stage',"当前阶段",'select',{options:module.research_stages.map(s=>({value:s.id,label:s.name}))})];
