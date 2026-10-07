@@ -2,6 +2,25 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-010 — 2026-10-07 — Sprint 1 Canonical Identity
+
+### 完成内容
+
+- 冻结RH-C14N-1：UTF-16 key排序、UTF-8、Unicode不归一化、严格数字lexeme与重复key拒绝；科研decimal/integer字符串保留原始精度。
+- Python/TypeScript分别实现canonical encoder、strict decoder、change revision与单项目transaction校验，不互相调用编码器。
+- 26个独立固定bytes/hash样例、59个协议fixture（7有效、52拒绝）与3个嵌套边界；保存Sprint1原始需求、design delta、执行计划及ADR011–015。
+
+### 验证结果
+
+- 实际先RED后GREEN；Python7个测试方法、TS6项、严格类型检查与Ruff通过，样例对齐全部预期bytes/hash。
+- 规格复审发现TS稀疏数组补偿键绕过；质量复审发现两语言递归容量差异。均新增失败回归后修复，嵌套限额冻结64；规格复审PASS、质量复审APPROVED。
+- 同轮现有后端/MCP/Release137、前端46及类型通过；本机build遇到运行中目录文件锁，隔离Docker前端生产build成功。未把这些结果当PG Sync验收。
+
+### 遗留事项
+
+- 本提交仅交付wire identity，事务屏障、真实PG并发、Domain Outbox与fresh Human grant在下一迭代实现；Sprint1尚未完成。
+- 不启用生产同步，不实现Relay/真实E2E/配对/移动客户端，不操作个人数据库。
+
 ## RH-009 — 2026-10-07 — v0.3 Sync Architecture Sprint 0
 
 ### 完成内容

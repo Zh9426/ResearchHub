@@ -1,0 +1,2143 @@
+你现在继续开发：
+
+Research Hub v0.3
+Sprint 1 — Sync Protocol Kernel
+
+当前基础：
+
+v0.2.0 已冻结。
+v0.3 Sprint 0 已完成 Sync Architecture Freeze。
+
+必须以：
+
+codex/researchhub-v0.3
+
+当前 Sprint 0 架构为基础。
+
+必须先阅读：
+
+docs/sync/SPRINT_0_REPORT.md
+docs/sync/SYNC_ARCHITECTURE.md
+docs/sync/SYNC_PROTOCOL.md
+docs/sync/SYNC_DATA_MODEL.md
+docs/sync/SYNC_STATE_MACHINE.md
+docs/sync/SYNC_CONFLICT_POLICY.md
+docs/sync/SYNC_ARTIFACT_POLICY.md
+docs/sync/SYNC_SECURITY_MODEL.md
+docs/sync/SYNC_DEVICE_MODEL.md
+docs/sync/SYNC_FAILURE_RECOVERY.md
+docs/sync/SYNC_CHATGPT_MODEL.md
+docs/sync/SYNC_TEST_PLAN.md
+docs/sync/SYNC_DECISIONS.md
+
+以及：
+
+prototypes/sync_sprint0
+tests/sync_prototype
+
+不要重新发明 Sprint 0 已冻结的架构。
+
+==================================================
+0. SPRINT 1 GOAL
+==================================================
+
+Sprint 1 的目标不是：
+
+上线云同步
+实现手机同步
+部署 Relay
+接 ChatGPT
+实现真实 E2E
+迁移个人科研数据
+
+Sprint 1 的目标是：
+
+“把 Sprint 0 的同步协议核心，
+实现成一个可跨语言验证、
+可映射到现有 Research Hub Domain Service、
+能够证明事务原子性、幂等性、冲突保留和科研权限边界的 Sync Protocol Kernel。”
+
+Sprint 1 完成后：
+
+仍然只允许运行在：
+
+isolated QA environment
+
+不得自动进入生产多端同步。
+
+==================================================
+1. NON-NEGOTIABLE INVARIANTS
+==================================================
+
+必须继续遵守 Sprint 0 formal invariants。
+
+尤其：
+
+1.
+同一个 ChangeSet / SyncTransaction 重放必须幂等。
+
+2.
+同 BASE 的不同科研修改不能 silent overwrite。
+
+3.
+Primary PC 不能作为冲突 winner。
+
+4.
+timestamp 不能作为科研 merge winner。
+
+5.
+Relay sequence 只能用于 transport cursor。
+
+6.
+Audit append-only。
+
+7.
+Human-only scientific authority 不能被 Sync 绕过。
+
+8.
+AI actor 不得通过 sync payload 自称 Human。
+
+9.
+一个 SyncTransaction 的 Domain 可见性必须是：
+
+ALL
+或
+NONE / CANDIDATE
+
+不能半接受。
+
+10.
+Artifact bytes 校验失败不能成为 available。
+
+11.
+Module snapshot 不得被本地 registry 自动重新解释。
+
+12.
+Trash / Restore / Purge 必须遵守生命周期规则。
+
+==================================================
+2. SPRINT 1 REQUIRED OUTPUT
+==================================================
+
+Sprint 1 最少实现：
+
+A. Canonical Wire Format
+B. Cross-language Revision Engine
+C. SyncTransaction model
+D. Domain Outbox
+E. Inbox / Apply engine
+F. Immutable ObjectRevision DAG
+G. Conflict candidate storage
+H. Whole-batch scientific promotion barrier
+I. Human / AI authority adaptation
+J. QA Domain integration
+K. Expanded fault injection
+L. Python / TypeScript protocol fixtures
+
+不要实现：
+
+Production Relay
+Cloud deployment
+Real E2E encryption
+Device pairing
+Mobile IndexedDB client
+OPFS production integration
+ChatGPT Remote MCP
+Production artifact cloud sync
+
+==================================================
+3. CANONICAL WIRE FORMAT — P0
+==================================================
+
+Sprint 0 中 revision 定义依赖：
+
+canonical semantic representation
+
+Sprint 1 必须把它严格冻结。
+
+不能继续使用：
+
+“Python json.dumps(sort_keys=True) 看起来差不多”
+
+这种方式。
+
+实现：
+
+Canonical Wire Specification
+
+至少定义：
+
+object key ordering
+Unicode encoding
+Unicode normalization policy
+null
+boolean
+integer
+decimal
+string
+array ordering
+object ordering
+UUID
+datetime
+enum
+binary digest
+empty values
+
+==================================================
+4. NUMERIC REPRESENTATION — P0
+==================================================
+
+科研数据不能依赖 Python 与 JavaScript 对 binary64 的隐式序列化一致性。
+
+需要正式定义 wire numeric model。
+
+优先考虑：
+
+integer
+decimal string
+
+例如：
+
+{
+  "value_type": "decimal",
+  "value": "1.600",
+  "unit": "MPa"
+}
+
+而不是依赖：
+
+1.6
+
+自动生成完全一致的 hash。
+
+必须明确：
+
+1
+
+1.0
+
+1.00
+
+1e0
+
+是否：
+
+相同科研值
+或
+不同 canonical representation。
+
+
+需要区分：
+
+scientific semantic equality
+
+与：
+
+wire identity。
+
+
+不要擅自丢失用户原始精度表达。
+
+
+如果决定：
+
+1.60
+与
+1.600
+
+应该产生相同 semantic revision，
+
+必须记录 normalized numeric value
+并另存 display precision / raw representation。
+
+
+如果决定不同：
+
+说明原因。
+
+
+必须写 ADR。
+
+==================================================
+5. CROSS-LANGUAGE TEST VECTORS
+==================================================
+
+至少实现：
+
+Python
+TypeScript
+
+两端独立 canonical encoder。
+
+不要让 TypeScript 调 Python。
+
+不要让 Python 调 Node 作为实际 encoder。
+
+它们必须：
+
+独立实现
+然后互相验证。
+
+
+创建：
+
+tests/sync_vectors/
+
+或合理路径。
+
+
+生成固定 test vector：
+
+input
+canonical bytes
+sha256 revision
+
+
+覆盖至少：
+
+ASCII
+中文
+emoji
+Unicode combining characters
+null
+boolean
+integer
+negative
+zero
+large integer
+decimal
+scientific-looking decimal
+nested object
+array
+UUID
+datetime
+empty object
+empty array
+multiple Changes
+parent revisions
+module_snapshot_hash
+
+
+要求：
+
+Python canonical bytes
+==
+TypeScript canonical bytes
+
+SHA256
+==
+SHA256
+
+==================================================
+6. REVISION HASH
+==================================================
+
+正式定义：
+
+revision = sha256(canonical_revision_payload)
+
+revision payload 必须至少绑定：
+
+change_id
+transaction_id
+project_id
+object_type
+object_id
+operation
+parents
+payload
+device_id
+actor_type
+schema_version
+module_snapshot_hash
+semantic created_at policy
+
+注意：
+
+Relay seq
+transport retry count
+encryption nonce
+network receipt
+
+不得进入 semantic revision。
+
+否则同一个 ChangeSet 重加密或重发会产生新 revision。
+
+
+如果 created_at 进入 revision：
+
+必须严格 canonical。
+
+不能用本地 locale。
+
+==================================================
+7. IMMUTABLE OBJECT REVISION DAG
+==================================================
+
+实现 QA-grade revision store。
+
+ObjectRevision：
+
+project_id
+object_type
+object_id
+revision
+parents[]
+transaction_id
+change_id
+payload
+actor
+actor_type
+module_snapshot_hash
+lifecycle
+created_at
+
+
+约束：
+
+revision immutable
+
+same revision + same content
+→ idempotent
+
+same revision + different content
+→ identity corruption / reject
+
+
+DAG：
+
+不得产生 cycle。
+
+parents：
+
+必须属于：
+
+same project
+same object
+same type
+
+除非规范明确允许的 special resolution event。
+
+
+Create：
+
+parents = []
+
+
+Normal update：
+
+parents = [base]
+
+
+Conflict resolution：
+
+parents = all expected_heads
+
+==================================================
+8. SYNC TRANSACTION
+==================================================
+
+把：
+
+SyncTransaction
+
+提升为 Sprint 1 的一等模型。
+
+至少：
+
+transaction_id
+idempotency_key
+project_id
+device_id
+actor_type
+protocol_version
+schema_version
+ordered change_ids
+digest
+state
+created_at
+
+
+Transaction 必须：
+
+单 Project。
+
+禁止：
+
+跨项目 transaction。
+
+==================================================
+9. DOMAIN ACTION BOUNDARY
+==================================================
+
+明确一个用户科研操作什么时候属于同一个 SyncTransaction。
+
+
+例如：
+
+Create Run
++ 6 Parameters
++ 3 Metrics
++ 2 Artifact metadata
+
+必须可以作为：
+
+ONE SyncTransaction
+
+
+但：
+
+Upload large Artifact bytes
+
+不属于同一个 DB transaction。
+
+
+Sprint 1 只处理：
+
+Artifact metadata state
+
+例如：
+
+pending
+verified_reference
+unavailable
+
+
+不要实现真实 cloud bytes transfer。
+
+==================================================
+10. WHOLE-BATCH PROMOTION BARRIER — P0
+==================================================
+
+这是 Sprint 1 最关键要求。
+
+必须解决 Sprint 0 未实现问题：
+
+同一个 SyncTransaction 的一个成员发生科研冲突时，
+
+不能保留：
+
+部分 accepted
+部分 conflict
+
+的 Domain 投影。
+
+
+例如：
+
+Transaction T100：
+
+Run
+Parameter pressure
+Parameter frequency
+Metric IoU
+
+
+如果：
+
+pressure
+
+与另一个 revision 冲突，
+
+则 T100 必须整体：
+
+CANDIDATE / PENDING_REVIEW
+
+
+而不是：
+
+Run accepted
+frequency accepted
+IoU accepted
+pressure conflict
+
+
+==================================================
+11. LATE CONFLICT INVALIDATION
+==================================================
+
+必须测试：
+
+Transaction A
+
+先被 accepted。
+
+
+之后：
+
+Transaction B
+
+到达并产生一个更早 BASE 的合法并发 head。
+
+
+如果 B 使得 A 中某科研对象不再拥有唯一 accepted lineage，
+
+则：
+
+A 的整个 scientific transaction projection
+
+必须重新进入：
+
+candidate / pending review
+
+
+但：
+
+immutable revision
+Audit
+原历史
+
+仍然保留。
+
+
+不能：
+
+DELETE 已接收历史。
+
+只改变：
+
+accepted projection state。
+
+
+依赖 A 科研状态的后续 transaction：
+
+根据 dependency graph：
+
+暂停 / candidate
+
+
+独立 transaction：
+
+继续正常。
+
+==================================================
+12. TRANSACTION DEPENDENCY GRAPH
+==================================================
+
+增加：
+
+Transaction Dependency Graph。
+
+
+依赖可能来自：
+
+Parent Run
+Parameter belongs to Run
+Metric belongs to Run
+Evidence depends on Run
+Claim depends on Evidence
+Gate depends on Evidence
+Decision depends on prior state
+Artifact metadata belongs to Run
+Module upgrade dependency
+
+
+Sprint 1 不要求做全部复杂科研图推导。
+
+但必须实现：
+
+最小可靠 dependency infrastructure。
+
+
+至少能证明：
+
+Run transaction 回退 candidate 后，
+
+依赖该 Run 的后续 scientific transaction
+
+不能继续假装 fully accepted。
+
+==================================================
+13. ACCEPTED PROJECTION
+==================================================
+
+明确区分：
+
+Immutable history
+
+与：
+
+Current accepted Domain projection。
+
+
+例如：
+
+Object revisions：
+
+R1
+├─ R2
+└─ R3
+
+
+如果：
+
+R2/R3 conflict
+
+当前 Domain：
+
+不能自动选择 R3。
+
+
+Domain projection 应明确：
+
+conflicted / unresolved
+
+
+同时：
+
+BASE
+Candidate A
+Candidate B
+
+全部可查询。
+
+
+==================================================
+14. CONFLICT MODEL
+==================================================
+
+实现 QA-grade：
+
+SyncConflict
+
+
+至少：
+
+conflict_id
+project_id
+object_type
+object_id
+common_base
+head_set[]
+candidate_transactions[]
+reason
+status
+resolution_revision
+created_at
+resolved_at
+
+
+status：
+
+open
+resolving
+resolved
+superseded
+
+
+不得只保存：
+
+local_version
+remote_version
+
+
+必须支持：
+
+N heads。
+
+==================================================
+15. EXACT-HEAD RESOLUTION
+==================================================
+
+人工解决 conflict：
+
+必须提交：
+
+expected_heads
+
+
+例如：
+
+resolve:
+
+heads:
+R2
+R3
+
+
+如果提交时实际 Heads 已经：
+
+R2
+R3
+R4
+
+
+则：
+
+resolution REJECTED / CONFLICT_CHANGED
+
+
+不能：
+
+在旧 UI 上点“采用 R3”
+然后覆盖 R4。
+
+
+成功解决：
+
+创建多父 revision：
+
+parents=[R2,R3]
+
+
+不是修改旧 revision。
+
+==================================================
+16. CONCURRENT CONFLICT RESOLUTION
+==================================================
+
+测试：
+
+Device A
+
+离线解决 R2/R3 → RA
+
+
+Device B
+
+同时解决 R2/R3 → RB
+
+
+同步后：
+
+RA
+RB
+
+再次成为两个 heads。
+
+
+系统必须：
+
+重新产生 conflict。
+
+
+禁止：
+
+latest resolution wins。
+
+==================================================
+17. DOMAIN OUTBOX — QA
+==================================================
+
+开始把 Sprint 0 prototype 思路映射到现有 Research Hub Domain Service。
+
+但：
+
+只允许 QA environment。
+
+
+未来生产目标：
+
+Domain mutation
++
+Audit
++
+Outbox SyncTransaction
+
+必须在：
+
+同一个 PostgreSQL transaction。
+
+
+Sprint 1 可以在：
+
+QA PostgreSQL
+
+新增实验性 migration / schema。
+
+
+不得直接作用个人 production database。
+
+
+建议：
+
+sync_transactions
+sync_changes
+sync_outbox
+object_revisions
+sync_conflicts
+sync_inbox
+
+
+具体 schema 可优化。
+
+==================================================
+18. OUTBOX ATOMICITY
+==================================================
+
+必须证明：
+
+如果：
+
+Domain mutation commit
+
+成功，
+
+但：
+
+Outbox 不存在
+
+这是不允许的。
+
+
+同样：
+
+Outbox 有变化
+
+但：
+
+Domain mutation rollback
+
+也是不允许的。
+
+
+QA 测试必须：
+
+注入异常。
+
+
+验证：
+
+Domain
+Audit
+Outbox
+
+同事务 commit / rollback。
+
+==================================================
+19. INBOX APPLY
+==================================================
+
+实现 QA-grade apply engine。
+
+
+流程：
+
+validate transaction
+↓
+validate protocol/schema
+↓
+validate project/module binding
+↓
+validate actor authority
+↓
+validate parents
+↓
+store immutable revisions
+↓
+detect conflict
+↓
+whole-batch barrier
+↓
+update accepted projection / candidate
+↓
+append audit
+↓
+store inbox receipt
+↓
+advance applied state
+
+
+必须：
+
+one local DB transaction。
+
+
+崩溃：
+
+rollback。
+
+
+重拉：
+
+idempotent。
+
+==================================================
+20. HUMAN / AI AUTHORITY
+==================================================
+
+Sprint 1 必须把 v0.2 的 Human/AI authority 规则适配到 Sync Kernel。
+
+
+核心：
+
+device signature
+≠
+Human authority
+
+
+actor_type 只是 payload 信息，
+
+不能因为 payload 写：
+
+actor_type = human
+
+就接受。
+
+
+QA 建立：
+
+registered principal / authorization context
+
+
+至少区分：
+
+Human authenticated session grant
+
+Codex actor
+
+ChatGPT actor
+
+System actor
+
+
+AI 不得接受：
+
+Human Conclusion final
+
+Parameter confirmed
+
+Evidence validated/reproduced
+
+Gate passed
+
+Decision accepted/final
+
+Module upgrade final confirmation
+
+
+==================================================
+21. HUMAN GRANT — FIRST VERSION
+==================================================
+
+Sprint 1 采用保守方案：
+
+offline final Human scientific confirmation
+
+NOT SUPPORTED。
+
+
+离线客户端可保存：
+
+draft
+proposal
+observation
+candidate
+
+
+但 final Human-only operation：
+
+需要：
+
+fresh trusted Human grant
+
+
+Grant 必须绑定：
+
+user
+device/session
+project
+object
+operation
+expected_heads
+transaction
+expiry
+
+
+Sprint 1 可以 QA mock，
+
+但数据结构与验证路径必须建立。
+
+
+不要把：
+
+账号登录
+设备签名
+actor_type=human
+
+等同于：
+
+fresh scientific consent。
+
+==================================================
+22. MODULE SNAPSHOT BINDING
+==================================================
+
+每个 ChangeSet 必须绑定：
+
+module_snapshot_hash
+
+
+apply 时：
+
+项目当前 frozen snapshot hash
+
+必须匹配。
+
+
+如果客户端：
+
+无法解释 schema/module
+
+进入：
+
+READ_ONLY
+QUARANTINED
+UPGRADE_REQUIRED
+
+
+不能：
+
+忽略字段继续。
+
+==================================================
+23. LIFECYCLE
+==================================================
+
+实现 QA：
+
+archive
+trash
+restore
+
+
+冲突规则：
+
+trash vs offline scientific update
+
+不能 auto restore。
+
+
+offline update：
+
+candidate
+
+
+Human：
+
+选择保持 Trash
+
+或：
+
+显式 Restore + Review candidate。
+
+
+Purge：
+
+Sprint 1 继续禁止普通 sync operation。
+
+==================================================
+24. TAG / RELATION SAFE UNION
+==================================================
+
+不要急于做通用 CRDT。
+
+
+Sprint 1 只实现明确白名单。
+
+
+例如：
+
+independent Artifact additions
+
+Append-only Audit
+
+
+Tag OR-set：
+
+只有在：
+
+token semantics
+remove observed token
+
+设计与测试完备后才实现。
+
+
+否则：
+
+留 NOT IMPLEMENTED。
+
+
+科研字段绝不因为：
+
+“CRDT 很方便”
+
+而自动 merge。
+
+==================================================
+25. TEXT MERGE
+==================================================
+
+Note / Description / Observation：
+
+Sprint 1 可以实现：
+
+three-way merge suggestion
+
+
+但默认：
+
+SUGGESTION ONLY
+
+
+不自动写 accepted Domain。
+
+
+Human Conclusion：
+
+永远不自动 merge。
+
+
+测试：
+
+non-overlap
+overlap
+missing BASE
+Unicode
+Chinese paragraph
+
+==================================================
+26. ARTIFACT METADATA
+==================================================
+
+Sprint 1 只处理：
+
+Artifact Metadata Sync Kernel。
+
+
+保留：
+
+local_only
+metadata_only
+encrypted_sync
+on_demand
+
+
+测试：
+
+same bytes / separate metadata
+
+project scope dedup
+
+key epoch isolation
+
+checksum mismatch
+
+
+不实现：
+
+Cloud upload
+
+real AEAD chunks
+
+real OPFS transfer。
+
+==================================================
+27. AUDIT
+==================================================
+
+Audit：
+
+append-only。
+
+
+同步收到：
+
+audit_id
+
+
+same ID
+same content
+→ idempotent
+
+
+same ID
+different content
+→ reject identity collision
+
+
+Conflict resolution：
+
+新增 Audit：
+
+resolve_sync_conflict
+
+
+Late invalidation：
+
+新增类似：
+
+invalidate_sync_projection
+
+或语义更好的 action。
+
+
+不要修改旧 Audit。
+
+==================================================
+28. TRANSPORT CURSOR VS DOMAIN APPLY
+==================================================
+
+继续明确：
+
+Relay cursor
+!=
+Domain accepted watermark
+
+
+Sprint 1 kernel 中即使没有真实 Relay：
+
+也要保留两个概念。
+
+
+例如：
+
+received_cursor = 105
+
+domain_state:
+
+103 applied
+104 conflict
+105 quarantined
+
+
+UI/状态 API 不能：
+
+显示 fully synced。
+
+
+==================================================
+29. PROTOCOL FIXTURES
+==================================================
+
+建立：
+
+protocol fixture directory。
+
+
+例如：
+
+fixtures/sync/v1/
+
+
+包含：
+
+valid transactions
+
+invalid transactions
+
+conflicts
+
+collision
+
+schema mismatch
+
+module mismatch
+
+AI authority violation
+
+trash/edit
+
+resolution race
+
+Unicode
+
+decimal
+
+
+每个 fixture：
+
+Python test
+
+TypeScript test
+
+共享预期输出。
+
+==================================================
+30. FUZZ / PROPERTY TESTING
+==================================================
+
+Sprint 1 建议增加：
+
+property-based testing。
+
+
+重点：
+
+idempotency
+
+transaction permutation where allowed
+
+DAG cycle rejection
+
+same BASE divergent scientific values always conflict
+
+duplicate apply
+
+random retry
+
+crash boundary
+
+head resolution
+
+
+Python 可使用成熟 property testing library。
+
+不要自己写 pseudo-random test harness 替代正式测试。
+
+
+若新增依赖：
+
+记录原因。
+
+==================================================
+31. CRASH INJECTION
+==================================================
+
+扩大 Sprint 0 fault injection。
+
+
+至少在：
+
+after revision insert
+
+after conflict create
+
+after domain projection
+
+after audit append
+
+before inbox commit
+
+before cursor advance
+
+
+注入异常。
+
+
+全部必须：
+
+transaction rollback
+
+或进入明确 recoverable state。
+
+
+不能出现：
+
+cursor advanced
+但 domain/audit 不存在。
+
+==================================================
+32. QA POSTGRESQL
+==================================================
+
+Sprint 1 必须开始验证：
+
+PostgreSQL semantics。
+
+
+不能只依赖：
+
+SQLite prototype。
+
+
+使用：
+
+独立 QA PostgreSQL。
+
+
+不得：
+
+连接个人 production DB。
+
+
+测试：
+
+transaction atomicity
+unique constraints
+locking
+concurrent apply
+rollback
+head resolution race
+
+
+MinIO：
+
+本 Sprint 可继续不接。
+
+==================================================
+33. CONCURRENCY
+==================================================
+
+必须测试至少：
+
+two apply workers
+
+same object
+
+different objects
+
+same transaction duplicate
+
+concurrent conflict resolution
+
+late divergence
+
+transaction dependencies
+
+
+正确性不能依赖：
+
+“个人用户一般不会同时操作”。
+
+手机、平板、PC 就会产生并发。
+
+==================================================
+34. PERFORMANCE BOUNDARY
+==================================================
+
+Sprint 1 不是性能优化 Sprint。
+
+但需要做基础 benchmark。
+
+
+例如：
+
+10k revisions
+1k objects
+100 open conflicts
+100-change transaction
+
+
+测：
+
+head lookup
+
+apply
+
+conflict detection
+
+revision digest
+
+
+只需确认架构没有明显 O(n²) 退化。
+
+
+不要提前做复杂分布式优化。
+
+==================================================
+35. SECURITY SCOPE
+==================================================
+
+Sprint 1：
+
+不实现生产 E2E。
+
+
+但 Wire Kernel 必须预留：
+
+Envelope
+signature
+key_epoch
+ciphertext metadata
+
+
+同时：
+
+semantic revision
+
+不得依赖：
+
+encryption nonce。
+
+
+使用 synthetic signature / mock envelope
+
+只用于接口测试。
+
+
+不要宣称：
+
+E2E implemented。
+
+==================================================
+36. NO PRODUCTION MOBILE YET
+==================================================
+
+不要实现：
+
+IndexedDB production sync
+
+OPFS production artifact sync
+
+mobile sync page
+
+background sync
+
+
+如果为了 TypeScript canonical encoder：
+
+需要在 web package 中实现纯库代码，
+
+允许。
+
+
+但：
+
+不要把同步 UI 接到个人 Hub。
+
+==================================================
+37. NO PRODUCTION RELAY YET
+==================================================
+
+不要实现：
+
+public server
+VPS
+cloud DB
+S3 cloud
+OAuth
+device pairing service
+
+
+可以使用：
+
+in-memory / QA relay simulator
+
+测试：
+
+receipt
+cursor
+ordering
+retry
+
+
+但它仍是测试基础设施。
+
+==================================================
+38. EXISTING PRODUCT MUST REMAIN STABLE
+==================================================
+
+Sprint 1 不能破坏 v0.2 功能。
+
+
+必须继续运行：
+
+existing backend tests
+frontend tests
+MCP tests
+build
+Docker
+
+
+Sync kernel 新代码：
+
+应尽可能模块化。
+
+
+不要为了同步：
+
+重写整个现有 service.py/main.py。
+
+
+只在确实需要：
+
+Domain mutation transaction hook
+
+时进行最小可审计重构。
+
+==================================================
+39. RECOMMENDED CODE ORGANIZATION
+==================================================
+
+可以采用类似：
+
+apps/api/researchhub/sync/
+    canonical.py
+    revisions.py
+    transactions.py
+    conflicts.py
+    authority.py
+    outbox.py
+    inbox.py
+    projection.py
+    protocol.py
+
+packages/sync-protocol/
+    canonical.ts
+    schema.ts
+    fixtures.ts
+
+
+具体结构可根据仓库调整。
+
+
+重点：
+
+Protocol Kernel
+
+不要散落在：
+
+main.py
+service.py
+React components。
+
+==================================================
+40. MIGRATION POLICY
+==================================================
+
+Sprint 1 如果需要新增生产仓库中的 schema：
+
+只允许：
+
+QA-safe additive migrations。
+
+
+但不要：
+
+对个人生产数据库自动执行。
+
+
+必须提供：
+
+migration review
+
+rollback plan
+
+backup instructions。
+
+
+如果能在独立 QA schema 完成而无需正式 migration：
+
+优先先这样做。
+
+
+Sprint 1 最终不得声称：
+
+production sync schema deployed。
+
+==================================================
+41. TEST MATRIX
+==================================================
+
+至少新增并通过：
+
+CASE A
+Python ↔ TS canonical bytes identical
+
+CASE B
+Python ↔ TS revision identical
+
+CASE C
+decimal precision fixture
+
+CASE D
+Unicode fixture
+
+CASE E
+duplicate transaction apply
+
+CASE F
+same ID different digest reject
+
+CASE G
+Run + Parameters + Metrics atomic
+
+CASE H
+one Parameter conflicts → whole transaction candidate
+
+CASE I
+late arriving conflict invalidates previous accepted projection
+
+CASE J
+dependent transaction pauses
+
+CASE K
+independent transaction remains accepted
+
+CASE L
+two conflict resolutions race
+
+CASE M
+AI claims actor_type=human → reject
+
+CASE N
+AI modifies final Human Conclusion → reject
+
+CASE O
+Module snapshot hash mismatch → quarantine/read-only
+
+CASE P
+Trash vs offline edit → no auto restore
+
+CASE Q
+Audit duplicate safe
+
+CASE R
+Audit ID collision reject
+
+CASE S
+crash before cursor → retry safe
+
+CASE T
+crash after partial DB operations → rollback
+
+CASE U
+PostgreSQL concurrent apply
+
+CASE V
+DAG cycle reject
+
+CASE W
+cross-project parent reject
+
+CASE X
+same Artifact bytes separate metadata preserved
+
+CASE Y
+checksum mismatch not ready
+
+CASE Z
+unknown schema version never silently skipped
+
+==================================================
+42. SPRINT 1 GATES
+==================================================
+
+Sprint 1 不以：
+
+“tests green”
+
+单独判定成功。
+
+
+必须通过以下 Gate。
+
+
+GATE 1 — Canonical Identity
+
+Python / TypeScript：
+
+same input
+same canonical bytes
+same digest
+
+
+GATE 2 — Transaction Atomicity
+
+Domain
+Audit
+Outbox
+Inbox
+Projection
+
+不能半提交。
+
+
+GATE 3 — Scientific Conflict Safety
+
+same BASE
+different scientific values
+
+永不 silent overwrite。
+
+
+GATE 4 — Whole-batch Barrier
+
+Transaction 中任何关键科研成员冲突：
+
+整个 transaction scientific projection
+
+进入 candidate。
+
+
+GATE 5 — Authority
+
+Sync path
+
+不能绕过：
+
+Human / AI permission。
+
+
+GATE 6 — PostgreSQL Concurrency
+
+真实 QA PostgreSQL 下：
+
+重复
+并发
+rollback
+resolution race
+
+行为正确。
+
+==================================================
+43. DOCUMENTATION UPDATE
+==================================================
+
+更新：
+
+docs/sync/SYNC_PROTOCOL.md
+docs/sync/SYNC_DATA_MODEL.md
+docs/sync/SYNC_STATE_MACHINE.md
+docs/sync/SYNC_CONFLICT_POLICY.md
+docs/sync/SYNC_TEST_PLAN.md
+docs/sync/SYNC_DECISIONS.md
+
+
+新增：
+
+docs/sync/SYNC_WIRE_FORMAT.md
+
+docs/sync/SPRINT_1_REPORT.md
+
+
+如有必要：
+
+SYNC_TRANSACTION_MODEL.md
+
+==================================================
+44. ADR UPDATES
+==================================================
+
+新增至少：
+
+ADR-011
+Canonical Wire Format
+
+ADR-012
+Scientific Numeric Representation
+
+ADR-013
+Whole-batch Promotion Barrier
+
+ADR-014
+Human Grant Boundary
+
+ADR-015
+Accepted Projection vs Immutable History
+
+
+如果架构实现发现 Sprint 0 Decision 不成立：
+
+不要偷偷修改。
+
+
+写：
+
+SUPERSEDED / AMENDED ADR
+
+说明：
+
+旧决策
+新证据
+新决策
+后果。
+
+==================================================
+45. SPRINT 1 REPORT
+==================================================
+
+最终：
+
+docs/sync/SPRINT_1_REPORT.md
+
+
+必须区分：
+
+IMPLEMENTED IN KERNEL
+
+PROTOTYPED
+
+TESTED ON QA POSTGRESQL
+
+DESIGNED ONLY
+
+NOT IMPLEMENTED
+
+BLOCKED
+
+
+报告：
+
+1. Canonical wire format
+
+2. Numeric representation
+
+3. Cross-language revision
+
+4. Revision DAG
+
+5. SyncTransaction
+
+6. Whole-batch barrier
+
+7. Late conflict invalidation
+
+8. Transaction dependencies
+
+9. Accepted projection
+
+10. Conflict resolution
+
+11. Outbox
+
+12. Inbox
+
+13. Human/AI authority
+
+14. Lifecycle
+
+15. Artifact metadata
+
+16. Audit
+
+17. PostgreSQL concurrency
+
+18. Crash injection
+
+19. Existing v0.2 regression tests
+
+20. Performance observations
+
+21. Remaining risks
+
+22. Open questions
+
+23. Proposed Sprint 2 scope
+
+
+禁止：
+
+把 QA Kernel
+
+写成：
+
+“多端同步已实现”。
+
+==================================================
+46. STOP CONDITION
+==================================================
+
+Sprint 1 完成后：
+
+STOP。
+
+
+不要自动进入：
+
+Sprint 2 Secure Relay。
+
+
+不要：
+
+部署服务器
+
+创建公网 endpoint
+
+开始真实 E2E key
+
+手机同步真实科研数据
+
+修改个人数据库为 sync mode
+
+
+等待人工审查。
+
+
+最终输出：
+
+Research Hub v0.3 Sprint 1 — Sync Protocol Kernel complete.
+
+并明确给出：
+
+PASS / FAIL
+
+for：
+
+Canonical Identity
+Transaction Atomicity
+Scientific Conflict Safety
+Whole-batch Barrier
+Human/AI Authority
+QA PostgreSQL Concurrency
+
+
+如果任何一项 FAIL：
+
+Sprint 1 不得标记 complete。
+
+==================================================
+47. WORKING METHOD
+==================================================
+
+按：
+
+READ
+→ DESIGN DELTA
+→ RED TEST
+→ IMPLEMENT
+→ GREEN TEST
+→ FAULT INJECTION
+→ POSTGRES CONCURRENCY
+→ REGRESSION
+→ REVIEW
+→ REPORT
+→ STOP
+
+
+开发过程中：
+
+不要为了快速通过测试降低安全规则。
+
+
+例如不要：
+
+遇到 conflict
+→ 选择 latest
+
+
+不要：
+
+canonical encoding 不一致
+→ 只相信 Python
+
+
+不要：
+
+权限难实现
+→ 暂时允许 actor_type=human
+
+
+不要：
+
+batch conflict 复杂
+→ 接受无冲突字段
+
+
+这些都会破坏 Sprint 1 的目的。
+
+==================================================
+48. START
+==================================================
+
+现在开始：
+
+1. 确认当前 branch 为 codex/researchhub-v0.3；
+2. 阅读 Sprint 0 全部架构文档；
+3. 确认生产个人数据不参与；
+4. 编写 Sprint 1 design delta；
+5. 先冻结 canonical wire spec；
+6. 建立 Python / TypeScript fixtures；
+7. 实现 revision kernel；
+8. 实现 transaction / revision DAG；
+9. 实现 whole-batch promotion barrier；
+10. 接 QA Domain outbox/inbox；
+11. 实现 authority adapter；
+12. 在 QA PostgreSQL 做 concurrency/failure tests；
+13. 运行现有 v0.2 regression；
+14. 更新 sync docs / ADR；
+15. 输出 SPRINT_1_REPORT.md；
+16. STOP。
+
+不要提前开始 Sprint 2。

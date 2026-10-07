@@ -2,6 +2,8 @@
 
 共同状态：**DECIDED = 本轮推荐、待人工批准**，不是生产已实现或用户已批准。原型只验证部分机制；未决项需要在进入正式实现前回答。
 
+2026-10-07 Sprint 1 增量：用户已明确授权实现QA Kernel；不等于批准生产Relay/E2E/手机同步。ADR-003/006 的JCS候选部分 **AMENDED**：保留其Unicode/排序原则，新增ADR-011/012冻结受限数值wire；旧Sprint0证据不改写。实现与运行证据见SPRINT_1_REPORT（完成后交付）。
+
 ## ADR-001 — Why Local-first
 
 **Context**：个人电脑、手机和平板会离线，记录 Run/Note/Task 不能依赖主电脑常在线。
@@ -121,3 +123,63 @@
 **Consequences**：电脑在线才能供 ChatGPT 读取；远端 AI 接收的选定明文不再只在 E2E 终端，仍需服务数据政策审查；AI proposal 不获 Human 权限。
 
 **Open Questions**：用户是否接受在线 bridge、哪些研究字段可共享、未来 Tunnel/OAuth/限流/撤销、是否需要 B 的离线可用性。
+
+## ADR-011 — Canonical Wire Format（Sprint 1）
+
+**Context**：Sprint0排序JSON不能证明Python/JS一致，原revision未绑定transaction和module；完整binary64序列化不是科研精度合适默认。
+
+**Options**：继续json.dumps；完整JCS binary64；RH-C14N-1严格JCS值子集+typed数字字符串。
+
+**Decision**：RH-C14N-1，UTF-16 key排序、UTF-8、无normalization、拒绝duplicate keys/非法Unicode；原生数字只safe integer，raw numeric float/exponent/-0拒绝。revision绑定全部语义identity/module/actor/parents/time；transport/envelope不入hash。见SYNC_WIRE_FORMAT。
+
+**Consequences**：Python/TS各自独立strict decoder/encoder与固定bytes/hash fixtures；不宣称支持所有JCS binary64。必须在decode阶段保留并检查numeric lexeme，否则JSON.parse会掩盖1.00精度。未知字段/版本隔离或拒绝。质量审查发现语言递归栈不同，明确统一root depth0、值嵌套最多64，新增64有效/65与600拒绝固定边界；不截断内容。
+
+**Open Questions**：未来其他语言codec，协议版本演进与更大资源配额；真实签名/密钥互通另做安全Sprint。
+
+## ADR-012 — Scientific Numeric Representation（Sprint 1）
+
+**Context**：数值相等和wire identity不同，尾零/指数可能表达用户精度，不可隐式float或舍弃。
+
+**Options**：binary64；normalize decimal并丢原表达；preserved tagged decimal/integer strings且另提供exact scientific equality。
+
+**Decision**：保留raw字符串。1/1.0/1.00/1e0作为decimal可数值相等，但不同bytes/revision；1.60/1.600也不同。exact coefficient/exponent比较不改变原wire，不触发科研自动merge。
+
+**Consequences**：hash保留精度与格式，单位/来源仍需独立语义验证；native unsafe整数拒绝，用tagged integer。QA映射旧Domain时须采用可保真JSON载体或拒绝输入，不偷偷float-roundtrip；生产数值migration未实施。
+
+**Open Questions**：若未来需要测量有效数字/uncertainty的结构化模型，需新schema/ADR；不得复用数值相等规则默默消除科学分叉。
+
+## ADR-013 — Whole-batch Promotion Barrier（Sprint 1）
+
+**Context**：Sprint0只保证物理批次原子写入，尚未阻止一个科研成员冲突时其他成员继续显示accepted。迟到分叉还会破坏已批准Run的证据基础。
+
+**Options**：逐字段保留accepted；按对象暂停；以SyncTransaction为科研可见性单位并递归暂停依赖。
+
+**Decision**：采用整批屏障。任何成员出现多head/未批准依赖，整个transaction成为CANDIDATE；此前accepted批次迟到分叉时撤回其整批投影，并沿dependency graph暂停后续批次。独立批次继续。人工review必须覆盖被审批次全部成员，不能只批准pressure后隐式批准其他字段。
+
+**Consequences**：增加membership/dependency索引和失效Audit。历史、候选和BASE保留；UI未来须表达待审，不能把transport ACK当科研批准。项目级行锁下检测、状态转换和投影撤回同事务。
+
+**Open Questions**：后续复杂科研关系自动推导、跨批次重新批准界面与批次大小；本轮只验证最小显式依赖及Run所属关系。
+
+## ADR-014 — Human Grant Boundary（Sprint 1）
+
+**Context**：登录、设备身份和payload actor_type都不能证明某次科研确认来自人工，更不能让离线解决候选获得最终权限。
+
+**Options**：相信payload；签名即Human；受信principal加短期、精确绑定的人工grant。
+
+**Decision**：注册principal绑定user/device/session/project/actor；人工科研final操作另需fresh grant绑定transaction摘要、object、operation、exact expected_heads和expiry。离线final Human confirmation不支持。QA mock只模拟受信服务签发和消费，不称真实认证或密码学实现。
+
+**Consequences**：AI/system不能final人工结论、确认参数、升级验证证据、通过Gate、接受Decision或确认模块升级。在线resolution必须锁内重读完整heads；离线resolution只保存proposal，可与另一proposal形成新冲突，不代表人工批准。
+
+**Open Questions**：生产签发、撤销、设备签名、跨设备consent UX和重认证；全部留待后续人工批准的安全开发。
+
+## ADR-015 — Accepted Projection vs Immutable History（Sprint 1）
+
+**Context**：新head或新receipt不一定可成为科研当前值。若直接把最新history写成Domain值，将掩盖冲突和迟到失效。
+
+**Options**：单表last-write-wins；删除冲突历史；不可变history和独立accepted projection。
+
+**Decision**：第三种。revision/Audit只追加；accepted projection仅来自已通过整批屏障的transaction。candidate仍可查询BASE、N heads及原批次。received_cursor与accepted watermark分开，conflict/quarantine/暂停依赖时fully_synced=false。
+
+**Consequences**：更多状态与查询，但能保留可审核科研来源。失效只撤回投影，不删除revision或改旧Audit；需要显式resolution Audit和整批重审。QA表独立于生产Domain，真实生产查询hook未开启。
+
+**Open Questions**：快照压缩、历史保留与生产projection迁移；Sprint1不部署这些机制。

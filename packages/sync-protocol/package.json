@@ -1,0 +1,10 @@
+{
+  "name": "@researchhub/sync-protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-isolation=none test/wire.test.ts",
+    "typecheck": "node ../../apps/web/node_modules/typescript/bin/tsc -p tsconfig.json"
+  }
+}
