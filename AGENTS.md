@@ -3,7 +3,7 @@
 ## 项目定位
 
 - 这是个人使用的科研进度 Hub。
-- GitHub 目标仓库为 `Zh9426/ResearchHub`，必须保持私有。
+- GitHub 目标仓库为 `Zh9426/ResearchHub`；用户于 2026-10-07 明确改为公开。保持用户指定状态，不自动改变可见性；科研数据与凭据仍不得进入 Git。
 - v0.1 使用 Next.js/FastAPI/PostgreSQL/MinIO；需求与证据边界见 `docs/V0.1_REQUIREMENTS.txt`，不得用测试替身冒充实际服务验收。
 - 交流、开发文档和提交正文优先使用中文。
 

@@ -1,8 +1,8 @@
-# Research Hub v0.2
+# Research Hub v0.2.0
 
 个人科研工作系统：项目、研究问题、假设、Run、参数来源、指标、文件、证据与结论共同形成可追溯的工作记录。Generic、HDSP、ICE 共用 Core，通过模块 manifest 保留各自专业工作流。
 
-代码仓库：[Zh9426/ResearchHub](https://github.com/Zh9426/ResearchHub)，保持 **Private**。数据库、上传文件、凭据与备份保存在本地，不随 Git 提交。开发分支为 `codex/researchhub-v0.2`。
+代码仓库：[Zh9426/ResearchHub](https://github.com/Zh9426/ResearchHub)，按用户明确决定为 **Public**。数据库、上传文件、凭据与备份保存在本地，不随 Git 提交。稳定主线为 `main`，封版标签为 `v0.2.0`；后续开发从此标签开始，不继续改动 v0.2 开发线。
 
 ## 从零启动
 
@@ -50,13 +50,15 @@ Set-Location H:\ResearchHub
 - Artifact 上传到 MinIO，数据库保存关系、SHA256 和 metadata；授权后下载，限制文件类型和大小。
 - Stage/Gate 判据、关联证据、状态与阻塞原因；ICE 为 A–E 和 G0–G5，HDSP 为固定目标面声场—热—固化流程。
 - 审计时间线、三模块演示项目、响应式桌面/手机界面、PWA manifest/service worker。
-- 本地 stdio MCP 21 个语义工具复用同一 API、授权与审计，不提供 shell、SQL 或任意服务器文件访问。
+- 本地 stdio MCP 18 个语义工具和 3 个兼容别名复用同一 API、授权与审计，不提供 shell、SQL 或任意服务器文件访问。
 
 ## v0.2 研究工作流与互联
 
 新增模块冻结版本与人工升级、组合能力、渐进 Run 创建/编辑、独立星标、活动与审计分离、分页检索、Bundle 预览导入、项目导出、参数/指标历史与完整差异、谱系及证据追踪、模块驱动视图和手机尺寸快速采集。项目与 Run 可保存 GitHub 代码来源。
 
 Codex 连接配置与 Skill/插件包见 [CONNECTIONS](docs/CONNECTIONS.md)，工具契约见 [MCP](docs/MCP.md)。实际客户端、ChatGPT 和设备验证范围见 [v0.2 验收报告](docs/V0.2_REPORT.md)。
+
+`v0.2.0` = Modular Research Workspace + Capability System + Human/AI authority + Research lineage + Evidence traceability + Highlight system + Activity/Audit + Codex local MCP integration。封版重新运行的测试、备份和限制见 [v0.2.0 Release 验收](docs/RELEASE_V0.2.0.md)。ChatGPT Remote MCP、多端 Local-first sync 和完整 MATLAB/COMSOL Agent 均未实现。
 
 ## 验证与限制
 

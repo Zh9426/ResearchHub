@@ -17,7 +17,7 @@ jobs:
             apps/api/requirements.txt
             apps/mcp/requirements.txt
       - run: pip install -r apps/api/requirements.txt -r apps/mcp/requirements.txt pytest
-      - run: python -m pytest tests/backend tests/mcp -q
+      - run: python -m pytest tests/backend tests/mcp tests/release -q
       - name: 新迁移可生成 PostgreSQL SQL
         env:
           DATABASE_URL: postgresql+psycopg://ci:ci@localhost/ci

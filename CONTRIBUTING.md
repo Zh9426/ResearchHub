@@ -43,7 +43,7 @@ git commit
 
 ## GitHub 连接
 
-当前仓库为 [Zh9426/ResearchHub](https://github.com/Zh9426/ResearchHub)，已确认可见性为 Private。当前本地目录已配置 `origin`，`main` 跟踪 `origin/main`。
+当前仓库为 [Zh9426/ResearchHub](https://github.com/Zh9426/ResearchHub)，用户已明确指定 Public。当前本地目录已配置 `origin`；公开的是代码，不包括本机科研记录、数据库、上传文件和凭据。可见性核对使用 `scripts/check-github.py --expect-visibility public`，检查不修改远端状态。
 
 本项目已完成远程创建与首次推送，无需重复添加 `origin`。以下命令仅供重新连接一个尚未配置远程的本地副本参考：
 
