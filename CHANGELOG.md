@@ -2,6 +2,26 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-009 — 2026-10-07 — v0.3 Sync Architecture Sprint 0
+
+### 完成内容
+
+- 从已发布的v0.2.0创建codex/researchhub-v0.3；稳定main/tag冻结，生产应用、迁移、部署及个人数据不变。
+- 交付docs/sync的12份协议/架构文档、概念ER、22主题报告、ADR-001–010和原始需求；推荐immutable revision DAG、无key Relay、保守科学冲突、四文件政策和trusted pairing。
+- 独立Python/SQLite两副本与Relay，合成数据验证CASE1–10及身份/依赖/恢复/权限负向；清楚区分设计、原型和生产实现。
+
+### 验证结果
+
+- 原型34项通过，Ruff通过，临时演示两副本一致、BASE pressure1.4与1.6/1.8候选均保留；先红后绿，具体命令与限制见SPRINT_0_REPORT.md。
+- v0.2分支/main/tag三次封版CI均success；本分支既有CI只覆盖稳定产品，未自动纳入原型测试，本地结果单独登记。
+- 规格审查PASS；质量审查发现并修复actor/principal不一致导致ACK后不能重放的P2，两项新回归先红后绿，复审PASS。远端同步结果在本轮最终交付消息记录。
+
+### 遗留事项
+
+- 生产Sync、真实E2E/签名/配对/撤销/keys、bootstrap/retention、移动引擎、Remote MCP均未实现。
+- 原型未实现跨对象科学冲突整批批准屏障、模块/真实人机权限与跨语言JCS，事务ID仅在batch；不冒充生产验收。
+- 完成Sprint0后STOP；须人工确认ADR、文件/云/缓存预算、设备/恢复/保留策略和ChatGPT共享取舍，才进入Sprint1。
+
 ## RH-008 — 2026-10-07 — 正式封版 v0.2.0
 
 ### 完成内容

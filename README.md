@@ -1,5 +1,7 @@
 # Research Hub v0.2.0
 
+稳定产品与标签为 **v0.2.0**。[v0.3 Sync Sprint 0 报告](docs/sync/SPRINT_0_REPORT.md) 位于从该标签创建的 `codex/researchhub-v0.3` 分支：同步架构、14份设计/报告文档与隔离合成原型。它没有给当前应用增加生产同步、加密、移动离线引擎或 ChatGPT 远程连接；完成本轮后等待人工架构审查。原型运行方法见 [prototype README](prototypes/sync_sprint0/README.md)。
+
 个人科研工作系统：项目、研究问题、假设、Run、参数来源、指标、文件、证据与结论共同形成可追溯的工作记录。Generic、HDSP、ICE 共用 Core，通过模块 manifest 保留各自专业工作流。
 
 代码仓库：[Zh9426/ResearchHub](https://github.com/Zh9426/ResearchHub)，按用户明确决定为 **Public**。数据库、上传文件、凭据与备份保存在本地，不随 Git 提交。稳定主线为 `main`，封版标签为 `v0.2.0`；后续开发从此标签开始，不继续改动 v0.2 开发线。

@@ -1,0 +1,2098 @@
+你现在需要对 Research Hub 执行两个连续任务：
+
+A. 正式封版 Research Hub v0.2.0
+B. 从 v0.2.0 创建 v0.3 开发线，并完成 Sprint 0：
+   Local-first Sync Architecture Freeze
+
+非常重要：
+
+本轮不是直接开发完整同步系统。
+
+v0.3 Sprint 0 的目标是：
+
+“在不破坏 v0.2 稳定版本、不接触真实科研数据的前提下，
+把 Research Hub 的多端 Local-first 同步协议设计完整，
+并通过最小 prototype 证明关键一致性机制可行。”
+
+只有 Sprint 0 架构通过人工审查之后，
+后续 Sprint 才允许正式实现同步引擎。
+
+==================================================
+PART A
+FREEZE RESEARCH HUB v0.2.0
+==================================================
+
+首先检查当前仓库和：
+
+codex/researchhub-v0.2
+
+确认当前最新稳定提交。
+
+不要直接开始 v0.3。
+
+先完成 v0.2 正式封版。
+
+--------------------------------------------------
+A1. FINAL V0.2 VALIDATION
+--------------------------------------------------
+
+执行完整 smoke test。
+
+至少验证：
+
+Backend tests
+Frontend tests
+MCP tests
+TypeScript
+Ruff
+Frontend production build
+Docker build
+Docker Compose
+PostgreSQL
+MinIO
+Migrations
+Backup
+Restore
+Codex local MCP smoke test
+Authentication
+ResearchRun
+Highlight
+Capability
+Module snapshot
+Activity / Audit
+Artifact upload
+Evidence
+Lineage
+
+不要依赖历史报告声称测试通过。
+
+必须重新执行当前 HEAD。
+
+任何失败：
+
+先修复。
+
+修复不得引入 v0.3 功能。
+
+如果必须修复：
+
+只允许：
+
+bug fix
+security fix
+release blocker
+documentation mismatch
+
+禁止：
+
+新增功能
+重构大模块
+开始 Sync Engine
+
+--------------------------------------------------
+A2. DATA SAFETY
+--------------------------------------------------
+
+在任何数据库操作前：
+
+确认个人数据库已经备份。
+
+确认：
+
+PostgreSQL backup
+MinIO backup
+
+不得：
+
+重置用户账号
+删除个人数据
+覆盖现有科研记录
+导入 QA 数据到个人数据库
+
+QA 必须继续使用隔离环境。
+
+--------------------------------------------------
+A3. RELEASE BASELINE
+--------------------------------------------------
+
+完成测试后：
+
+将当前稳定 v0.2 状态作为：
+
+Research Hub v0.2.0
+
+要求：
+
+1. 合并到稳定主线；
+2. 创建 Git tag：
+
+v0.2.0
+
+3. 创建 GitHub Release；
+4. Release 内容基于真实实现状态；
+5. 保留：
+
+docs/V0.2_REPORT.md
+
+6. 更新：
+
+CHANGELOG.md
+README.md
+
+明确：
+
+v0.2.0
+=
+Modular Research Workspace
++
+Capability System
++
+Human/AI authority
++
+Research lineage
++
+Evidence traceability
++
+Highlight system
++
+Activity/Audit
++
+Codex local MCP integration
+
+不要把：
+
+ChatGPT Remote MCP
+Local-first multi-device sync
+完整 MATLAB/COMSOL Agent
+
+写成 v0.2 已实现能力。
+
+--------------------------------------------------
+A4. RELEASE IMMUTABILITY
+--------------------------------------------------
+
+v0.2.0 发布之后：
+
+不要继续直接开发在：
+
+codex/researchhub-v0.2
+
+创建：
+
+codex/researchhub-v0.3
+
+必须以：
+
+v0.2.0
+
+为基线。
+
+==================================================
+PART B
+RESEARCH HUB v0.3
+LOCAL-FIRST RESEARCH SYNC
+==================================================
+
+v0.3 的核心产品方向：
+
+Research Hub 不再只是：
+
+Single-PC Research Application
+
+而需要逐步升级为：
+
+Local-first Multi-device Research Workspace
+
+
+目标设备：
+
+Windows PC
+Phone
+Tablet
+
+未来还包括：
+
+Codex
+ChatGPT
+
+
+但核心原则：
+
+每个设备可以拥有自己的本地工作状态。
+
+没有网络时：
+
+仍可以查看、记录和修改允许离线操作的数据。
+
+恢复网络后：
+
+通过 Sync Protocol 同步。
+
+==================================================
+B1. IMPORTANT ARCHITECTURE PRINCIPLE
+==================================================
+
+不要采用：
+
+Mobile → always-online central database
+
+作为唯一工作模式。
+
+不要采用：
+
+PostgreSQL database file sync
+
+不要采用：
+
+Git repository directly syncing database state
+
+不要采用：
+
+Last Write Wins
+
+覆盖科研数据。
+
+
+目标模型：
+
+                Encrypted Sync Relay
+
+                       │
+                    Sync
+
+         ┌─────────────┼─────────────┐
+         │             │             │
+       Windows       Phone         Tablet
+
+       Full Store   Local Store    Local Store
+         │
+      PostgreSQL
+      MinIO
+         │
+       Codex
+
+
+Windows PC：
+
+Primary Full Storage Node
+
+但注意：
+
+Primary ≠ conflict winner。
+
+Primary 只代表：
+
+完整数据
+完整 Artifact
+长期存储
+备份节点
+Codex execution node
+
+
+它不意味着：
+
+发生冲突时电脑版本永远覆盖手机。
+
+==================================================
+B2. CLOUD ROLE
+==================================================
+
+云端不能默认设计成：
+
+Research Hub Source of Truth Database。
+
+
+优先设计：
+
+Encrypted Sync Relay
+
+
+职责：
+
+暂存加密 ChangeSet
+保存设备同步游标
+保存对象版本信息
+暂存允许同步的加密 Artifact
+支持异步设备 Push / Pull
+
+
+云端服务器默认：
+
+不应拥有端到端加密密钥。
+
+科研数据内容应尽可能：
+
+E2E encrypted。
+
+
+未来即使 Sync Relay 被攻破：
+
+攻击者也不应直接获得科研内容。
+
+==================================================
+B3. ARTIFACT POLICY
+==================================================
+
+不是所有科研文件都应该上传云端。
+
+设计 Artifact Sync Policy。
+
+至少考虑：
+
+local_only
+
+metadata_only
+
+encrypted_sync
+
+on_demand
+
+
+例如：
+
+config.json
+metrics.json
+small PNG
+
+可同步。
+
+
+大型：
+
+MAT
+NPY
+NPZ
+raw simulation field
+raw imaging data
+
+允许：
+
+PC only
+
+
+其他设备只保存：
+
+filename
+size
+checksum
+category
+run_id
+availability
+origin device
+
+
+例如：
+
+acoustic_field.mat
+
+size:
+7.8 GB
+
+state:
+AVAILABLE_ON_PRIMARY_PC
+
+而不是自动上传。
+
+==================================================
+B4. LOCAL-FIRST MODEL
+==================================================
+
+每个设备至少需要概念上保存：
+
+device_id
+
+device_name
+
+device_role
+
+last_sync_cursor
+
+last_successful_sync
+
+pending_change_count
+
+local_change_log
+
+local object state
+
+artifact cache state
+
+
+设备身份必须：
+
+稳定
+
+不可使用 hostname 作为唯一 ID。
+
+应该使用持久 UUID。
+
+==================================================
+B5. OBJECT IDENTITY
+==================================================
+
+所有可同步科研对象必须使用全局唯一 ID。
+
+继续优先 UUID。
+
+离线设备创建：
+
+Run
+Note
+Task
+Evidence
+Artifact metadata
+
+时：
+
+不需要连接服务器申请 ID。
+
+
+两个设备离线创建对象：
+
+不能产生 ID 冲突。
+
+==================================================
+B6. REVISION MODEL
+==================================================
+
+设计 Object Revision。
+
+每个可同步对象至少需要表达：
+
+object_id
+
+object_type
+
+revision
+
+base_revision
+
+device_id
+
+updated_at
+
+change_id
+
+
+必须回答：
+
+revision 是：
+
+integer？
+
+logical clock？
+
+vector clock？
+
+hybrid logical clock？
+
+server sequence？
+
+其他？
+
+
+不要直接选择。
+
+必须比较方案。
+
+考虑：
+
+复杂度
+冲突检测
+离线能力
+跨设备
+恢复
+实现成本
+审计
+AI 写入
+
+
+最终推荐一种。
+
+==================================================
+B7. CHANGESET
+==================================================
+
+设计 Research Hub ChangeSet。
+
+不要同步整个数据库 Row Dump。
+
+ChangeSet 应表达业务层变化。
+
+示例概念：
+
+change_id
+
+device_id
+
+project_id
+
+object_type
+
+object_id
+
+operation
+
+base_revision
+
+payload
+
+created_at
+
+schema_version
+
+encryption metadata
+
+
+operation 至少考虑：
+
+create
+
+update
+
+archive
+
+trash
+
+restore
+
+link
+
+unlink
+
+
+不要把：
+
+purge
+
+作为普通可同步自动操作。
+
+永久删除必须特别处理。
+
+==================================================
+B8. TRANSACTION BOUNDARY
+==================================================
+
+必须重点设计：
+
+ChangeSet 的原子性。
+
+
+例如一次用户操作：
+
+创建 Run
++
+添加 Parameters
++
+添加 Metrics
++
+上传 3 个 Artifact metadata
+
+究竟应该是：
+
+5 个独立 ChangeSet
+
+还是：
+
+1 个 Sync Transaction
+
+
+必须分析。
+
+
+Research Hub 必须避免：
+
+手机同步中断后：
+
+Run 已存在
+
+但 Parameters 只有一半。
+
+
+设计：
+
+Sync Transaction / Change Batch
+
+以及：
+
+commit marker
+
+idempotency key
+
+retry behavior。
+
+==================================================
+B9. PUSH PROTOCOL
+==================================================
+
+设计：
+
+Client Push
+
+必须支持：
+
+batch
+
+idempotency
+
+retry
+
+duplicate detection
+
+base revision validation
+
+conflict response
+
+
+例如：
+
+Client：
+
+Base Revision = 18
+
+Server：
+
+Current Revision = 18
+
+→ accept
+
+
+如果：
+
+Server Revision = 19
+
+→ conflict
+
+
+不能：
+
+silent overwrite。
+
+==================================================
+B10. PULL PROTOCOL
+==================================================
+
+设计：
+
+Sync Cursor
+
+客户端：
+
+last_sync_cursor = X
+
+
+Relay 返回：
+
+changes > X
+
+
+Pull 必须：
+
+有序
+
+可分页
+
+可恢复
+
+幂等
+
+
+即使：
+
+应用崩溃
+
+网络断开
+
+重复 Pull
+
+也不能重复生成科研对象。
+
+==================================================
+B11. CONFLICT DETECTION
+==================================================
+
+这是 Sprint 0 最重要的内容之一。
+
+设计完整 Conflict Matrix。
+
+
+至少覆盖：
+
+Project metadata
+
+ResearchRun
+
+Parameter
+
+Metric
+
+Artifact metadata
+
+Note
+
+Task
+
+Evidence
+
+Claim
+
+Decision
+
+Gate
+
+GateCriterion
+
+Tag
+
+Activity
+
+Audit
+
+Module version
+
+Module snapshot
+
+Trash / Restore
+
+
+对于每一种对象：
+
+说明：
+
+是否允许自动 merge
+
+merge 策略
+
+什么时候必须人工解决。
+
+
+==================================================
+B12. SCIENTIFIC CONFLICT POLICY
+==================================================
+
+以下类型默认必须极其保守：
+
+Parameter
+
+Metric
+
+Human Conclusion
+
+Evidence Status
+
+Decision
+
+Gate
+
+Gate Criterion
+
+Module Upgrade
+
+
+禁止：
+
+Last Write Wins
+
+
+例如：
+
+PC：
+
+Parameter pressure
+1.4 → 1.6
+
+
+Tablet：
+
+Parameter pressure
+1.4 → 1.8
+
+
+结果必须：
+
+CONFLICT
+
+
+不能：
+
+根据时间戳选择。
+
+
+同样：
+
+Human Conclusion
+
+禁止自动文本覆盖。
+
+==================================================
+B13. SAFE AUTO-MERGE
+==================================================
+
+可以研究自动合并的内容：
+
+Tag set
+
+不同 Artifact additions
+
+不同 Run creations
+
+不同 Notes
+
+不同 Tasks
+
+Append-only Audit
+
+部分关系集合
+
+
+例如：
+
+PC：
+
+Run #42
++ Artifact A
+
+
+Tablet：
+
+Run #42
++ Artifact B
+
+
+可能：
+
+auto union
+
+
+但必须验证：
+
+不会造成科研语义错误。
+
+==================================================
+B14. TEXT THREE-WAY MERGE
+==================================================
+
+评估是否支持：
+
+Note
+
+Description
+
+Observation
+
+
+三方文本 Merge：
+
+BASE
+
+LOCAL
+
+REMOTE
+
+
+但不要直接假定 Git merge 适用于科研文本。
+
+
+建议：
+
+简单文本可以：
+
+attempt merge
+
+
+如果同一区域修改：
+
+Conflict UI
+
+
+Human Conclusion：
+
+即使文本可 merge，
+
+默认仍要求人工确认。
+
+==================================================
+B15. RUN DESIGN AND CONFLICT REDUCTION
+==================================================
+
+利用 Research Hub 已有：
+
+Parent / Child Run
+
+鼓励：
+
+新增 Run
+
+而不是不断覆盖旧 Run。
+
+
+例如：
+
+PC：
+
+Run #043
+
+
+Tablet：
+
+Run #044
+
+
+两者都基于：
+
+Run #042
+
+
+这不是 Conflict。
+
+这是合法的研究分支。
+
+
+Sync Engine 必须尊重这种科研谱系。
+
+==================================================
+B16. AUDIT SYNC
+==================================================
+
+AuditLog 是 append-only。
+
+设计跨设备 Audit Sync。
+
+每条 Audit 必须有：
+
+audit_id
+
+device_id
+
+actor
+
+actor_type
+
+timestamp
+
+object_id
+
+action
+
+before
+
+after
+
+
+重复 Pull：
+
+不能生成重复 Audit。
+
+
+冲突解决本身也必须产生 Audit：
+
+resolve_sync_conflict
+
+==================================================
+B17. ACTIVITY
+==================================================
+
+Activity Feed 可以由同步后的 Audit / Domain events 重新生成。
+
+Activity UI 偏好：
+
+hide_before
+
+filters
+
+属于用户体验状态。
+
+
+需要决定：
+
+是否跨设备同步这些 preference。
+
+
+建议分析：
+
+user preference sync
+
+vs
+
+device-local preference。
+
+==================================================
+B18. DELETE SEMANTICS
+==================================================
+
+Research Hub 当前有：
+
+Archive
+
+Trash
+
+Restore
+
+30-day retention
+
+Purge
+
+
+必须设计同步语义。
+
+
+例如：
+
+PC trash Run #42
+
+Tablet offline 修改 Run #42
+
+随后同步。
+
+
+应该：
+
+Conflict？
+
+Reject tablet update？
+
+Restore candidate？
+
+Manual review？
+
+
+必须明确。
+
+
+永久 Purge：
+
+不能由普通设备同步自动传播。
+
+建议：
+
+必须满足：
+
+Primary Full Storage Node
++
+Human confirmation
++
+all relevant sync state checked
+
+
+但 Sprint 0 只设计，不实现。
+
+==================================================
+B19. MODULE VERSION SYNC
+==================================================
+
+Research Hub 项目冻结：
+
+module_version
+
+module_snapshot
+
+
+现在多个设备可能拥有：
+
+不同客户端代码版本
+
+不同 manifest registry。
+
+
+必须确保：
+
+Project 仍然使用：
+
+project.module_snapshot
+
+
+不要：
+
+Tablet 新客户端
+
+自动重新解释旧 Project。
+
+
+Module Upgrade 应成为特殊 Sync Event。
+
+
+同时两个设备执行 Module Upgrade：
+
+必须阻止或人工解决。
+
+==================================================
+B20. SCHEMA VERSIONING
+==================================================
+
+Sync Protocol 自身需要：
+
+protocol_version
+
+schema_version
+
+
+必须设计：
+
+older client compatibility
+
+unsupported client
+
+migration
+
+
+例如：
+
+PC v0.4
+
+Tablet v0.3
+
+
+两者同步时：
+
+系统如何判断：
+
+compatible
+
+read-only
+
+upgrade required
+
+
+不能默默解析未知字段。
+
+==================================================
+B21. MOBILE LOCAL STORAGE
+==================================================
+
+研究手机 / 平板 PWA：
+
+IndexedDB
+
+OPFS
+
+Cache Storage
+
+
+针对：
+
+structured metadata
+
+small files
+
+large files
+
+分别评估。
+
+
+不要把：
+
+PostgreSQL
+
+移植到浏览器。
+
+
+给出明确推荐：
+
+Metadata store
+
+Artifact cache
+
+Pending Change queue
+
+Encryption keys
+
+==================================================
+B22. LOCAL PC STORAGE
+==================================================
+
+Windows 主电脑继续：
+
+PostgreSQL
+
+MinIO
+
+
+不要为了同步：
+
+整体替换当前数据层。
+
+
+新增：
+
+Sync Domain Layer
+
+
+例如：
+
+Domain mutation
+↓
+PostgreSQL
++
+Sync Change Log
+
+
+Sync：
+
+处理 Domain Changes
+
+而不是数据库复制。
+
+==================================================
+B23. ENCRYPTION MODEL
+==================================================
+
+Sprint 0 必须设计：
+
+E2E Encryption。
+
+
+回答：
+
+Account Master Key
+
+Device Key
+
+Project Key
+
+Artifact Key
+
+Key Rotation
+
+New Device Pairing
+
+Device Revocation
+
+Lost Device
+
+Lost Password
+
+
+研究：
+
+客户端加密
+
+服务器只见 ciphertext。
+
+
+不要自己发明弱加密算法。
+
+应基于成熟标准。
+
+
+但是：
+
+Sprint 0 只设计与 prototype。
+
+不要部署生产密码系统。
+
+==================================================
+B24. DEVICE PAIRING
+==================================================
+
+设计新设备加入流程。
+
+
+例如：
+
+Primary PC
+
+↓
+
+Add Device
+
+↓
+
+生成 QR / pairing code
+
+↓
+
+Phone 扫描
+
+↓
+
+Key exchange
+
+↓
+
+Device registered
+
+
+必须防止：
+
+知道账号密码就自动获得所有同步密钥
+
+如果设计目标需要更强设备安全。
+
+
+给出推荐。
+
+==================================================
+B25. RELAY RETENTION
+==================================================
+
+Sync Relay 不应自动变成永久科研仓库。
+
+
+设计 configurable retention：
+
+retain_until_ack
+
+7 days
+
+30 days
+
+metadata only
+
+
+Artifact：
+
+当 Primary PC 已确认收到：
+
+可以根据策略删除 Relay ciphertext。
+
+
+但 Change Log 是否可以删除：
+
+需要考虑：
+
+新设备 bootstrap
+
+恢复
+
+审计。
+
+
+设计：
+
+snapshot + compacted changelog
+
+或其他方案。
+
+==================================================
+B26. NEW DEVICE BOOTSTRAP
+==================================================
+
+新平板第一次登录时不能：
+
+从 Change #1 replay 到 Change #500000。
+
+
+设计：
+
+Encrypted Snapshot
+
++
+Change Log after snapshot
+
+
+例如：
+
+snapshot cursor:
+490000
+
+↓
+
+download snapshot
+
+↓
+
+apply changes 490001+
+
+
+必须考虑：
+
+Project subset
+
+Artifact lazy sync。
+
+==================================================
+B27. SYNCED SUBSET
+==================================================
+
+手机不一定需要：
+
+全部项目
+全部文件。
+
+
+设计：
+
+Project Sync Selection
+
+
+例如：
+
+Phone：
+
+✓ ICE
+✓ HDSP metadata
+× Archived Project
+
+
+Tablet：
+
+✓ ICE
+✓ HDSP
+
+
+Artifact：
+
+metadata eager
+
+binary lazy
+
+
+==================================================
+B28. CHATGPT / CLOUD AI
+==================================================
+
+重要：
+
+ChatGPT 是远端 Agent。
+
+如果未来：
+
+ChatGPT
+→ Remote MCP
+→ Sync infrastructure
+
+
+必须分析：
+
+它读取的是：
+
+Cloud projection？
+
+Cloud-decryptable metadata？
+
+客户端代理？
+
+其他？
+
+
+注意：
+
+E2E Encryption 与 Remote AI Access 存在天然张力。
+
+
+Sprint 0 必须明确指出：
+
+如果服务器无法解密，
+
+ChatGPT 如何读取科研数据？
+
+
+至少比较：
+
+A.
+Cloud cannot decrypt
+ChatGPT only works when trusted client bridge online
+
+B.
+Selected AI-readable encrypted projection
+
+C.
+Project-specific AI sharing key
+
+D.
+Other secure model
+
+
+不要为了 ChatGPT：
+
+破坏整个 E2E security model。
+
+
+如果无法同时完美满足：
+
+明确记录 trade-off。
+
+==================================================
+B29. CODEX
+==================================================
+
+Codex 默认继续：
+
+Codex
+↓
+Local MCP
+↓
+PC Research Hub
+
+
+不需要通过云端。
+
+Codex 写入本地以后：
+
+正常产生 ChangeSet。
+
+
+然后：
+
+Sync。
+
+
+这部分应保持简单。
+
+==================================================
+B30. REVIEW INBOX
+==================================================
+
+同步系统未来应该与：
+
+AI Review Inbox
+
+结合。
+
+
+但 Sprint 0 只设计数据模型。
+
+
+需要区分：
+
+Sync Conflict
+
+与：
+
+AI Review
+
+
+它们不是同一个概念。
+
+
+Sync Conflict：
+
+两个合法 revision 分叉。
+
+
+AI Review：
+
+AI 写入需要人工查看。
+
+
+不要混在一起。
+
+==================================================
+B31. FAILURE MODES
+==================================================
+
+建立完整 Failure Mode Analysis。
+
+
+至少：
+
+Push interrupted
+
+Pull interrupted
+
+Duplicate Push
+
+Duplicate Pull
+
+Client crash during apply
+
+Relay crash
+
+Clock skew
+
+Device offline for months
+
+Schema mismatch
+
+Missing Artifact
+
+Corrupt Artifact
+
+Checksum mismatch
+
+Revoked Device
+
+Wrong encryption key
+
+Concurrent conflict resolution
+
+Module upgrade conflict
+
+Trash vs edit
+
+Restore vs purge
+
+Primary PC disk failure
+
+Cloud relay unavailable
+
+
+每一种说明：
+
+Detection
+
+Recovery
+
+Data-loss risk
+
+User-facing behavior。
+
+==================================================
+B32. FORMAL SYNC INVARIANTS
+==================================================
+
+必须定义至少以下 invariant：
+
+1.
+已确认接受的 ChangeSet 不得静默丢失。
+
+2.
+重复 apply 同一个 ChangeSet 不得改变最终结果。
+
+3.
+不同科研值并发修改不得静默覆盖。
+
+4.
+Audit append-only。
+
+5.
+Artifact checksum 不匹配不得作为成功同步。
+
+6.
+Trash/Purge 不得绕过生命周期保护。
+
+7.
+Module Snapshot 不得由本地 registry 自动重解释。
+
+8.
+Human-only authority 不得因 Sync 绕过。
+
+9.
+AI authority 不得因 Cloud entry point 绕过。
+
+10.
+Primary PC 不是 conflict winner。
+
+
+可以补充更多。
+
+==================================================
+B33. MINIMUM PROTOTYPE
+==================================================
+
+允许做最小 prototype。
+
+但禁止接入个人生产数据。
+
+
+使用：
+
+isolated synthetic test data。
+
+
+Prototype 仅验证：
+
+Device A
+
+Device B
+
+Relay simulator
+
+
+至少模拟：
+
+CASE 1
+A offline create Run
+B pull
+→ same Run appears
+
+
+CASE 2
+A and B create different Runs offline
+→ both survive
+
+
+CASE 3
+A and B edit same Parameter from same base
+→ conflict
+
+
+CASE 4
+duplicate Push
+→ idempotent
+
+
+CASE 5
+duplicate Pull
+→ idempotent
+
+
+CASE 6
+Push crash halfway
+→ atomic recovery
+
+
+CASE 7
+Artifact same SHA
+→ deduplicate metadata / object as designed
+
+
+CASE 8
+Trash vs offline edit
+→ expected conflict behavior
+
+
+CASE 9
+Human Conclusion simultaneous edit
+→ never auto merge
+
+
+CASE 10
+Audit events from A/B
+→ both survive, no duplicates
+
+
+Prototype 可以：
+
+Python
+
+SQLite
+
+in-memory relay
+
+temporary filesystem
+
+
+不要：
+
+修改生产 PostgreSQL schema
+
+不要：
+
+修改个人 MinIO
+
+不要：
+
+实际部署云服务器
+
+
+除非 prototype 必须验证 PostgreSQL semantics，
+
+也只能使用独立 QA database。
+
+==================================================
+B34. REQUIRED DOCUMENTS
+==================================================
+
+Sprint 0 必须产出：
+
+docs/sync/
+
+SYNC_ARCHITECTURE.md
+
+SYNC_PROTOCOL.md
+
+SYNC_DATA_MODEL.md
+
+SYNC_STATE_MACHINE.md
+
+SYNC_CONFLICT_POLICY.md
+
+SYNC_ARTIFACT_POLICY.md
+
+SYNC_SECURITY_MODEL.md
+
+SYNC_DEVICE_MODEL.md
+
+SYNC_FAILURE_RECOVERY.md
+
+SYNC_CHATGPT_MODEL.md
+
+SYNC_TEST_PLAN.md
+
+SYNC_DECISIONS.md
+
+
+同时提供：
+
+SYNC_ER_DIAGRAM.md
+或 Mermaid diagram。
+
+
+不要把文档写成泛泛理论。
+
+必须对应 Research Hub 现有：
+
+Project
+
+ResearchRun
+
+Parameter
+
+Metric
+
+Artifact
+
+Evidence
+
+Gate
+
+Decision
+
+AuditLog
+
+ModuleSnapshot
+
+Lifecycle。
+
+==================================================
+B35. SYNC DECISION RECORD
+==================================================
+
+创建明确 ADR。
+
+至少记录：
+
+ADR-001
+Why Local-first
+
+ADR-002
+Why domain changes, not database replication
+
+ADR-003
+Revision model
+
+ADR-004
+Conflict policy
+
+ADR-005
+Artifact policy
+
+ADR-006
+Encryption model
+
+ADR-007
+Primary PC role
+
+ADR-008
+Relay retention
+
+ADR-009
+Mobile local storage
+
+ADR-010
+ChatGPT trade-off
+
+
+每个 ADR：
+
+Context
+
+Options
+
+Decision
+
+Consequences
+
+Open Questions。
+
+==================================================
+B36. DO NOT IMPLEMENT YET
+==================================================
+
+Sprint 0 禁止正式实现：
+
+Production Sync Server
+
+Remote production database
+
+Cloud deployment
+
+Real account encryption
+
+Production key management
+
+Mobile background sync
+
+ChatGPT Remote MCP
+
+Artifact cloud migration
+
+Production conflict resolver
+
+Automatic merge of scientific fields
+
+MATLAB Agent
+
+COMSOL Agent
+
+
+这些都属于后续 Sprint。
+
+==================================================
+B37. SPRINT 0 ACCEPTANCE
+==================================================
+
+只有下面全部完成，Sprint 0 才结束：
+
+[ ] v0.2.0 release 已冻结
+
+[ ] v0.3 branch 从 v0.2.0 创建
+
+[ ] Sync architecture 文档完成
+
+[ ] Revision 模型明确
+
+[ ] ChangeSet 格式明确
+
+[ ] Push / Pull 协议明确
+
+[ ] Transaction boundary 明确
+
+[ ] Conflict Matrix 完成
+
+[ ] Human-only fields 保护明确
+
+[ ] Artifact sync policy 完成
+
+[ ] Trash / Restore 同步语义完成
+
+[ ] Module Version 同步语义完成
+
+[ ] Device model 完成
+
+[ ] Mobile storage model 完成
+
+[ ] E2E encryption architecture 完成
+
+[ ] ChatGPT/E2E tension 有明确方案或明确未决项
+
+[ ] Failure mode analysis 完成
+
+[ ] Formal invariants 完成
+
+[ ] Synthetic prototype 通过关键测试
+
+[ ] 没有修改个人生产科研数据
+
+[ ] 没有开始 Production Sync implementation
+
+==================================================
+B38. FINAL OUTPUT
+==================================================
+
+完成后创建：
+
+docs/sync/SPRINT_0_REPORT.md
+
+
+必须包含：
+
+1. v0.2.0 release 状态
+
+2. v0.3 branch
+
+3. Recommended sync architecture
+
+4. Revision model
+
+5. ChangeSet model
+
+6. Sync transaction model
+
+7. Push protocol
+
+8. Pull protocol
+
+9. Conflict policy
+
+10. Artifact strategy
+
+11. Device strategy
+
+12. Mobile local storage
+
+13. Encryption
+
+14. Relay responsibilities
+
+15. Primary PC responsibilities
+
+16. ChatGPT access model
+
+17. Prototype results
+
+18. Failure analysis
+
+19. Open questions
+
+20. Risks
+
+21. Decisions requiring user approval
+
+22. Proposed Sprint 1 scope
+
+
+明确分类：
+
+DECIDED
+
+PROTOTYPED
+
+OPEN QUESTION
+
+NOT IMPLEMENTED
+
+
+不要把：
+
+设计
+
+Prototype
+
+生产实现
+
+混为一谈。
+
+==================================================
+B39. STOP CONDITION
+==================================================
+
+完成 Sprint 0 后：
+
+STOP。
+
+
+不要自动进入 Sprint 1。
+
+
+不要因为架构看起来可行就继续：
+
+生产 migration
+
+Sync API
+
+云部署
+
+Mobile offline engine
+
+
+等待人工架构审查。
+
+
+最终输出：
+
+“Research Hub v0.3 Sync Architecture Sprint 0 complete.”
+
+并列出：
+
+需要人工确认的关键架构决策。
+
+==================================================
+START
+==================================================
+
+现在开始：
+
+1. 检查当前 v0.2 branch 和工作树；
+2. 执行 v0.2 release smoke test；
+3. 修复 release blocker；
+4. 创建 v0.2.0 release；
+5. 从 v0.2.0 创建 codex/researchhub-v0.3；
+6. 建立 docs/sync；
+7. 开始 Sprint 0 Sync Architecture Design；
+8. 完成 synthetic prototype；
+9. 输出 Sprint 0 Report；
+10. STOP。
+
+不要提前进入 Sprint 1。
