@@ -1,0 +1,2612 @@
+你现在继续开发：
+
+Research Hub v0.3
+Sprint 2 — Secure Relay & E2E Transport
+
+当前分支：
+
+codex/researchhub-v0.3
+
+当前稳定基线：
+
+v0.2.0 不得修改。
+Sprint 0 Architecture 已通过人工审查。
+Sprint 1 Sync Protocol Kernel 已通过人工审查。
+
+当前 Sprint 1 HEAD 应核对为当前远端开发分支最新提交。
+
+==================================================
+0. SPRINT 2 PURPOSE
+==================================================
+
+Sprint 2 的目标不是：
+
+让真实手机开始同步
+让真实科研数据上传云端
+部署公网 VPS
+接入 ChatGPT Remote MCP
+把 QA Sync Kernel 接入个人生产数据库
+修改现有 UI 为同步模式
+
+Sprint 2 唯一核心目标：
+
+“证明一个不可信 Relay 可以在无法读取科研内容、
+无法获得 Project Key、无法伪造合法设备身份的前提下，
+可靠地中转 Research Hub SyncTransaction，
+并正确处理签名、加密、重放、配对、撤销、Key Epoch、
+网络失败和 Relay 重启。”
+
+Sprint 2 完成后仍然：
+
+QA ONLY
+SYNTHETIC DATA ONLY
+LOCAL / LOOPBACK ONLY
+
+不得上传用户真实：
+
+HDSP
+ICE
+论文
+实验数据
+照片
+MAT
+代码秘密
+凭据
+
+==================================================
+1. READ BEFORE CODE
+==================================================
+
+开始前必须完整阅读：
+
+docs/sync/SPRINT_0_REPORT.md
+docs/sync/SPRINT_1_REPORT.md
+docs/sync/SYNC_ARCHITECTURE.md
+docs/sync/SYNC_PROTOCOL.md
+docs/sync/SYNC_WIRE_FORMAT.md
+docs/sync/SYNC_DATA_MODEL.md
+docs/sync/SYNC_TRANSACTION_MODEL.md
+docs/sync/SYNC_STATE_MACHINE.md
+docs/sync/SYNC_CONFLICT_POLICY.md
+docs/sync/SYNC_SECURITY_MODEL.md
+docs/sync/SYNC_DEVICE_MODEL.md
+docs/sync/SYNC_FAILURE_RECOVERY.md
+docs/sync/SYNC_CHATGPT_MODEL.md
+docs/sync/SYNC_TEST_PLAN.md
+docs/sync/SYNC_DECISIONS.md
+
+以及实际实现：
+
+apps/api/researchhub/sync/
+packages/sync-protocol/
+tests/sync_kernel/
+tests/sync_pg/
+tests/sync_vectors/
+
+不要重新设计 Sprint 1 已通过的：
+
+Canonical Wire
+Revision DAG
+Whole-batch Barrier
+Accepted Projection
+Human/AI authority
+Conflict semantics
+
+==================================================
+2. SECURITY MODEL
+==================================================
+
+Sprint 2 必须采用：
+
+HOSTILE / UNTRUSTED RELAY MODEL
+
+假定 Relay 可以：
+
+读取自己的全部数据库
+读取所有 blob
+复制 ciphertext
+重放消息
+延迟消息
+重排消息
+删除消息
+返回旧数据
+重启
+崩溃
+观察设备活动时间
+观察流量大小
+观察 opaque identifiers
+
+Relay 不得拥有：
+
+Account Master Key
+Device Private Key
+Project Content Key
+Artifact plaintext DEK
+Research plaintext
+Human grant private material
+
+不要因为：
+
+“Relay 是我自己的服务器”
+
+降低安全设计。
+
+==================================================
+3. SECURITY DESIGN DELTA FIRST
+==================================================
+
+在写真实 crypto code 前先创建：
+
+docs/sync/SPRINT_2_SECURITY_DELTA.md
+
+必须明确：
+
+Threat model
+Trust boundaries
+Crypto library selection
+Primitive suite
+Key hierarchy
+Nonce strategy
+Envelope format
+Signature scope
+Pairing protocol
+Membership epoch
+Key epoch
+Revocation protocol
+Recovery model
+Relay storage model
+Checkpoint / rollback model
+Artifact chunk strategy
+TLS profile
+Failure behavior
+
+只有 design delta 自洽后才实现。
+
+如 Sprint 0/1 ADR 需要修改：
+
+不得静默修改。
+
+必须新增：
+
+AMENDED / SUPERSEDED ADR
+
+说明：
+
+旧决策
+新证据
+新决策
+后果
+
+==================================================
+4. NO HOMEMADE CRYPTO — P0
+==================================================
+
+绝对禁止自行实现：
+
+AES
+ChaCha
+Poly1305
+Curve25519 arithmetic
+Ed25519 arithmetic
+ECDH math
+HKDF internals
+signature algorithm
+random generator
+HPKE primitive
+
+必须使用：
+
+成熟
+维护中
+有明确安全文档
+跨 Python / TypeScript 可互操作
+有正式 test vectors 或标准依据
+
+的密码库。
+
+开始编码前必须调查：
+
+官方文档
+维护状态
+最近 release
+安全公告
+跨语言兼容
+许可证
+
+并在文档中记录选择依据。
+
+如果 Sprint 0 推荐的某个具体 suite：
+
+HPKE / AES-GCM / Ed25519
+
+在当前 Python + TypeScript 生态中无法以维护良好的库可靠实现，
+
+不要硬凑。
+
+允许：
+
+ADR-006 amendment
+
+但新方案必须建立在成熟标准/库之上。
+
+==================================================
+5. CRYPTO LIBRARY GATE
+==================================================
+
+在正式实现前生成：
+
+CRYPTO_LIBRARY_REVIEW.md
+
+至少比较：
+
+Python library candidate
+TypeScript / Node library candidate
+
+关注：
+
+AEAD
+Ed25519
+X25519 / HPKE or equivalent standard wrapping
+HKDF if applicable
+secure random
+key import/export
+browser compatibility future path
+Node compatibility
+maintenance
+known caveats
+
+结论必须：
+
+SELECTED
+或
+BLOCKED
+
+如果没有可信互操作方案：
+
+Sprint 2 FAIL。
+
+禁止：
+
+为了完成任务自己拼一个未经审核协议。
+
+==================================================
+6. KEY HIERARCHY
+==================================================
+
+延续 Sprint 0 原则。
+
+至少概念上区分：
+
+Account Master / Recovery material
+
+Device Signing Key
+
+Device Encryption / Recipient Key
+
+Project Content Key
+per project
+per epoch
+
+Artifact Data Encryption Key
+per artifact or chunked artifact context
+
+不得：
+
+所有项目共用一个长期 encryption key。
+
+不得：
+
+所有设备共用同一 private key。
+
+不得：
+
+账号密码直接作为科研数据 encryption key。
+
+==================================================
+7. KEY STORAGE BOUNDARY
+==================================================
+
+Sprint 2 还没有生产设备 keystore。
+
+因此：
+
+QA key storage 必须明确标记：
+
+TEST ONLY
+
+可以使用：
+
+temporary directory
+ephemeral test vault
+in-memory key store
+isolated encrypted test fixture
+
+但：
+
+私钥
+recovery secret
+test plaintext key material
+
+不得提交 Git。
+
+不得打印日志。
+
+不得写入：
+
+normal application logs
+Audit
+Relay database
+
+建立抽象：
+
+KeyVault / DeviceKeyStore
+
+未来 Sprint 3 替换为：
+
+Windows protected storage
+browser platform storage / WebCrypto compatible strategy
+
+Sprint 2 不宣称：
+
+production key storage complete。
+
+==================================================
+8. NONCE STRATEGY — P0
+==================================================
+
+Sprint 0 尚未冻结 nonce crash strategy。
+
+Sprint 2 必须解决。
+
+不能使用：
+
+timestamp as nonce
+
+不能使用：
+
+random 96-bit AES-GCM nonce
+然后没有碰撞/重启设计
+
+不能使用：
+
+只存在内存的 counter
+
+导致重启后 nonce reuse。
+
+
+根据最终选定 AEAD：
+
+定义明确 nonce construction / generation policy。
+
+
+必须覆盖：
+
+process restart
+parallel encryption
+retry
+re-encryption
+key rotation
+crash before persistence
+crash after persistence
+
+测试：
+
+同一 key 下绝不允许 nonce reuse。
+
+如果无法证明：
+
+Gate FAIL。
+
+==================================================
+9. SEMANTIC IDENTITY MUST REMAIN CRYPTO-INDEPENDENT
+==================================================
+
+Sprint 1 已定义：
+
+semantic revision
+transaction digest
+
+不得因为 Sprint 2 加密而改变。
+
+以下不得进入 semantic revision：
+
+ciphertext
+AEAD nonce
+signature
+key epoch transport wrapper
+relay sequence
+retry number
+HTTP metadata
+
+因此：
+
+same SyncTransaction
+
+第一次加密：
+
+ciphertext A
+
+重试/合法重新封装：
+
+ciphertext B
+
+仍然必须指向：
+
+同一个 semantic transaction digest。
+
+==================================================
+10. SECURE ENVELOPE V1
+==================================================
+
+正式定义：
+
+SecureEnvelope v1
+
+至少考虑：
+
+protocol_version
+envelope_version
+opaque_project_id
+sender_device_id / opaque device handle
+membership_epoch
+key_epoch
+message_id
+semantic_transaction_digest
+parent / dependency references needed for routing
+ciphertext
+nonce / crypto parameters if required
+ciphertext_digest
+signature
+created / anti-replay metadata
+optional checkpoint reference
+
+注意：
+
+最小化 Relay metadata。
+
+科研字段：
+
+Parameter value
+Metric
+Observation
+filename
+Audit before/after
+Human Conclusion
+Evidence content
+
+默认必须在 ciphertext 内。
+
+
+Relay 不需要理解：
+
+Scientific Payload。
+
+==================================================
+11. SIGNATURE SCOPE
+==================================================
+
+Device signature 必须绑定所有会影响安全解释的字段。
+
+至少：
+
+envelope version
+project identity
+device identity
+membership epoch
+key epoch
+message ID
+semantic transaction digest
+ciphertext digest
+nonce / crypto context
+dependency references
+schema/protocol identity
+
+不能出现：
+
+攻击者替换 project_id
+但 signature 仍有效
+
+或：
+
+替换 key_epoch
+仍通过。
+
+建立明确：
+
+signature_preimage specification。
+
+==================================================
+12. AEAD AAD
+==================================================
+
+必须定义 AAD。
+
+AAD 至少绑定：
+
+project
+object / transaction context
+schema
+protocol
+key epoch
+message identity
+
+如果 metadata 被篡改：
+
+AEAD verification 或 signature verification
+
+必须失败。
+
+
+不要出现：
+
+ciphertext 从 Project A
+复制到 Project B
+
+仍能成功解密应用。
+
+==================================================
+13. CROSS-LANGUAGE CRYPTO VECTORS
+==================================================
+
+像 Sprint 1 canonical vectors 一样，
+
+Sprint 2 必须创建：
+
+Python ↔ TypeScript
+
+共享 crypto fixtures。
+
+
+至少覆盖：
+
+known private/public keys
+project key
+nonce
+plaintext canonical transaction
+AAD
+ciphertext
+signature
+wrapped project key
+verification result
+
+
+要求：
+
+Python encrypt
+→ TypeScript decrypt
+
+TypeScript encrypt
+→ Python decrypt
+
+Python sign
+→ TypeScript verify
+
+TypeScript sign
+→ Python verify
+
+
+不要让一端调用另一端实现。
+
+必须独立实现。
+
+==================================================
+14. DEVICE IDENTITY
+==================================================
+
+Device identity：
+
+persistent UUID
++
+Device Signing Public Key
++
+Device Encryption Public Key
+
+
+Device UUID 本身不能证明身份。
+
+
+Relay / clients 必须验证：
+
+registered public key
+signature
+membership epoch
+project membership
+
+==================================================
+15. DEVICE MEMBERSHIP
+==================================================
+
+建立：
+
+ProjectMembership
+
+至少：
+
+project
+device
+role
+membership_epoch
+status
+granted_at
+revoked_at
+granting_device / authority
+public key fingerprints
+
+
+状态：
+
+PENDING
+ACTIVE
+REVOKED
+
+
+旧 epoch 消息：
+
+不得作为 active mutation 自动接受。
+
+==================================================
+16. PAIRING PROTOCOL
+==================================================
+
+实现 QA pairing prototype。
+
+推荐体验仍按：
+
+Existing trusted device
+↓
+Add Device
+↓
+New device generates its own keys
+↓
+short-lived pairing challenge
+↓
+QR / pairing payload representation
+↓
+fingerprint / SAS confirmation
+↓
+trusted device grants selected project membership
+↓
+project key wrapped for new device
+↓
+signed membership grant
+↓
+audit
+
+
+Sprint 2 不需要真实摄像头扫码。
+
+可以：
+
+文本 QR payload
+terminal simulation
+test fixture
+
+但协议必须完整。
+
+==================================================
+17. PAIRING SECURITY
+==================================================
+
+Pairing challenge 必须：
+
+short-lived
+single-use
+rate-limited conceptually
+bound to recipient public key
+bound to pairing session
+anti-replay
+
+
+知道：
+
+username/password
+
+不得自动获得：
+
+Project Key。
+
+
+扫码本身：
+
+也不得等于无限授权。
+
+
+Human 必须能够确认：
+
+Device fingerprint
+Project scope
+Role
+
+==================================================
+18. PROJECT KEY DISTRIBUTION
+==================================================
+
+Project Key：
+
+客户端生成
+Relay 永远不知道 plaintext。
+
+
+新设备获得项目 key：
+
+只能由已授权设备 / recovery authority
+
+通过标准 authenticated key wrapping / HPKE-equivalent channel。
+
+Relay 只能保存：
+
+wrapped key material。
+
+
+必须测试：
+
+wrong device
+wrong public key
+wrong project
+wrong epoch
+
+无法 unwrap。
+
+==================================================
+19. MEMBERSHIP EPOCH
+==================================================
+
+Project Membership 维护：
+
+membership_epoch。
+
+
+撤销设备后：
+
+epoch 增加。
+
+
+旧设备随后提交：
+
+old membership epoch message
+
+必须：
+
+REJECT
+或
+QUARANTINE
+
+不能：
+
+根据 created_at 伪装成撤销前消息。
+
+
+created_at 不是 authority。
+
+==================================================
+20. KEY EPOCH
+==================================================
+
+Project Content Key 维护：
+
+key_epoch。
+
+
+设备撤销：
+
+至少旋转未来 Project Key epoch。
+
+
+明确现实边界：
+
+撤销不能：
+
+从旧设备内存/磁盘
+收回它过去已经解密的数据。
+
+
+不要声称：
+
+revocation erases historical knowledge。
+
+
+目标是：
+
+旧设备不能解密：
+
+new epoch content。
+
+==================================================
+21. REVOCATION TEST
+==================================================
+
+Synthetic scenario：
+
+Devices:
+
+A
+B
+C
+
+
+A/B active。
+
+
+B 被 revoke。
+
+
+之后：
+
+membership epoch ++
+project key epoch ++
+
+
+要求：
+
+A：
+可读取新数据
+
+C（后加入）：
+可读取授权范围
+
+B：
+不能提交新 accepted mutation
+不能解密新 epoch payload
+旧 epoch message 被拒绝/隔离
+
+B 过去已经获取的旧 plaintext：
+
+明确无法技术收回。
+
+==================================================
+22. RECOVERY MODEL
+==================================================
+
+Sprint 2 必须把 recovery 从设计变成 QA prototype。
+
+至少模拟：
+
+lost phone
+lost primary PC
+lost password
+new trusted device
+recovery kit
+
+
+要求：
+
+账号密码重置
+
+不得自动恢复 E2E project keys。
+
+
+Recovery kit：
+
+必须是高熵 material
+
+而不是：
+
+用户密码直接 derivation。
+
+
+具体 UX 不在 Sprint 2，
+但 key recovery path 要测试。
+
+==================================================
+23. TOTAL KEY LOSS
+==================================================
+
+如果：
+
+所有受信设备 private keys 丢失
++
+Recovery material 丢失
+
+结果必须明确：
+
+E2E DATA UNRECOVERABLE
+
+
+禁止加入：
+
+隐藏 server master key
+
+为了方便恢复。
+
+这会破坏整个安全模型。
+
+==================================================
+24. RELAY IMPLEMENTATION
+==================================================
+
+现在允许实现：
+
+真实网络 QA Relay。
+
+建议独立服务：
+
+apps/relay/
+或合理等价目录。
+
+
+Relay 与 Research Hub Domain API 必须分离。
+
+
+Relay 只负责：
+
+device/project membership public metadata
+opaque message storage
+ciphertext
+wrapped keys
+receipts
+relay sequence
+checkpoint metadata
+quotas
+retention metadata
+
+
+Relay 不得 import：
+
+Research Hub Domain decoder
+
+来读取科学 payload。
+
+
+Relay 不得拥有：
+
+decrypt transaction
+
+这种生产能力。
+
+==================================================
+25. RELAY DATABASE
+==================================================
+
+使用独立：
+
+QA PostgreSQL
+
+独立：
+
+database / role
+
+
+Relay DB 中只能出现：
+
+opaque / encrypted information。
+
+
+增加测试：
+
+直接 dump Relay tables
+
+搜索 synthetic canary plaintext：
+
+SYNTHETIC_SECRET_PRESSURE_1_600
+SYNTHETIC_HUMAN_CONCLUSION
+SYNTHETIC_FILENAME_SECRET
+等。
+
+
+结果必须：
+
+ZERO plaintext occurrence。
+
+
+如果出现：
+
+Gate FAIL。
+
+==================================================
+26. NETWORK API
+==================================================
+
+实现最小 Relay API。
+
+例如：
+
+POST /v1/hello
+
+POST /v1/messages
+
+GET /v1/messages?cursor=
+
+POST /v1/ack
+
+POST /v1/pairing/...
+
+POST /v1/membership/...
+
+具体接口可设计。
+
+
+要求：
+
+strict schemas
+body size limits
+batch limits
+timeouts
+idempotency
+no arbitrary query
+no arbitrary SQL
+no arbitrary file path
+
+==================================================
+27. HTTPS QA PROFILE
+==================================================
+
+即使 E2E 已保护内容，
+
+transport 仍应使用 TLS。
+
+
+Sprint 2 至少：
+
+定义 production HTTPS-only rule。
+
+
+本地 QA 可以：
+
+生成 ephemeral test CA/certificate
+仅 loopback
+不提交私钥
+
+实际运行 HTTPS integration test。
+
+
+不得：
+
+因为 E2E 就说 TLS 不需要。
+
+==================================================
+28. NO PUBLIC DEPLOYMENT
+==================================================
+
+Relay 只能：
+
+127.0.0.1
+Docker internal network
+isolated CI service
+
+不得：
+
+开放公网 port
+配置真实 DNS
+部署 VPS
+创建 cloud DB
+写真实生产 secret
+
+==================================================
+29. DURABLE ACK
+==================================================
+
+定义：
+
+Relay ACK
+
+只在：
+
+ciphertext + metadata + receipt state
+
+已经 durable commit 后返回。
+
+
+如果：
+
+Relay 收到消息
+但未 commit
+就 crash
+
+客户端必须：
+
+retry。
+
+
+如果：
+
+commit 已完成
+ACK 丢失
+
+客户端 retry：
+
+返回原 receipt
+
+不能复制 message。
+
+==================================================
+30. NETWORK FAILURE INJECTION
+==================================================
+
+至少测试：
+
+connection drop before request complete
+
+connection drop after body upload
+
+Relay crash before DB commit
+
+Relay crash after DB commit before ACK
+
+ACK lost
+
+duplicate POST
+
+duplicate GET
+
+partial page
+
+out-of-order client retry
+
+Relay restart
+
+database restart
+
+
+要求：
+
+已 durable ACK 的消息不丢。
+
+未 ACK：
+
+安全 retry。
+
+==================================================
+31. REPLAY PROTECTION
+==================================================
+
+区分：
+
+合法 retry
+
+与：
+
+恶意 replay。
+
+
+same message_id
+same bytes
+same signature
+
+→ idempotent receipt
+
+
+same message_id
+different bytes
+
+→ IDENTITY_COLLISION / reject
+
+
+old membership epoch
+
+→ reject/quarantine
+
+
+expired pairing challenge
+
+→ reject
+
+
+consumed pairing token replay
+
+→ reject
+
+==================================================
+32. MESSAGE ORDERING
+==================================================
+
+Relay sequence：
+
+只用于：
+
+transport ordering / cursor
+
+
+不得：
+
+作为 scientific conflict winner。
+
+
+Pull：
+
+完整 committed envelope
+page 不切 message
+cursor 连续
+gap 检测
+retry safe
+
+
+保持 Sprint 1：
+
+Relay cursor
+!=
+accepted scientific watermark
+
+==================================================
+33. RELAY CANNOT ACCEPT SCIENCE
+==================================================
+
+Relay 的：
+
+200 OK
+ACK
+STORED
+
+只表示：
+
+ciphertext durable stored。
+
+
+不能表示：
+
+scientific transaction ACCEPTED。
+
+
+真正：
+
+ACCEPTED
+CANDIDATE
+QUARANTINED
+
+仍由可信客户端：
+
+decrypt
+verify
+Sync Kernel
+
+之后决定。
+
+==================================================
+34. CHECKPOINT / ROLLBACK DETECTION
+==================================================
+
+恶意 Relay 可能：
+
+向设备返回旧 tail
+隐藏新 message。
+
+
+Sprint 2 必须实现最小：
+
+signed checkpoint / monotonic anchor
+
+
+已有设备：
+
+保存最后可信 checkpoint。
+
+
+如果 Relay：
+
+返回比已记住 checkpoint 更旧状态
+
+必须：
+
+ROLLBACK_DETECTED。
+
+
+不要依赖：
+
+wall clock。
+
+
+必须明确：
+
+单个设备无法完整证明 Relay 没有对另一设备做 split-view。
+
+
+如果完整 transparency / gossip：
+
+本 Sprint 不实现，
+
+必须如实记录：
+
+LIMITATION。
+
+==================================================
+35. SPLIT-VIEW LIMITATION
+==================================================
+
+不能声称：
+
+E2E automatically prevents Relay hiding updates。
+
+
+E2E 提供：
+
+confidentiality
+integrity
+authenticity
+
+但：
+
+availability
+message suppression
+split-view
+
+需要额外机制。
+
+
+Sprint 2：
+
+实现合理 rollback detection
+
+但完整 transparency gossip：
+
+可以保持 NOT IMPLEMENTED。
+
+==================================================
+36. SNAPSHOT SIGNING — MINIMAL
+==================================================
+
+Sprint 2 不做完整 Bootstrap Engine。
+
+但为后续 Sprint 3：
+
+定义并 prototype：
+
+signed encrypted snapshot manifest。
+
+
+至少：
+
+project
+snapshot cursor
+module snapshot hash
+key epoch
+object/state digest
+created_by trusted device
+signature
+
+
+Relay：
+
+只能存。
+
+不能伪造有效 snapshot。
+
+
+不用：
+
+真正同步 500k records。
+
+==================================================
+37. ARTIFACT CRYPTO PROTOTYPE
+==================================================
+
+Sprint 2 可以验证：
+
+small synthetic Artifact bytes。
+
+
+必须使用：
+
+chunked authenticated encryption
+
+或所选标准安全 streaming/chunk model。
+
+
+测试：
+
+multi-chunk
+wrong order
+missing chunk
+modified chunk
+wrong size
+wrong digest
+wrong key epoch
+retry
+
+
+不得：
+
+一次性把未来 10GB MAT
+全部读进内存
+
+作为正式设计。
+
+
+但：
+
+不接生产 MinIO / OPFS。
+
+==================================================
+38. ARTIFACT METADATA PRIVACY
+==================================================
+
+默认 Relay 不应看到：
+
+filename
+scientific category
+Run title
+experiment name
+
+这些应在 ciphertext。
+
+
+Relay 如必须知道：
+
+size
+chunk count
+opaque locator
+
+必须在 Threat Model 中列为：
+
+metadata leakage。
+
+
+不要声称：
+
+Relay knows nothing。
+
+==================================================
+39. QUOTAS AND ABUSE BOUNDARY
+==================================================
+
+即使个人系统，
+
+Relay 也必须限制：
+
+max envelope size
+max batch count
+max chunk size
+max pending bytes
+pairing attempts
+requests per time window
+
+防止：
+
+accidental upload
+resource exhaustion
+zip-bomb equivalent
+malicious paired client
+
+
+具体数字可先 QA conservative values。
+
+必须文档化。
+
+==================================================
+40. LOGGING HYGIENE
+==================================================
+
+Relay log：
+
+不得打印：
+
+ciphertext body
+plaintext
+wrapped key material
+private key
+recovery code
+authorization bearer secret
+
+日志只允许：
+
+request_id
+opaque project/device
+status
+size
+timing
+error code
+
+
+测试：
+
+log capture
+
+搜索 synthetic secrets。
+
+==================================================
+41. ERROR MODEL
+==================================================
+
+定义安全错误代码。
+
+例如：
+
+INVALID_SIGNATURE
+UNKNOWN_DEVICE
+REVOKED_DEVICE
+STALE_MEMBERSHIP_EPOCH
+UNKNOWN_KEY_EPOCH
+DECRYPT_FAILED
+AAD_MISMATCH
+IDENTITY_COLLISION
+REPLAY_REJECTED
+CURSOR_GAP
+ROLLBACK_DETECTED
+PAIRING_EXPIRED
+PAIRING_CONSUMED
+MESSAGE_TOO_LARGE
+
+对外错误：
+
+不要泄露：
+
+密钥是否存在
+具体 secret material
+内部 SQL。
+
+==================================================
+42. CLIENT SECURE TRANSPORT LAYER
+==================================================
+
+建立独立层：
+
+Semantic SyncTransaction
+        ↓
+Secure Envelope Client
+        ↓
+Network Transport
+        ↓
+Relay
+
+
+接收：
+
+Relay
+↓
+Verify Device / Envelope
+↓
+Decrypt
+↓
+Semantic Digest match
+↓
+Sync Kernel
+
+
+不能让：
+
+HTTP layer
+
+直接调用：
+
+Domain mutation
+
+而跳过：
+
+signature/decryption/kernel。
+
+==================================================
+43. SEMANTIC DIGEST VERIFICATION
+==================================================
+
+解密后：
+
+重新计算 Sprint 1：
+
+transaction_digest
+
+
+必须与 envelope 中：
+
+semantic_transaction_digest
+
+一致。
+
+
+否则：
+
+TAMPER / reject。
+
+
+不能：
+
+相信 sender 提供 digest。
+
+==================================================
+44. DOUBLE AUTHENTICATION MODEL
+==================================================
+
+明确：
+
+Layer 1
+Device cryptographic identity
+
+Layer 2
+Research Hub principal / Human-AI scientific authority
+
+
+设备合法：
+
+不代表：
+
+拥有 Human authority。
+
+
+例如：
+
+Codex 在合法 PC 上：
+
+signature valid
+
+仍然不能：
+
+Evidence validated
+Gate passed
+Human Conclusion final
+
+==================================================
+45. HUMAN GRANT
+==================================================
+
+Sprint 2 不要求实现真实 browser user-presence。
+
+Sprint 1 mock Human Grant：
+
+继续使用。
+
+
+但是：
+
+Secure Envelope
+
+不得提升 grant 权限。
+
+
+未来真实 user-presence：
+
+留 Sprint 3/4 专门验收。
+
+==================================================
+46. CHATGPT
+==================================================
+
+Sprint 2：
+
+不要连接 ChatGPT。
+
+
+继续保留：
+
+Trusted Client Bridge
+
+为默认未来模型。
+
+
+绝对禁止：
+
+为了让 ChatGPT 离线访问
+
+把 Project Key 上传 Relay。
+
+
+AI-readable Projection：
+
+仍不实现。
+
+==================================================
+47. CODEX
+==================================================
+
+Codex：
+
+继续使用本地 MCP。
+
+
+Sprint 2 不改变：
+
+Codex
+→ Local Research Hub
+
+
+未来本地 Sync Client：
+
+会将 Codex 产生的 ChangeSet
+
+加密后推 Relay。
+
+
+本轮不改 Codex MCP contract，
+除非为了测试增加完全隔离的 adapter。
+
+==================================================
+48. RELAY RETENTION
+==================================================
+
+Sprint 2 实现最小 retention metadata：
+
+retain_until_ack
+
+不要立即实现：
+
+7-day hard delete
+30-day hard delete
+
+
+规则：
+
+没有证明存在安全副本时：
+
+不得因为时间到自动删唯一 ciphertext。
+
+
+删除策略：
+
+后续 Sprint 再接真实设备 ACK / backup policy。
+
+==================================================
+49. ACK SEMANTICS
+==================================================
+
+区分：
+
+Relay Stored
+
+Device Received
+
+Device Decrypted
+
+Kernel Applied
+
+Scientific Accepted
+
+Artifact Durable on Primary
+
+
+不能统一成一个：
+
+synced=true。
+
+
+未来 UI 需要这些状态。
+
+本 Sprint API/模型必须能表达。
+
+==================================================
+50. RECOVERY FROM CORRUPTION
+==================================================
+
+测试：
+
+corrupt ciphertext
+corrupt wrapped key
+corrupt checkpoint
+wrong snapshot signature
+partial artifact chunk
+
+结果：
+
+QUARANTINE / ERROR
+
+而不是：
+
+fallback plaintext
+ignore signature
+skip bad chunk
+继续 accepted。
+
+==================================================
+51. CRYPTO FAILURE MUST FAIL CLOSED
+==================================================
+
+以下情况全部：
+
+FAIL CLOSED
+
+signature verification error
+AEAD auth error
+unknown key epoch
+revoked device
+invalid membership
+invalid canonical envelope
+unsupported protocol
+unknown cipher suite
+
+
+禁止：
+
+“为了兼容旧客户端先跳过校验”。
+
+==================================================
+52. DOWNGRADE PROTECTION
+==================================================
+
+Envelope 必须绑定：
+
+protocol version
+crypto suite version
+
+
+客户端不能接受：
+
+攻击者强制降级到：
+
+unsigned
+unencrypted
+旧弱 suite
+
+
+测试：
+
+version downgrade
+
+必须拒绝。
+
+==================================================
+53. TEST MATRIX
+==================================================
+
+至少覆盖：
+
+CASE A
+Python encrypt → TS decrypt
+
+CASE B
+TS encrypt → Python decrypt
+
+CASE C
+Python sign → TS verify
+
+CASE D
+TS sign → Python verify
+
+CASE E
+ciphertext bit flip → reject
+
+CASE F
+AAD project changed → reject
+
+CASE G
+semantic digest changed → reject
+
+CASE H
+signature changed → reject
+
+CASE I
+wrong recipient cannot unwrap project key
+
+CASE J
+pair new device successfully
+
+CASE K
+pairing replay rejected
+
+CASE L
+expired pairing rejected
+
+CASE M
+revoked device cannot submit
+
+CASE N
+revoked device cannot decrypt new epoch
+
+CASE O
+old plaintext remains known to revoked device
+documented limitation
+
+CASE P
+re-encryption preserves semantic revision
+
+CASE Q
+duplicate network push → same receipt
+
+CASE R
+same message ID / different content → reject
+
+CASE S
+Relay crash before commit → retry works
+
+CASE T
+Relay commit + ACK loss → retry returns original receipt
+
+CASE U
+Relay restart preserves ACKed ciphertext
+
+CASE V
+cursor gap detected
+
+CASE W
+old checkpoint rollback detected
+
+CASE X
+Relay DB plaintext canary scan = zero hits
+
+CASE Y
+Relay logs plaintext/key canary scan = zero hits
+
+CASE Z
+artifact chunk tamper / order / missing chunk detected
+
+Additional:
+
+nonce restart
+parallel encryption
+key rotation
+wrong key epoch
+unsupported suite
+downgrade attempt
+malformed envelope
+oversized envelope
+rate-limit/pairing abuse
+recovery kit
+total key loss
+snapshot signature failure
+
+==================================================
+54. PROPERTY / FUZZ TESTING
+==================================================
+
+继续使用成熟 property testing。
+
+至少验证：
+
+encrypt/decrypt roundtrip
+cross-language fixture stability
+signature verification determinism
+nonce uniqueness under generated sequences
+message idempotency
+random network retry
+malformed envelope rejection
+random ciphertext mutation always rejects
+chunk permutation detection
+
+
+禁止自行写：
+
+看似随机但不可复现的测试。
+
+==================================================
+55. RELAY RESTART TEST
+==================================================
+
+实际：
+
+start relay
+push encrypted batch
+receive durable ACK
+stop relay container/process
+restart relay
+pull same batch
+
+
+必须：
+
+same ciphertext
+same receipt identity
+same relay sequence semantics
+
+
+Relay restart：
+
+不能需要 Project Key。
+
+==================================================
+56. DB INSPECTION TEST
+==================================================
+
+测试程序必须直接检查：
+
+Relay PostgreSQL
+Relay persisted files
+Relay logs
+
+
+搜索全部 synthetic plaintext markers。
+
+
+例如：
+
+SYNTHETIC_SECRET_PRESSURE_1_600
+SYNTHETIC_PRIVATE_NOTE
+SYNTHETIC_HUMAN_CONCLUSION
+SYNTHETIC_SECRET_FILENAME_MAT
+
+
+必须：
+
+0 plaintext occurrence
+
+
+注意：
+
+ciphertext/base64 出现当然允许。
+
+==================================================
+57. SECURITY GATES
+==================================================
+
+Sprint 2 最终必须全部 PASS：
+
+GATE 1 — Crypto Interoperability
+
+Python ↔ TypeScript
+encrypt/decrypt/sign/verify
+完全互操作。
+
+
+GATE 2 — Relay Confidentiality
+
+Relay DB/files/logs
+无科研 plaintext
+无 project plaintext key
+无 private device key。
+
+
+GATE 3 — Envelope Integrity
+
+任何安全相关字段/ciphertext 被篡改
+均 fail closed。
+
+
+GATE 4 — Replay & Epoch Safety
+
+retry 可幂等
+恶意 replay / stale membership / wrong key epoch
+不能 accepted。
+
+
+GATE 5 — Device Lifecycle
+
+pair
+grant project
+revoke
+rotate
+recover
+
+行为与设计一致。
+
+
+GATE 6 — Network Durability
+
+commit/ACK/crash/restart/retry
+不丢 durable message
+不重复业务语义。
+
+
+GATE 7 — Nonce Safety
+
+同 key nonce reuse
+在支持的并发/重启模型下不可发生。
+
+
+GATE 8 — Rollback Detection
+
+已有设备能检测明显旧 checkpoint / rollback。
+
+
+任何一项 FAIL：
+
+Sprint 2 不得标记 complete。
+
+==================================================
+58. CI
+==================================================
+
+新增独立：
+
+secure-relay-qa
+
+CI Job。
+
+
+使用：
+
+ephemeral QA PostgreSQL
+ephemeral keys
+loopback Relay
+
+不得：
+
+使用仓库 secret 作为科研 key。
+
+
+CI 必须：
+
+生成临时 key
+测试
+销毁。
+
+
+现有：
+
+frontend
+backend
+sync-kernel-qa
+
+继续 PASS。
+
+==================================================
+59. CODE ORGANIZATION
+==================================================
+
+建议：
+
+apps/relay/
+    main.py
+    models.py
+    storage.py
+    membership.py
+    protocol.py
+
+apps/api/researchhub/sync/secure/
+    envelope.py
+    keys.py
+    crypto.py
+    client.py
+    checkpoints.py
+    artifacts.py
+
+packages/secure-sync/
+    envelope.ts
+    crypto.ts
+    keys.ts
+
+fixtures/sync/secure-v1/
+
+tests/secure_sync/
+tests/relay/
+
+具体路径可按代码库调整。
+
+
+要求：
+
+Crypto
+Transport
+Relay
+Domain Kernel
+
+四层边界清晰。
+
+==================================================
+60. DO NOT MODIFY PRODUCTION DB
+==================================================
+
+继续禁止：
+
+个人 PostgreSQL migration
+个人 MinIO migration
+个人科研数据 conversion
+
+
+Relay 可拥有自己的：
+
+QA migration/schema。
+
+
+Sync Kernel 的：
+
+production accepted-query migration
+
+继续延后。
+
+==================================================
+61. NO REAL MOBILE YET
+==================================================
+
+Sprint 2 禁止：
+
+真实 IndexedDB sync engine
+真实 OPFS sync
+Android PWA pairing
+相机
+background sync
+手机实验数据
+
+
+可以：
+
+TypeScript Secure Client Library
+
+但运行于：
+
+Node test environment
+
+即可。
+
+==================================================
+62. NO CLOUD DEPLOYMENT
+==================================================
+
+禁止：
+
+AWS
+Azure
+GCP
+Cloudflare
+VPS
+public tunnel
+public DNS
+public OAuth callback
+
+
+所有网络验收：
+
+local only。
+
+==================================================
+63. DOCUMENTATION
+==================================================
+
+新增：
+
+docs/sync/SPRINT_2_SECURITY_DELTA.md
+docs/sync/SYNC_SECURE_ENVELOPE.md
+docs/sync/SYNC_KEY_LIFECYCLE.md
+docs/sync/SYNC_PAIRING.md
+docs/sync/SYNC_RELAY.md
+docs/sync/SYNC_CHECKPOINTS.md
+docs/sync/CRYPTO_LIBRARY_REVIEW.md
+docs/sync/SPRINT_2_REPORT.md
+
+
+更新：
+
+SYNC_SECURITY_MODEL.md
+SYNC_PROTOCOL.md
+SYNC_STATE_MACHINE.md
+SYNC_FAILURE_RECOVERY.md
+SYNC_TEST_PLAN.md
+SYNC_DECISIONS.md
+
+==================================================
+64. NEW ADR
+==================================================
+
+至少：
+
+ADR-016
+Production Crypto Suite
+
+ADR-017
+Secure Envelope v1
+
+ADR-018
+Nonce Strategy
+
+ADR-019
+Device Membership & Epoch
+
+ADR-020
+Project Key Rotation
+
+ADR-021
+Trusted Pairing
+
+ADR-022
+Relay Durability Boundary
+
+ADR-023
+Checkpoint / Rollback Detection
+
+ADR-024
+Recovery Kit
+
+ADR-025
+Artifact Encryption Framing
+
+==================================================
+65. SECURITY REVIEW
+==================================================
+
+完成实现后必须单独做：
+
+Security Review
+
+
+检查：
+
+key leakage
+log leakage
+plaintext in DB
+nonce reuse
+replay
+signature scope
+AAD scope
+downgrade
+revoked device
+pairing replay
+recovery bypass
+unsafe error handling
+secret in Git diff
+
+
+发现问题：
+
+先写 RED regression
+再修复
+再全量测试。
+
+
+不能只做代码风格 review。
+
+==================================================
+66. SECRET SCAN
+==================================================
+
+提交前检查：
+
+git diff
+tracked files
+fixtures
+logs
+test output
+
+不得包含：
+
+private keys
+recovery secrets
+real tokens
+real credentials
+real user data
+
+固定 crypto vectors：
+
+只能使用公开、明确标记 TEST ONLY 的 deterministic keys。
+
+不能误导为生产 key。
+
+==================================================
+67. PERFORMANCE
+==================================================
+
+本 Sprint 不做复杂性能优化。
+
+但记录：
+
+encrypt latency
+decrypt latency
+signature verify
+100-envelope push
+100-envelope pull
+small chunk artifact encryption
+
+
+重点确认：
+
+没有明显无法使用的开销。
+
+
+不要为了速度：
+
+关闭签名
+减少验证
+复用危险 nonce。
+
+==================================================
+68. SPRINT 2 REPORT
+==================================================
+
+最终创建：
+
+docs/sync/SPRINT_2_REPORT.md
+
+
+明确分类：
+
+IMPLEMENTED IN SECURE QA
+
+CROSS-LANGUAGE VERIFIED
+
+NETWORK VERIFIED
+
+SECURITY TESTED
+
+DESIGNED ONLY
+
+NOT IMPLEMENTED
+
+BLOCKED
+
+
+至少报告：
+
+1. Selected crypto libraries
+
+2. Selected crypto suite
+
+3. Secure Envelope
+
+4. Signature preimage
+
+5. AEAD/AAD
+
+6. Nonce strategy
+
+7. Device keys
+
+8. Project keys
+
+9. Membership epochs
+
+10. Key epochs
+
+11. Pairing
+
+12. Revocation
+
+13. Recovery
+
+14. Relay implementation
+
+15. Relay DB privacy
+
+16. HTTPS QA
+
+17. Replay handling
+
+18. Durable ACK
+
+19. Restart recovery
+
+20. Checkpoint rollback detection
+
+21. Artifact crypto prototype
+
+22. Cross-language results
+
+23. Fault injection
+
+24. CI
+
+25. Performance
+
+26. Known limitations
+
+27. Threats not solved
+
+28. Existing Sprint 1 regression
+
+29. Security review findings
+
+30. Proposed Sprint 3 scope
+
+==================================================
+69. HONEST LIMITATIONS
+==================================================
+
+Sprint 2 报告必须明确：
+
+E2E 不解决：
+
+compromised trusted endpoint
+XSS on trusted client
+malware reading plaintext
+user intentionally sharing plaintext
+denial of service
+Relay dropping all messages
+historical plaintext already held by revoked device
+
+如果：
+
+split-view 完整防护
+key transparency
+hardware-backed keys
+real browser vault
+real user-presence
+
+没有实现：
+
+明确写：
+
+NOT IMPLEMENTED。
+
+
+不得写：
+
+“完全安全”
+“零信任安全已完成”
+“不可破解”
+
+==================================================
+70. STOP CONDITION
+==================================================
+
+完成 Sprint 2 后：
+
+STOP。
+
+
+不要自动开始：
+
+Sprint 3 mobile/client integration。
+
+
+不要：
+
+生产 migration
+真实科研同步
+手机部署
+公网部署
+ChatGPT Remote MCP
+
+
+等待人工审查。
+
+
+最终输出：
+
+Research Hub v0.3 Sprint 2 — Secure Relay & E2E Transport complete.
+
+
+并给出八项 Gate：
+
+Crypto Interoperability
+Relay Confidentiality
+Envelope Integrity
+Replay & Epoch Safety
+Device Lifecycle
+Network Durability
+Nonce Safety
+Rollback Detection
+
+每项：
+
+PASS / FAIL
+
+
+任何 FAIL：
+
+Sprint 2 overall = FAIL。
+
+==================================================
+71. WORKING METHOD
+==================================================
+
+严格按：
+
+READ
+→ SECURITY DESIGN DELTA
+→ CRYPTO LIBRARY REVIEW
+→ TEST VECTORS
+→ RED TEST
+→ CRYPTO LAYER
+→ PAIRING / KEY LIFECYCLE
+→ RELAY
+→ NETWORK FAULT INJECTION
+→ DB/LOG PLAINTEXT INSPECTION
+→ CROSS-LANGUAGE TEST
+→ SECURITY REVIEW
+→ REGRESSION
+→ REPORT
+→ STOP
+
+
+安全问题出现时：
+
+不要通过放宽规则使测试通过。
+
+例如禁止：
+
+signature 难做
+→ 暂时不签名
+
+nonce 重启难做
+→ timestamp nonce
+
+设备撤销复杂
+→ Relay 只看 created_at
+
+ChatGPT 以后要访问
+→ 把 Project Key 放服务器
+
+恢复困难
+→ 偷藏 server recovery key
+
+这些都会直接导致 Sprint 2 FAIL。
+
+==================================================
+72. START
+==================================================
+
+现在开始：
+
+1. 确认 branch 为 codex/researchhub-v0.3；
+2. 核对 Sprint 1 HEAD 与 CI；
+3. 阅读所有 sync 文档和 Kernel；
+4. 写 SPRINT_2_SECURITY_DELTA；
+5. 完成 CRYPTO_LIBRARY_REVIEW；
+6. 冻结 crypto suite；
+7. 建立 Python/TypeScript crypto fixtures；
+8. 实现 SecureEnvelope；
+9. 实现 device/project key lifecycle；
+10. 实现 QA trusted pairing；
+11. 实现 revocation + epoch rotation；
+12. 实现 local network QA Relay；
+13. 实现 durable ACK / cursor / restart；
+14. 实现 checkpoint rollback detection；
+15. 实现 small synthetic artifact crypto；
+16. 执行 plaintext canary inspection；
+17. 执行 network fault injection；
+18. 执行独立 security review；
+19. 运行 Sprint 0/1 与 v0.2 regression；
+20. 输出 SPRINT_2_REPORT.md；
+21. STOP。
+
+不得提前进入 Sprint 3。

@@ -2,6 +2,26 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-012 — 2026-10-07 — Sprint 2 安全设计与密码库 gate
+
+### 完成内容
+
+- 保存Secure Relay完整72节需求、实施计划、安全设计增量、标准密码库官方调查与SecureEnvelope契约；新增ADR016–025，不修改Sprint1 canonical identity和科研权限规则。
+- 独立设计审查修订membership旧状态授权/CAS、recovery可信anchor、旧epoch历史隔离、client cursor/Kernel原子提交、nonce witness严格恢复与pairing持久幂等；明确recovery唯一authority例外。
+- npm实际查询core1.9.0/MIT/common^1.10.0，选cryptography50.0.2/WebCrypto/HPKE标准组合；无自研primitive，不把HPKE Base称sender认证。
+
+### 验证结果
+
+- 独立安全设计最终PASS；这是设计审查，不是密码/网络验收。
+- 本轮开始前Sprint1 HEAD334e6c0与远端/CI success核对一致；main/v0.2.0保持4a4db4a。
+- 实际Relay专用QA PostgreSQL17.11/loopback35434已启动并核对DB/role；其启动脚本待后续Relay迭代提交。
+- crypto/interop/nonce/TLS/fault本提交尚未验收，正在实现，八项最终gate均未声明PASS。
+
+### 遗留事项
+
+- 完成双语言crypto、设备生命周期、真实HTTPS Relay、故障/隐私/property验收及独立实现安全审查。
+- 本提交只包含设计文档；完整Sprint2尚未完成。无生产migration、真实科研传输或Sprint3。
+
 ## RH-011 — 2026-10-07 — Sprint 1 QA Sync Protocol Kernel
 
 ### 完成内容

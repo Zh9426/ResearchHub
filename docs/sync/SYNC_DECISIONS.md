@@ -189,3 +189,74 @@
 **Implementation evidence**：数据库 append-only trigger、复合父引用 FK/声明 trigger 已实测；immutable Outbox.action_digest 绑定本地来源命令，拒绝同 ID 改动作。received cursor 与当前事务状态分离，已完整审查的旧批次 SUPERSEDED 可通过判定水位，旧派生依赖不会自动追认。
 
 **Open Questions**：快照压缩、历史保留与生产projection迁移；Sprint1不部署这些机制。
+
+## ADR-016 — Production Crypto Suite（Sprint 2选型，Secure QA实现范围）
+
+**Context**：两语言互操作须采用维护的标准实现，不能自行编写曲线/KDF/AEAD。
+**Options**：原生cryptography+WebCrypto/hpke-js；PyHPKE；libsodium匿名sealed-box。
+**Decision**：cryptography50.0.2 / NodeWebCrypto / @hpke/core精确1.9.0，AES256GCM正文、Ed25519签名、RFC9180 Base X25519/HKDFSHA256/AES256GCM wrap；Base来源另由trusted authority签名绑定。Artifact DEK使用AESKW。来源与历史公告见CRYPTO_LIBRARY_REVIEW。
+**Consequences**：两端独立vectors/wrap/unwrap，lockfile审查；不宣称整体外部审计或生产部署。旧core并发nonce公告要求patched version且fresh one-shot context。
+**Open Questions**：实体browser支持、hardware-backed keys与真实endpoint安全留待另审。
+
+## ADR-017 — Secure Envelope
+
+**Context**：Relay不能读研究payload或替换metadata，transport rewrap不可改变revision identity。
+**Decision**：严格版本/字段的完整envelope，canonical header作为AEAD AAD，去signature的整个envelope作为domain-separated Ed签名preimage。ciphertext digest、project/device/epochs/message/dependencies/nonce/checkpoint全部绑定；解密后canonical与semantic digest/identity再验证。
+**Consequences**：metadata关联/size/time仍泄漏；新wrapper ID/nonce不变更semantictransaction。unknown/malformed/downgrade fail closed，无plaintext fallback。
+**Open Questions**：未来协议演进须新version，而非放宽v1。
+
+## ADR-018 — Nonce Uniqueness Strategy
+
+**Context**：共享project key、多设备并发/重启不能重复AESGCM nonce。
+**Decision**：authority签名不复用uint32 prefix + uint64 counter（wire上限safeint）；SQLite BEGIN IMMEDIATE/FULL与独立fsync witness，reserve→witness fsync→commit→encrypt。首次explicit newkey注册，全部状态不一致fail closed并要求rotate。
+**Consequences**：crash可以产生gap或停止旧key写入；Python/Node共享ledger实际并行测试，合法retry缓存原envelope。支持正常crash/单ledger回滚检测，不支持恶意同时回滚全部trusted材料；备份恢复须rotate。
+**Open Questions**：生产安全vault/monotonic hardware尚未实现。
+
+## ADR-019 — Membership Epoch
+
+**Context**：签名本身不证明当前权限；候选manifest不能自授权。
+**Decision**：本地pin完整manifest/root/history；transition由previous ACTIVE owner验证，previousdigest CAS，membershipepoch精确+1；公钥不悄悄替换，revoked/prefix历史不可删除，同epoch异digest报fork。
+**Consequences**：PENDING无keys、reader无mutation、writer无membership变更；Relay publicregistry不能赋予Human权限。新push只current，已stored旧epoch transport quarantine且不入Kernel。
+**Open Questions**：完整key transparency/gossip为NOT IMPLEMENTED。
+
+## ADR-020 — Key Epoch Rotation
+
+**Context**：撤销后的futureciphertext不得被持有旧key的设备读取。
+**Decision**：revocation/recovery同时membership+1/key+1，fresh随机projectkey只HPKE wrap给仍ACTIVE收件人，authority签名绑定recipient/context/wrappedbytes。
+**Consequences**：旧设备过去明文/旧key不能回收；created_at不恢复权限，合法re-encryption新nonce但原semanticidentity。
+**Open Questions**：保留旧keys的用户政策与完整长期存储预算待审。
+
+## ADR-021 — Trusted Pairing
+
+**Context**：登录不能自动得到E2E projectkey，新root不能从hostile Relay取得。
+**Decision**：5分钟单次challenge绑定session/project/recipient两公钥/fingerprint/SAS/role，recipient possession proof与明确人工scope确认；trustedclient同事务消费challenge/保存transition/grant，exactretry返originalreceipt、changedretry拒绝，撤销后不再返receipt。
+**Consequences**：QA文本QR/SAS是真签名密钥协议测试，不冒充实体相机或真实user-presence；科研审批grant仍是Sprint1mock。
+**Open Questions**：跨设备实际UX留待Sprint3人工批准。
+
+## ADR-022 — Relay Durability
+
+**Context**：HTTP200不等于科研accepted，ACK前crash不能遗留半消息。
+**Decision**：独立QA PG原子保存完整密文/metadata/seq/receipt，synccommit后RelayStored ACK。同ID同bytes返原receipt、异bytes拒绝；client outerreceipt/cursor/chain和Kernel apply_in_session同事务，innerseq自动分配。
+**Consequences**：RelayStored/DeviceReceived/Decrypted/KernelApplied/ScientificAccepted/ArtifactPrimaryDurable分开；retain_until_ack仅metadata，无GC；实际HTTPS/socket/process/PGrestart故障测试才算network evidence。
+**Open Questions**：跨故障域备份/productionops未验收。
+
+## ADR-023 — Checkpoint and Rollback
+
+**Context**：有合法签名的旧数据仍可能是Relay回滚。
+**Decision**：client持久cursor/chain与trusteddevice签名checkpoint；oldercursor、samecursor异chain、缺页/伪造签名拒绝。manifest/snapshot含project/cursor/modulehash/keyepoch/statedigest/creator并签名加密。
+**Consequences**：检测明显回滚，不靠wallclock；新device依赖trustedpair提供anchor，单设备无法证明未锚定消息未隐藏。split-view/gossip/transparency NOT IMPLEMENTED；无fullbootstrap。
+**Open Questions**：长期透明日志设计另审。
+
+## ADR-024 — Recovery Model
+
+**Context**：passwordreset不能重建E2E钥匙，recoverysecret不能证明最新state。
+**Decision**：高熵kit私钥+bootstrap pre-pinned recovery authority+持久最新manifest/checkpointanchor；验证连续链再授权newdevice/rotate。仅operation=recovery允许由已锚定recovery signing key替代旧ACTIVE owner，parent/CAS和两epoch精确+1，显式新recipient为owner/ACTIVE、全部旧成员REVOKED并保留prefix历史，候选manifest/Relay不得新增root。可信anchor缺失 RECOVERY_FRESHNESS_UNVERIFIABLE；全部keys丢失 E2E_DATA_UNRECOVERABLE，无servermaster。
+**Consequences**：需保持kit可信状态新鲜，旧kit/全部trustedstate同时回滚有明确局限；已知明文不可遗忘。
+**Open Questions**：真实用户kit备份/恢复UX尚未实施。
+
+## ADR-025 — Artifact Crypto Frame
+
+**Context**：文件内容和filename不应泄漏到Relay，未来10GB不能全读进RAM。
+**Decision**：每artifact独立DEK、≤64KiB AESGCM chunks与context/index/count/size AAD；DEK由AESKW wrap位于签名加密manifest，filename/category/run/title、总size/hash在manifest内。
+**Consequences**：bounded iterable/sink prototype验证错序/缺块/重复/tag/hash/size/epoch/retry；无生产MinIO/OPFS/10GB实测，不把明文checksum去重称无关联泄漏。
+**Open Questions**：大文件cache/primarydurability集成留待另审。
