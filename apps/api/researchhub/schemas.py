@@ -2,7 +2,9 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from .provenance import git_branch, github_link, same_repository
 
 EvidenceState = Literal[
     "proposed",
@@ -74,6 +76,12 @@ class ProjectInput(Input):
     current_stage: str | None = None
     current_objective: str = ""
     enabled_capabilities: list[str] | None = None
+    repository: str | None = Field(default=None, max_length=500)
+
+    @field_validator("repository")
+    @classmethod
+    def repository_link(cls, value):
+        return github_link(value)
 
 
 class TaggedInput(Input):
@@ -137,11 +145,49 @@ class RunInput(TaggedInput):
     environment: str = ""
     software_version: str = ""
     code_revision: str = ""
+    repository: str | None = Field(default=None, max_length=500)
+    branch: str | None = Field(default=None, max_length=255)
+    commit_sha: str | None = Field(default=None, pattern=r"^[a-fA-F0-9]{40}$")
+    issue_url: str | None = Field(default=None, max_length=500)
+    pull_request_url: str | None = Field(default=None, max_length=500)
     changes_from_parent: str = ""
     started_at: datetime | None = None
     completed_at: datetime | None = None
     context_data: dict[str, Any] = Field(default_factory=dict)
     artifact_ids: list[UUID] = Field(default_factory=list, max_length=100)
+
+    @field_validator("repository", "issue_url", "pull_request_url")
+    @classmethod
+    def code_links(cls, value, info):
+        kind = {
+            "repository": "repository",
+            "issue_url": "issue",
+            "pull_request_url": "pull",
+        }[info.field_name]
+        return github_link(value, kind)
+
+    @field_validator("branch")
+    @classmethod
+    def branch_name(cls, value):
+        return git_branch(value)
+
+    @field_validator("commit_sha")
+    @classmethod
+    def lowercase_sha(cls, value):
+        return value.lower() if value else None
+
+    @model_validator(mode="after")
+    def code_links_match(self):
+        if not all(
+            same_repository(self.repository, link)
+            for link in (self.issue_url, self.pull_request_url)
+        ):
+            raise ValueError("Issue/PR 必须属于 Run 代码来源仓库")
+        return self
+
+
+class ArtifactRegisterInput(Input):
+    file_id: UUID
 
 
 class HighlightInput(Input):

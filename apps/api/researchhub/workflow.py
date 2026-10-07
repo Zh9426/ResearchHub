@@ -124,7 +124,11 @@ def filter_values(value):
 
 
 def collection_statement(db, actor, pid, kind, params):
-    svc.project_for(db, actor, pid)
+    project = svc.project_for(db, actor, pid)
+    if params.get("active_only") == "true" and (
+        project.archived_at or project.status == "archived"
+    ):
+        raise HTTPException(404, "活动项目不存在")
     cls = QUERY_COLLECTIONS.get(kind)
     if cls is None:
         raise HTTPException(404, "记录集合不存在")
@@ -374,6 +378,14 @@ def clone_run(db, actor, request, rid, payload, modules):
             data[field] = getattr(parent, field)
     allowed_context = set()
     if payload.inherit_code:
+        for field in (
+            "repository",
+            "branch",
+            "commit_sha",
+            "issue_url",
+            "pull_request_url",
+        ):
+            data[field] = getattr(parent, field)
         allowed_context.update({"repository", "branch", "commit", "config"})
     if payload.inherit_environment:
         allowed_context.add("environment_conditions")
@@ -506,7 +518,13 @@ def install_workflow(app, actor_dep, db_dep, objects):
         return CAPABILITIES
 
     @app.get("/api/projects/{pid}/summary")
-    def summary(pid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
+    def summary(
+        pid: UUID, request: Request, actor=Depends(actor_dep), db=Depends(db_dep)
+    ):
+        if request.query_params.get("format") == "page":
+            from .connected import summary_page
+
+            return summary_page(db, actor, str(pid), dict(request.query_params))
         return project_summary(db, actor, str(pid))
 
     @app.get("/api/projects/{pid}/{kind}/query")
@@ -654,6 +672,7 @@ def install_workflow(app, actor_dep, db_dep, objects):
             conditions = [
                 m.Project.owner_id == actor.user.id,
                 *svc.visible_records(m.Project),
+                m.Project.status != "archived",
                 *svc.visible_records(cls),
                 text_filter(cls, q[:300]),
             ]

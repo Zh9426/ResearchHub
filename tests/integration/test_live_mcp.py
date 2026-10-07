@@ -21,7 +21,7 @@ async def exercise(url, token, project_id, writable):
     )
     async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
         await session.initialize()
-        assert len((await session.list_tools()).tools) == 9
+        assert len((await session.list_tools()).tools) == 21
         projects = await session.call_tool("get_projects", {})
         assert not projects.isError and project_id in str(projects)
         note = await session.call_tool("create_note", {

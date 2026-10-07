@@ -7,6 +7,7 @@ from .modules import Manifest
 from .schemas import (
     SCHEMAS,
     ActivityClearInput,
+    ArtifactRegisterInput,
     BundleManifest,
     CloneInput,
     HighlightInput,
@@ -24,6 +25,7 @@ def main():
         "module-manifest": Manifest,
         "run-highlight": HighlightInput,
         "run-clone": CloneInput,
+        "artifact-register": ArtifactRegisterInput,
         "parameters-batch": ParametersBatch,
         "metrics-batch": MetricsBatch,
         "activity-clear": ActivityClearInput,

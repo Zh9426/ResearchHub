@@ -22,6 +22,7 @@ import {moduleNavigation} from '@/lib/module-ui';
 import {Lineage} from './lineage';
 import {Traceability} from './traceability';
 import {QuickCapture} from './quick-capture';
+import {ProjectRepository} from './code-provenance';
 export function ProjectWorkspace({id,tab='overview',onProjectsChange}:{id:string;tab?:string;onProjectsChange:()=>void}){
  const summary=useData<ProjectSummary>(`/projects/${id}/summary`);
  const collections='tags,'+(tab==='research'?'questions,hypotheses,risks,sources':tab==='evidence'?'runs,evidence,claims,sources,artifacts':tab==='tasks'?'milestones':tab==='notes'||tab==='decisions'?'runs,evidence':tab==='workflow'?'gates,evidence':tab==='compare'?'runs':'runs,artifacts,evidence');
@@ -46,7 +47,7 @@ export function ProjectWorkspace({id,tab='overview',onProjectsChange}:{id:string
  else if(tab==='decisions')content=resource('decisions',"决策");
  else if(tab==='files')content=resource('artifacts','文件');
  else if(tab==='workflow')content=<Workflow context={context} onChange={result.refresh}/>;
- else if(tab==='manage')content=<><CapabilitySettings project={project} onChange={refresh}/>{resource('tags','项目标签')}<DataManagement project={project} onChange={()=>{refresh();onProjectsChange();}}/></>;
+ else if(tab==='manage')content=<><ProjectRepository project={project} onChange={()=>{refresh();onProjectsChange();}}/><CapabilitySettings project={project} onChange={refresh}/>{resource('tags','项目标签')}<DataManagement project={project} onChange={()=>{refresh();onProjectsChange();}}/></>;
  else if(tab==='timeline')content=<ActivityBrowser projectId={id}/>;
  else if(tab==='transfer')content=<ProjectTransfer projectId={id}/>;
  else content=<DomainView key={`${id}-${tab}-${module.version}`} id={tab} context={context}/>;

@@ -93,6 +93,7 @@ class Project(Lifecycle, Record, Base):
     current_stage: Mapped[str | None] = mapped_column(String(100), nullable=True)
     current_objective: Mapped[str] = mapped_column(Text, default="")
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+    repository: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class ProjectRecord(Lifecycle, Record):
@@ -164,6 +165,11 @@ class ResearchRun(ProjectRecord, Base):
     environment: Mapped[str] = mapped_column(Text, default="")
     software_version: Mapped[str] = mapped_column(String(200), default="")
     code_revision: Mapped[str] = mapped_column(String(200), default="")
+    repository: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    branch: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    commit_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    issue_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    pull_request_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     changes_from_parent: Mapped[str] = mapped_column(Text, default="")
     started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

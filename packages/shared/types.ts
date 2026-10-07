@@ -1,6 +1,6 @@
 export type Json = null | boolean | number | string | Json[] | {[key:string]:Json};
 export type RecordData = {id:string;project_id?:string;title?:string;name?:string;status?:string;created_at?:string;updated_at?:string;[key:string]:unknown};
-export interface Project extends RecordData {name:string;description:string;module_id:string;current_stage:string|null;is_demo?:boolean;}
+export interface Project extends RecordData {name:string;description:string;module_id:string;current_stage:string|null;is_demo?:boolean;repository?:string|null;}
 export interface Schema {id:string;name:string;value_type:string;unit:string;description?:string;required?:boolean;optional?:boolean;default?:Json;display_group?:string;order?:number;help_text?:string;visibility?:'basic'|'advanced';capability?:string|null;optimization_direction?:'maximize'|'minimize'|'target_range'|'informational';target_range?:number[];}
 export interface RunFormGroup {id:string;name:string;fields:string[];visibility?:'basic'|'advanced';}
 export interface RunForm {run_type:string;capability?:string|null;groups:RunFormGroup[];}

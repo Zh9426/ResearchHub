@@ -247,6 +247,20 @@ def validate_links(db, obj, data, modules):
                 raise HTTPException(422, "Archived tags cannot be assigned")
     if isinstance(obj, m.ResearchRun):
         parent = data.get("parent_run_id")
+        from .provenance import same_repository
+
+        repository = data.get("repository") or db.get(m.Project, pid).repository
+        if any(data.get(key) for key in ("issue_url", "pull_request_url")):
+            if not repository:
+                raise HTTPException(422, "Issue/PR 需要 Run 或项目仓库归属")
+            # Freeze the fallback so later Project repository changes do not
+            # reinterpret this Run's saved code provenance.
+            data["repository"] = repository
+        if not all(
+            same_repository(repository, data.get(key))
+            for key in ("issue_url", "pull_request_url")
+        ):
+            raise HTTPException(422, "Issue/PR 必须属于 Run 或项目代码来源仓库")
         visited = {obj.id}
         while parent:
             if parent in visited:

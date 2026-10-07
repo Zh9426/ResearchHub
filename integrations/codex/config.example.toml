@@ -1,0 +1,9 @@
+# Current workstation. Adjust absolute paths when moving this repository.
+# This example contains no token and does not change global Codex settings.
+[mcp_servers.research_hub]
+command = 'H:\ResearchHub\.venv\Scripts\python.exe'
+args = ['H:\ResearchHub\scripts\mcp-local.py']
+cwd = 'H:\ResearchHub'
+env_vars = ['RESEARCHHUB_API_URL', 'RESEARCHHUB_API_TOKEN']
+startup_timeout_sec = 30
+tool_timeout_sec = 60

@@ -1,8 +1,8 @@
-# Research Hub v0.1
+# Research Hub v0.2
 
 个人科研工作系统：项目、研究问题、假设、Run、参数来源、指标、文件、证据与结论共同形成可追溯的工作记录。Generic、HDSP、ICE 共用 Core，通过模块 manifest 保留各自专业工作流。
 
-代码仓库：[Zh9426/ResearchHub](https://github.com/Zh9426/ResearchHub)，保持 **Private**。数据库、上传文件、凭据与备份保存在本地，不随 Git 提交。开发分支为 `codex/researchhub-v0.1`。
+代码仓库：[Zh9426/ResearchHub](https://github.com/Zh9426/ResearchHub)，保持 **Private**。数据库、上传文件、凭据与备份保存在本地，不随 Git 提交。开发分支为 `codex/researchhub-v0.2`。
 
 ## 从零启动
 
@@ -50,13 +50,19 @@ Set-Location H:\ResearchHub
 - Artifact 上传到 MinIO，数据库保存关系、SHA256 和 metadata；授权后下载，限制文件类型和大小。
 - Stage/Gate 判据、关联证据、状态与阻塞原因；ICE 为 A–E 和 G0–G5，HDSP 为固定目标面声场—热—固化流程。
 - 审计时间线、三模块演示项目、响应式桌面/手机界面、PWA manifest/service worker。
-- 本地 stdio MCP 九个工具复用同一 API、授权与审计，不提供 shell、SQL 或任意服务器文件访问。
+- 本地 stdio MCP 21 个语义工具复用同一 API、授权与审计，不提供 shell、SQL 或任意服务器文件访问。
+
+## v0.2 研究工作流与互联
+
+新增模块冻结版本与人工升级、组合能力、渐进 Run 创建/编辑、独立星标、活动与审计分离、分页检索、Bundle 预览导入、项目导出、参数/指标历史与完整差异、谱系及证据追踪、模块驱动视图和手机尺寸快速采集。项目与 Run 可保存 GitHub 代码来源。
+
+Codex 连接配置与 Skill/插件包见 [CONNECTIONS](docs/CONNECTIONS.md)，工具契约见 [MCP](docs/MCP.md)。实际客户端、ChatGPT 和设备验证范围见 [v0.2 验收报告](docs/V0.2_REPORT.md)。
 
 ## 验证与限制
 
-**实现不等于全部验收完成。** 当前设备的 Docker 引擎受 Windows 虚拟化组件重启要求阻塞。Compose 配置检查、单元/协议测试与实际运行验收的具体状态，以 [v0.1 验收报告](docs/V0.1_REPORT.md) 为准；未验证事项会单独列出。
+已完成实际 Docker PostgreSQL/MinIO/API/Web 启动、持久化与备份恢复验收；隔离测试与实际服务验收分别报告。最终范围见 [v0.2 验收报告](docs/V0.2_REPORT.md)，v0.1 历史限制保留在原报告中。
 
-手机与电脑访问同一个本机服务器。局域网 HTTPS 与本地证书信任步骤见 [DEVELOPMENT](docs/DEVELOPMENT.md)。PWA 不缓存科研 API，也不支持离线编辑。外部 ChatGPT/Codex MCP 连接未验证；当前交付本地 stdio 服务和配置说明。
+手机与电脑访问同一个本机服务器。局域网 HTTPS 与本地证书信任步骤见 [DEVELOPMENT](docs/DEVELOPMENT.md)。PWA 不缓存科研 API，也不支持离线编辑。ChatGPT、实体设备与 PWA 安装结果以 v0.2 报告为准；本地 STDIO 和宿主连接分开验收。
 
 当前使用优先级为电脑端。手机与平板端保留现有响应式结构，本轮不打包或部署移动入口。系统预置界面、状态、模块阶段和表单使用简体中文；专业缩写、数据标识与用户录入内容保留原样。
 
@@ -81,7 +87,7 @@ npm run build
 | [MODULE_SYSTEM](docs/MODULE_SYSTEM.md) | Generic / HDSP / ICE 差异 |
 | [EVIDENCE_MODEL](docs/EVIDENCE_MODEL.md) | 证据状态、结论与科研边界 |
 | [DESIGN_SYSTEM](docs/DESIGN_SYSTEM.md) | UI 与响应式设计 |
-| [MCP](docs/MCP.md) | 九个工具、Token 与连接状态 |
+| [MCP](docs/MCP.md) | 语义工具、Token 与连接状态 |
 | [BACKUP](docs/BACKUP.md) | 备份与空目标恢复 |
 | [CHANGELOG](CHANGELOG.md) | 每次迭代与实际验证 |
 

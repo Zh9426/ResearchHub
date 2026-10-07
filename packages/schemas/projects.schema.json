@@ -59,6 +59,19 @@
       ],
       "default": null,
       "title": "Enabled Capabilities"
+    },
+    "repository": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Repository"
     }
   },
   "required": [

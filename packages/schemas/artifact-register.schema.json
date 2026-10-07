@@ -1,0 +1,15 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "file_id": {
+      "format": "uuid",
+      "title": "File Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "file_id"
+  ],
+  "title": "ArtifactRegisterInput",
+  "type": "object"
+}

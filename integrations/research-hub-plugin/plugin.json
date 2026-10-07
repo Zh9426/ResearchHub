@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "research-hub",
+  "version": "0.2.0",
+  "description": "通过已配置的 Research Hub MCP 查询科研进度并保存可追溯的研究记录。",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Research Hub",
+        "shortDescription": "个人科研工作流与证据追踪",
+        "defaultPrompt": ["查看我的科研项目与当前阻塞，整理下一步研究任务。"]
+      }
+    }
+  }
+}

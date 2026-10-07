@@ -371,8 +371,25 @@ def create_app(database_url=None, initialize=False):
 
     @app.get("/api/projects")
     def projects(
-        include_archived: bool = False, actor=Depends(actor_dep), db=Depends(db_dep)
+        request: Request,
+        include_archived: bool = False,
+        actor=Depends(actor_dep),
+        db=Depends(db_dep),
     ):
+        if request.query_params.get("format") == "page":
+            from .intelligence import page
+            from .workflow import text_filter
+
+            statement = select(m.Project).where(
+                m.Project.owner_id == actor.user.id,
+                *svc.visible_records(m.Project),
+                m.Project.status != "archived",
+            )
+            if request.query_params.get("q"):
+                statement = statement.where(
+                    text_filter(m.Project, request.query_params["q"][:300])
+                )
+            return page(db, statement, m.Project, dict(request.query_params))
         return [
             svc.serialize(db, p)
             for p in db.scalars(
@@ -591,7 +608,13 @@ def create_app(database_url=None, initialize=False):
         )
 
     @app.get("/api/runs/{rid}/context")
-    def run_context(rid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
+    def run_context(
+        rid: UUID, request: Request, actor=Depends(actor_dep), db=Depends(db_dep)
+    ):
+        if request.query_params.get("format") == "page":
+            from .connected import run_page
+
+            return run_page(db, actor, str(rid), dict(request.query_params))
         return svc.run_context(db, actor, str(rid))
 
     def add_collection(kind, cls):
@@ -1314,9 +1337,11 @@ def create_app(database_url=None, initialize=False):
         db.commit()
         return {"ok": True, "message": "DEMO / SYNTHETIC projects ready"}
 
+    from .connected import install_connected
     from .intelligence import install_intelligence
     from .workflow import install_workflow
 
+    install_connected(app, actor_dep, db_dep)
     install_intelligence(app, actor_dep, db_dep)
     install_workflow(app, actor_dep, db_dep, objects)
     return app

@@ -27,5 +27,9 @@ def test_existing_run_and_artifact_survive_service_restart():
         assert artifact.status_code == 200
         assert artifact.content.decode() == probe["content"]
         assert hashlib.sha256(artifact.content).hexdigest() == probe["checksum"]
-        audit = client.get("/api/activity").json()
-        assert any(entry["resource_id"] == probe["artifact_id"] for entry in audit)
+        # Global activity is paginated and can exclude an older persistence probe.
+        audit = client.get("/api/audit", params={
+            "project_id": probe["project_id"], "format": "page", "range": "all",
+            "limit": 100,
+        }).raise_for_status().json()
+        assert any(entry["resource_id"] == probe["artifact_id"] for entry in audit["items"])
