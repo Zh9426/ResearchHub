@@ -1,6 +1,6 @@
 # 业务同步数据模型
 
-状态：**DECIDED** 是拟冻结设计；**PROTOTYPED** 仅覆盖 Python 合成模型。以下均为概念实体，不是生产 migration。
+状态：Sprint 1 的 revision/transaction/member/dependency/head/conflict/audit/inbox/outbox/accepted projection 已 **IMPLEMENTED IN KERNEL** 并在专用 PostgreSQL 验证。Device、Relay、Snapshot 与 AIReviewInbox 仍为 **DESIGNED ONLY**。这些表没有进入生产 migration；初始化仅允许专用 QA 库与角色。
 
 ## Revision 方案比较
 
@@ -35,10 +35,12 @@ revision 摘要不是密码学授权，created_at/updated_at 只展示，Human/A
 | Project/Module binding | module_version、冻结 module_snapshot 内容及 hash、project revision；升级是独立人工事件 |
 | Snapshot | project_id、cursor anchor、manifest hash/signature、schema/key_epoch、完整对象 revision/head、冲突、Audit 去重 ID、tombstone、module snapshots |
 
-Conceptual ReviewInbox、Device 与同步表尚未加入现有数据库。Activity 从已验证 Audit/Domain events 派生；hide_before 与 filters 推荐设备本地，未来显式账户偏好实体才可同步，不删除 Audit。
+ReviewInbox、Device 尚未实现；`sync_kernel_*` 实表独立于 v0.2 表。Domain QA 适配器使用现有 Run/Parameter/Metric/Artifact/Audit 表，同 Session 提交 immutable Outbox。原始 Domain 行作为本地来源历史保留；晚到分叉只撤回独立 accepted projection，不删除来源行。生产查询尚未接入此视图。详见 [事务模型](SYNC_TRANSACTION_MODEL.md)。Activity 与设备过滤仍为设计。
+
+实际唯一约束包括 transaction/idempotency、change_id、revision、audit_id、项目 receipt sequence。RevisionParent 的复合外键绑定同项目/类型/对象，INSERT trigger 核验不可变父声明并拒绝自环；历史表 UPDATE/DELETE 被 PostgreSQL trigger 拒绝。Outbox 的 `action_digest` 绑定 UUID 分配前的 Domain 命令，避免重复编号掩盖不同操作；它是本地 QA 元数据，不属于 wire digest。上表的 base_revision 是说明术语，不是 v1 wire 字段，实际 wire 只传 parents。
 
 ## 业务 payload 与编码
 
-create 带允许的业务初值；update 带具体变更字段与明确 null，不上传 user/password/token/数据库内部行。Parameter 包含值、单位及来源；Metric 包含计算来源及人工确认状态；关系用 link/unlink 及 endpoint UUID、项目/类型约束。archive/trash/restore 是显式生命周期命令；purge 从普通协议拒绝。字段白名单、类型、同项目、模块与权限全部由 Domain decoder 校验。
+create 带允许的业务初值；update 带具体变更字段与明确 null，不上传 user/password/token/数据库内部行。Parameter 包含值、单位及来源；Metric 包含计算来源及人工确认状态。v1 关系通过 payload 的 endpoint UUID 引用，Kernel 检查同项目/类型并提取依赖；link/unlink 操作仍为未来设计，未加入 v1。archive/trash/restore 是显式生命周期命令；purge 从普通协议拒绝。字段白名单、类型、同项目、模块与权限全部由 Domain decoder 校验。
 
-生产候选采用 [RFC 8785 JCS](https://www.rfc-editor.org/rfc/rfc8785) 的规范编码与 SHA-256；精确科研十进制可在版本化 schema 中用 decimal 字符串，禁止 NaN/Infinity、重复 JSON key、非法 Unicode，零和 null 含义不同。Python 原型的排序 JSON **不是 JCS 的跨语言实现**，不得据此声称浏览器签名互通；正式实现需要 Python/JS 编码向量及 schema fixture。未知字段不能默默丢弃。
+Sprint 0 的 JCS 候选已由 ADR-003/006 **AMENDED**：v1 冻结为 [RH-C14N-1](SYNC_WIRE_FORMAT.md)，明确采用安全整数、UTF-16 key 顺序与精确十进制字符串。Python/TypeScript 独立实现且共用固定 bytes/digest/错误样例。`1.600` 与 `1.6` 可科学比较相等，但原始精度及 revision 身份不同；禁止 float、NaN/Infinity、重复 JSON key、非法 Unicode，零和 null 不同，未知字段不丢弃。跨语言编码通过不代表浏览器签名或 E2E 已实现。

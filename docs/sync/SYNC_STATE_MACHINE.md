@@ -1,6 +1,16 @@
 # 同步状态机
 
-状态：**DECIDED**；其中明文 SQLite outbox/inbox、原子 apply/retry 和冲突 head 集合 **PROTOTYPED**。
+状态：Sprint 1 的本地明文 QA Kernel 状态已实现并在真实 PostgreSQL 验证；下图 PUSHING/RELAY_STORED/PULL 网络状态仍为设计，Sprint 0 SQLite 原型仅作历史参照。
+
+## 已实现的 QA Kernel 状态
+
+验证与落库处于同一个 DB 事务。新事务在内部进入 RECEIVING，成功提交为 ACCEPTED、CANDIDATE 或 QUARANTINED；异常 rollback，不存在可读的半批 RECEIVING。晚到分叉将原 ACCEPTED 批次及递归依赖改为 CANDIDATE，撤回所有成员的 accepted projection 并追加失效 Audit。完整人工解决产生新 ACCEPTED 事务，被审查的原批次进入 SUPERSEDED；依赖旧候选的派生结果仍须单独复核。
+
+`received_cursor` 在 Inbox 与结果同事务持久后推进：ACCEPTED/CANDIDATE 路径另包含 revision/projection 判定与 Audit；QUARANTINED 只保存不可变 raw transaction/receipt，不解释业务也不生成 Domain Audit。`accepted_watermark` 是连续已完成判定（ACCEPTED/SUPERSEDED）的 receipt 水位，遇到 CANDIDATE/QUARANTINED 停止，晚到冲突可降低水位。`fully_synced` 必须同时无未决事务/冲突。重复回执保留不可变 `receipt_state`，返回的 `state` 反映当前状态，不能因旧回执曾 accepted 显示绿色。
+
+在线 resolution 在项目行锁内核验完整当前 heads 与短期一次性 Human grant；离线 resolution 只是 proposal，可保留 RA/RB 新分叉，不完成科学确认。未知 protocol/schema/module hash 保存原始消息为 QUARANTINED，不解释为 Domain 写入。解隔离、网络 ACK 和密钥恢复尚未实现。
+
+## 将来的传输状态
 
 ```mermaid
 stateDiagram-v2

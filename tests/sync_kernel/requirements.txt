@@ -1,0 +1,2 @@
+# QA/property tests only; production API runtime requirements remain unchanged.
+hypothesis==6.168.5

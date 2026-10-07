@@ -1,4 +1,40 @@
-# Sprint 0 一致性验收与正式不变量
+# Sprint 1 Kernel 验收与正式不变量
+
+当前验收使用专用 PostgreSQL 17.11：`researchhub_sync_kernel_qa` / `researchhub_sync_qa` / loopback 35433。`HUB_SYNC_QA=1` 显式 opt-in，缺配置失败，不回退个人 DATABASE_URL。完整执行结果与 CASE A–Z 对应关系见 [SPRINT_1_REPORT.md](SPRINT_1_REPORT.md)。
+
+## 六项验收门槛
+
+| Gate | 必须满足的真实证据 |
+| --- | --- |
+| Canonical Identity | 两端独立编解码同一固定 bytes/revision/digest 与错误样例；不互相调用生成 oracle |
+| Transaction Atomicity | 真实 v0.2 Domain service 同 Session 创建 12 个对象、Audit 与 Outbox；六故障点全部 rollback，retry 一次提交 |
+| Scientific Conflict Safety | pressure BASE 1.400，1.600/1.800 候选与共同祖先全保留，无时间或 Primary winner |
+| Whole-batch Barrier | 单成员分叉撤回整批及递归依赖；独立批次保留；完整 review 才可提升 |
+| Authority | 注册 principal 与一次性短期精确 grant；拒绝 AI 冒充和修改当前/历史 final，重放须 active principal |
+| PostgreSQL Concurrency | 两连接 Barrier、项目行锁等待可观察、不同项目继续、唯一约束、在线/离线 resolution race |
+
+## 执行命令与测试层
+
+```powershell
+.\.venv\Scripts\python.exe scripts/sync-qa.py --init
+$env:HUB_SYNC_QA='1'
+.\.venv\Scripts\python.exe -m pytest tests/sync_vectors tests/sync_kernel tests/sync_pg -q --hypothesis-show-statistics
+E:\node\npm.ps1 --prefix packages/sync-protocol test
+E:\node\npm.ps1 --prefix packages/sync-protocol run typecheck
+.\.venv\Scripts\python.exe scripts/sync-benchmark.py --run
+```
+
+`sync_vectors`：26 canonical、59 protocol、3 depth 固定向量，另有 10 kernel 场景共 20 step，Python/TS 共用输入与预期 bytes/hash/error。固定样例作者不调用被测 codec。
+
+`sync_kernel`：Hypothesis 三项 canonical 属性，每项 max_examples=100；QA 入口负向测试禁止 SQLite、远端和个人数据库。
+
+`sync_pg`：真实 DB 行锁/trigger/FK/rollback，Hypothesis 五项属性（每项最多 20，有限 permutations/head-count/chain-depth 自动穷尽）。每个生成案例独立合成项目；无自造 random harness。六故障点为 after_revision_insert、after_conflict_create、after_domain_projection、after_audit_append、before_inbox_commit、before_cursor_advance。
+
+必须区别：TS 验证共享 wire 层，不是 TS PostgreSQL 引擎；fault 为事务内异常，未证明断电 durability；QA Artifact receipt 用合成 bytes，不是 AEAD/MinIO 同步。当前 CI 单独启动 PostgreSQL service 并启用 QA，不接受全部 PG skip 当通过。
+
+最终审查补充负向：调用方 mutable payload 快照、复用 transaction_id 改 Domain 命令、继承类型后的非法科学 document、Gate 内嵌 evidence_ids 的跨项目/缺失/晚到冲突、旧 draft BASE 不得撤回当前 Human final。
+
+## Sprint 0 历史验收边界
 
 状态：**DECIDED** 是规范；**PROTOTYPED** 是合成测试覆盖，不是生产验收。实际计数与命令见 [SPRINT_0_REPORT.md](SPRINT_0_REPORT.md)。
 
@@ -11,7 +47,7 @@
 | I01 | accepted(c) ⇒ 保留 c 的可恢复 revision/Audit 或经明确批准、可追踪的压缩快照；不得静默丢失 | 批次/恢复原型；跨故障域 durability 尚未证明 |
 | I02 | Apply(Apply(D,t),t) = Apply(D,t)，对象、审计、游标相同 | duplicate pull/push 原型 |
 | I03 | 同 BASE 的不同科学更新 ⇒ 所有非因果 heads 保留，不能自动单值覆盖 | pressure 1.6/1.8 与人工结论原型 |
-| I04 | Audit ID 的内容不可更新/删除；相同 ID 异内容必须拒绝 | audit 去重/identity 测试；真实不可删数据库约束未来做 |
+| I04 | Audit ID 的内容不可更新/删除；相同 ID 异内容必须拒绝 | Sprint 0 当时只测原型；Sprint 1 已验证真实 QA append-only trigger |
 | I05 | verified(bytes) ⇒ sha256/size/manifest 均符合；失败不能 success | synthetic checksum 与 context dedup 原型；AEAD 未实现 |
 | I06 | trash/edit 不自动 restore；purge 不通过普通 ChangeSet | 原型 lifecycle 负向测试；生产 purge 未实现 |
 | I07 | project.module_snapshot 不随本地 registry 改变；解释绑定 hash | 设计及将来 module fixture，原型不证明真实模块 UI |
@@ -19,7 +55,7 @@
 | I09 | Cloud/AI entry 的有效权限 ≤ 原 Domain AI scope；不得冒充 Human | 设计 + synthetic principal，真实 Remote MCP 未实现 |
 | I10 | outcome 不依赖 Primary role 或 wall-clock 选胜者 | head-set 推导/双副本并发测试；没有生产 Primary 服务 |
 | I11 | T 的所有 ChangeSet 可见性为全有/全无；无半个 Run/参数视图 | push-half/pull-crash 原型；业务 conflict 全批次待审查策略见实现说明 |
-| I12 | cursor advance ⇒ 批次 inbox、结果/candidate/quarantine 与 Audit 已持久完成 | apply rollback 原型，不能跳未知依赖 |
+| I12 | cursor advance ⇒ inbox 与结果持久；业务路径包含 Audit，quarantine raw receipt 不解释业务 | Sprint 0 apply rollback 原型；Sprint 1 真实 PG 证据见上文 |
 | I13 | 同 transaction/change ID 不同 digest ⇒ reject，不改变历史/seq | 碰撞负向测试 |
 | I14 | object UUID、revision 和 parents 绑定同 project/type；跨项目依赖不可用 | 类型/项目负向用例或代码复审，未声称完整生产 referential integrity |
 | I15 | bytes dedup 仅 project/key epoch 内；不同 metadata ID/来源均保留 | same SHA/context 测试 |
@@ -56,4 +92,4 @@
 
 Sprint 0 不重复将原型结果充当 PostgreSQL、MinIO、PWA、签名或真实账户测试。v0.2 真服务重新验收见 [RELEASE_V0.2.0.md](../RELEASE_V0.2.0.md)；本分支应以 git diff 确认 apps/infrastructure/migrations 不变。既有 GitHub CI 仍测稳定应用，未自动纳入原型测试，需单独报告本地原型命令。
 
-Sprint 1（仅提议，未启动）：跨语言 protocol fixture、Domain 权限/事务与 outbox 的独立 QA 验证、故障注入扩大；待人工批准后才选实际网络/密钥实现，真实浏览器清理、长期离线、E2E 和备份恢复必须分别验收。
+Sprint 0 当时仅提议的 Sprint 1 已经人工授权并完成本页顶部 QA 验收。网络/密钥、真实浏览器清理、长期离线、E2E 同步与安全恢复仍须未来独立批准验收；本轮 STOP。

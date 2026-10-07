@@ -1,6 +1,6 @@
 # Research Hub 冲突矩阵与人工权限
 
-状态：**DECIDED**（推荐）。一般科学值和生命周期分叉 **PROTOTYPED**；三方文本、OR-set、模块升级、真实权限及生产 Resolver **NOT IMPLEMENTED**。
+状态：科学值、N-head 分叉、完整批次审查、晚到冲突/依赖暂停、生命周期和可信 principal/fresh grant 已 **IMPLEMENTED IN KERNEL / TESTED ON QA POSTGRESQL**。三方文本、OR-set、完整模块转换、生产 Resolver 与真实用户 presence 仍 **NOT IMPLEMENTED**。下表中自动文本/集合合并只是设计；Kernel 保守保留分叉。
 
 ## 判定顺序
 

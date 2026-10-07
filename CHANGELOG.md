@@ -2,6 +2,29 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-011 — 2026-10-07 — Sprint 1 QA Sync Protocol Kernel
+
+### 完成内容
+
+- 不可变 PostgreSQL revision DAG、transaction/member/dependency、N-head conflict、整批科学屏障与独立 accepted projection；晚到冲突撤回原批及递归依赖，完整人工重审产生新来源。
+- 注册 principal 与精确一次性五分钟 grant，复用既有 Human/AI Domain authority；current heads 保护、离线 proposal/在线 resolution 分离、lifecycle 和冻结 module/schema 隔离。
+- 真实现有 Domain service 同 Session 组合 Run+6 Parameter+3 Metric+2 pending Artifact、Audit、Inbox/Outbox/cursor；action_digest 防同 ID 换动作，保留科学数字字符串，不迁移个人数据。
+- 六点故障注入、真实两连接并发/锁等待、Hypothesis 属性、10 个跨语言固定 Kernel 场景、独立 QA CLI 与 PostgreSQL CI job；完整23主题报告及协议/状态/模型/ADR更新。
+
+### 验证结果
+
+- 实际 PostgreSQL 最终 Python149（17 vectors、7 pure/kernel boundary、125 PG）全部通过且无skip；TS7、严格类型、Ruff及diff检查通过。Hypothesis300编码+53数据库属性案例通过。
+- v0.2 后端/MCP/Release137、前端46及typecheck通过；独立Compose真实23项通过，包含MCP/权限并发、PG/MinIO备份恢复和四服务重启持久性；API/Web Docker构建通过。
+- 原生Next构建因个人运行进程占用目录遇EBUSY，未停止个人服务，采用隔离Docker生产构建验证。未运行生产同步、真实E2E、手机/平板/ChatGPT验收。
+- 1000对象/10000修订实际apply基准139.277s；heads平均0.782ms；100个冲突整批4.474s；最终10200修订。仅本机QA观察，非分布式性能承诺。
+- 规格PASS、质量APPROVED；重放操作、继承数值类型、Gate内嵌Evidence依赖三项审查P2均RED→GREEN修复。六Gate PASS，证据与边界见SPRINT_1_REPORT.md。
+
+### 遗留事项
+
+- 完成Sprint1后STOP，等待人工审查；不进入Sprint2/Secure Relay，不部署生产同步表或accepted查询hook。
+- 真实用户presence/keys/签名/E2E、网络transport、移动存储、bootstrap/压缩、完整source/Tag关系图、三方文本/OR-set与生产数值迁移未实现。
+- GitHub同步与本次CI在提交推送后核对，最终交付消息记录实际状态；不预先称远端成功。
+
 ## RH-010 — 2026-10-07 — Sprint 1 Canonical Identity
 
 ### 完成内容

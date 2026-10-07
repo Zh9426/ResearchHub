@@ -38,3 +38,37 @@ jobs:
       - run: npm run test
       - run: npm run typecheck
       - run: npm run build
+  sync-kernel-qa:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: researchhub_sync_kernel_qa
+          POSTGRES_USER: researchhub_sync_qa
+          POSTGRES_PASSWORD: ephemeral-ci-only
+        ports:
+          - 35433:5432
+        options: >-
+          --health-cmd "pg_isready -U researchhub_sync_qa -d researchhub_sync_kernel_qa"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      HUB_SYNC_QA: '1'
+      HUB_SYNC_QA_URL: postgresql+psycopg://researchhub_sync_qa:ephemeral-ci-only@127.0.0.1:35433/researchhub_sync_kernel_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: pip install -r apps/api/requirements.txt -r tests/sync_kernel/requirements.txt
+      - run: npm ci --prefix apps/web
+      - name: 两端独立固定协议样例
+        run: |
+          python -m pytest tests/sync_vectors -q
+          npm --prefix packages/sync-protocol test
+          npm --prefix packages/sync-protocol run typecheck
+      - name: 真实隔离 PostgreSQL 内核与故障回归
+        run: python -m pytest tests/sync_kernel tests/sync_pg -q

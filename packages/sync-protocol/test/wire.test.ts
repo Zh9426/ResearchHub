@@ -72,3 +72,16 @@ test('shared nesting limit applies to strict decoder and direct encoder', async 
     }
   }
 });
+
+test('shared kernel transcripts preserve independent wire expectations', async () => {
+  const { canonicalBytes, digest, strictLoads, validateTransaction } = await import('../src/index.ts');
+  const cases = JSON.parse(readFileSync(new URL('../../../fixtures/sync/v1/kernel_cases.json', import.meta.url), 'utf8'));
+  for (const scenario of cases) for (const step of scenario.steps) {
+    const tx = strictLoads(step.raw) as { changes: unknown[] };
+    assert.equal(Buffer.from(canonicalBytes(tx)).toString('hex'), step.canonical_hex, scenario.name);
+    assert.equal(digest(tx), step.digest, scenario.name);
+    assert.deepEqual(tx.changes.map(digest), step.revisions, scenario.name);
+    if (step.wire_valid) validateTransaction(tx, step.context);
+    else assert.throws(() => validateTransaction(tx, step.context), { code: step.wire_error }, scenario.name);
+  }
+});

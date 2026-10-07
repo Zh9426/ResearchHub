@@ -158,7 +158,9 @@
 
 **Consequences**：增加membership/dependency索引和失效Audit。历史、候选和BASE保留；UI未来须表达待审，不能把transport ACK当科研批准。项目级行锁下检测、状态转换和投影撤回同事务。
 
-**Open Questions**：后续复杂科研关系自动推导、跨批次重新批准界面与批次大小；本轮只验证最小显式依赖及Run所属关系。
+**Implementation evidence**：真实 QA PostgreSQL 的整批撤回、递归暂停、独立批次、partial review 拒绝与 full review 通过；依赖覆盖 parent、显式 transaction、Run 与 Evidence/Artifact 引用，包括 Gate criteria 内 evidence_ids。
+
+**Open Questions**：后续复杂科研关系自动推导、跨批次重新批准界面与批次大小；source_id/Tag/任意领域关系不冒充完整语义图。
 
 ## ADR-014 — Human Grant Boundary（Sprint 1）
 
@@ -169,6 +171,8 @@
 **Decision**：注册principal绑定user/device/session/project/actor；人工科研final操作另需fresh grant绑定transaction摘要、object、operation、exact expected_heads和expiry。离线final Human confirmation不支持。QA mock只模拟受信服务签发和消费，不称真实认证或密码学实现。
 
 **Consequences**：AI/system不能final人工结论、确认参数、升级验证证据、通过Gate、接受Decision或确认模块升级。在线resolution必须锁内重读完整heads；离线resolution只保存proposal，可与另一proposal形成新冲突，不代表人工批准。
+
+**Implementation evidence**：QA 注册与 mock grant 已运行验证；重放必须保持 principal active，grant 最长五分钟且单次消费。权限同时核验 patch、继承 document 与当前 heads；AI 不能借旧 draft BASE 撤回当前 final。沿用现有 service.scientific_authority，不把 mock 视为真实 user-presence。
 
 **Open Questions**：生产签发、撤销、设备签名、跨设备consent UX和重认证；全部留待后续人工批准的安全开发。
 
@@ -181,5 +185,7 @@
 **Decision**：第三种。revision/Audit只追加；accepted projection仅来自已通过整批屏障的transaction。candidate仍可查询BASE、N heads及原批次。received_cursor与accepted watermark分开，conflict/quarantine/暂停依赖时fully_synced=false。
 
 **Consequences**：更多状态与查询，但能保留可审核科研来源。失效只撤回投影，不删除revision或改旧Audit；需要显式resolution Audit和整批重审。QA表独立于生产Domain，真实生产查询hook未开启。
+
+**Implementation evidence**：数据库 append-only trigger、复合父引用 FK/声明 trigger 已实测；immutable Outbox.action_digest 绑定本地来源命令，拒绝同 ID 改动作。received cursor 与当前事务状态分离，已完整审查的旧批次 SUPERSEDED 可通过判定水位，旧派生依赖不会自动追认。
 
 **Open Questions**：快照压缩、历史保留与生产projection迁移；Sprint1不部署这些机制。

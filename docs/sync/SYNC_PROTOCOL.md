@@ -1,39 +1,18 @@
-# Sync Protocol 草案 0
+# Sync Protocol — Sprint 1 QA Kernel
 
-状态：**DECIDED**，未提供 HTTP Sync API。生产 wire format/签名与限额仍需 Sprint 1 后评审；原型直接函数调用、明文合成数据。
+状态：wire v1已冻结，QA实现与验收证据见 [SPRINT_1_REPORT.md](SPRINT_1_REPORT.md)。未提供HTTP Sync API、生产Relay或真实签名。Sprint0原型仍为历史证据，其示例编码不再作为规范入口。
 
 ## 协商与消息
 
 Hello 提交 device UUID、membership_epoch、支持 protocol/schema 范围、模块 snapshot hash、项目选择及 cursors。返回每项目 `COMPATIBLE / READ_ONLY / UPGRADE_REQUIRED / RESNAPSHOT_REQUIRED`。可解码旧 schema 用显式版本适配；不能处理新字段、事件或 module binding 就停止该项目写入。协议不支持时不拉取并误标成功。解密失败与 schema 失败分别报告。
 
-```json
-{
-  "protocol_version": 1,
-  "transaction_id": "UUID",
-  "idempotency_key": "same-as-transaction-id",
-  "device_id": "UUID",
-  "project_id": "UUID",
-  "schema_version": 1,
-  "changes": [
-    {
-      "change_id": "UUID", "object_type": "Parameter", "object_id": "UUID",
-      "operation": "update", "base_revision": "sha256:BASE",
-      "parents": ["sha256:BASE"], "payload": {"value": 1.6, "unit": "MPa"},
-      "actor_type": "human", "created_at": "ISO-8601",
-      "module_snapshot_hash": "sha256:FROZEN"
-    }
-  ],
-  "change_count": 1,
-  "digest": "sha256:CANONICAL-SEMANTIC-BATCH",
-  "commit_marker": "COMMIT"
-}
-```
+唯一规范入口为 [SYNC_WIRE_FORMAT.md](SYNC_WIRE_FORMAT.md) 与 `fixtures/sync/v1` 固定样例。semantic transaction不含自己的digest/commit_marker/state；外层为`{transaction,digest,commit_marker:"COMMIT"}`。ChangeSet不包含base_revision别名或嵌入revision，parents本身表达BASE。科研值采用`{"value_type":"decimal","value":"1.600","unit":"MPa"}`，UUID/时间/hash均按wire严格格式，不能照搬Sprint0占位值。
 
-该例展示**加密前业务含义**，不能原样发给真实 Relay。真实外层 Envelope 只包含必要路由/因果引用、密文与签名；actor、科学值、Audit before/after 等在密文内。Relay 知道关联、流量大小和时间，不知道参数内容。
+QA envelope可以携带合成signature/key_epoch/nonce/ciphertext metadata，但没有实现加密认证。未来真实外层Envelope只包含必要路由、密文和签名；该设计尚未部署。
 
 ## 事务与 Push
 
-创建 Run + Parameters + Metrics + 三份 Artifact metadata 是**一个** SyncTransaction，内部多个 ChangeSet，不是数个可部分可见的独立提交。文件 bytes 不在这个数据库事务内；元数据先标 pending/unavailable，文件校验和独立 receipt 后才切换 verified_available。
+创建 Run + Parameters + Metrics + Artifact metadata 是**一个** SyncTransaction，内部多个 ChangeSet，不是数个可部分可见的独立提交。文件 bytes 不在这个数据库事务内；v1 元数据先标 pending，文件校验和独立 receipt 后才允许 verified_reference。
 
 1. 本地先验证业务规则，原子保存 domain/outbox/audit；保留唯一 transaction_id 和 digest，重试不得产生新 ID。
 2. Relay 以 staging 收完整个签名批次，验证数量、顺序、digest、成员资格、schema 与 commit marker。超过限额拒绝；部分 staging 无法被 Pull 看见。
@@ -42,7 +21,7 @@ Hello 提交 device UUID、membership_epoch、支持 protocol/schema 范围、�
 5. 已知 base 是唯一 head 时返回 `STORED`。base 已有后继/其他 head 返回 `CONFLICT_STORED` 并**保存分叉候选**，不覆写旧版本；与用户例中的“conflict”语义一致。密文 ACK 只说明 Relay 保管，客户端业务验证后才能说 accepted。
 6. 若客户端发现批次任何业务冲突/无权限/版本不兼容，整批转 candidate/quarantine；不能只应用 Run 而遗漏参数。无冲突的其他批次仍可处理。Conflict payload 与对应审计不能丢失。
 
-批次批准是可重新评估的 Domain 投影，不是删除不可变历史。需要 `transaction ↔ revision` 成员索引及批次依赖图：后到分叉若使先前已显示的某成员冲突，同一原批次的全部成员一起转“待审查”，以同一数据库事务撤回其 accepted 投影；所有记录/候选/Audit 仍保留，新建 Run 也不能留下半个已批准视图。依赖受影响科研状态的后续批次一起暂停，独立批次继续。显示共同基线与完整候选，不把这种可见性调整冒充删除已保存数据。人工解决/批准须绑定当前所有相关 heads 和候选批次，原子选择完整业务组合并记录审计；部分字段选择不能偷偷批准余下未检查成员。该全批次科学批准/依赖屏障是**正式实现的必需机制，本原型尚未实现或验证**。
+批次批准是可重新评估的Domain投影。`transaction ↔ revision`成员索引及依赖图支持后到分叉撤回原批次全部accepted projection，递归暂停依赖、保留独立批次。历史/Audit永不因此删除。人工full-batch review须覆盖受影响原批次全部对象；只解决pressure不能批准未审查的其他参数。Sprint0未实现此屏障；Sprint1 QA实测范围见报告和 [SYNC_TRANSACTION_MODEL.md](SYNC_TRANSACTION_MODEL.md)。
 
 Relay 对 opaque parents 的校验不是科学语义验证。被攻破的成员伪造 Human 标签仍应被各客户端拒绝；签名、解密、Human 权限和字段规则失败不进入业务视图。
 
@@ -61,3 +40,13 @@ Relay 对 opaque parents 的校验不是科学语义验证。被攻破的成员�
 低于 compaction floor 的设备返回 RESNAPSHOT_REQUIRED，旧编辑若历史 BASE 不在快照/保留历史则进入人工 missing-base review，不能自动 rebase 覆盖。快照与 changelog tail 必须有重叠安全窗口/单调锚点；发布快照后才可按 [保留规则](SYNC_ARTIFACT_POLICY.md) 清理旧日志。
 
 解决冲突是人工 domain mutation，包含所有 expected_heads 与理由，生成多父新 revision 和 `resolve_sync_conflict` Audit。若头集合改变返回 conflict；两次离线解决也可能成为新分叉，不能以最后提交的答案覆盖。详细 [状态机](SYNC_STATE_MACHINE.md) 与 [失败矩阵](SYNC_FAILURE_RECOVERY.md)。
+
+## QA authority 与兼容入口
+
+principal由隔离QA受信注册上下文解析，payload actor_type不能升级身份。登录会话与scientific grant分开；final人工结论、参数确认、验证证据、Gate通过、Decision接受与模块升级需要绑定transaction摘要/对象/操作/当前完整heads/设备会话/expiry的fresh Human grant。Codex、ChatGPT、System均不能签发或借用这些权限。
+
+在线resolve在项目行锁内重新比较完整heads，陈旧请求返回CONFLICT_CHANGED。离线resolution仅是proposal，没有final Human权限；两个合法proposal可成为RA/RB新冲突，随后必须fresh人工review。离线final confirmation不支持。
+
+模块hash不匹配或未知schema进入QUARANTINED/UPGRADE_REQUIRED；保存receipt与received cursor不等于accepted watermark。任何candidate、暂停依赖或quarantine都不能显示fully_synced。未知字段不会静默舍弃。
+
+QA只使用`researchhub_sync_kernel_qa`，显式`HUB_SYNC_QA=1`与loopback/数据库/角色校验；不回退产品DATABASE_URL、不新增生产migration，不开启生产HTTP/UI。
