@@ -29,7 +29,7 @@ function baseResourceFields(collection:string,ctx?:ProjectContext,manifest?:Modu
     case 'risks':return [title,description,status(['open','mitigated','closed']),f('severity','严重程度','select',{options:options(['low','medium','high','critical']),default:'medium'}),f('mitigation',"缓解措施",'textarea')];
     case 'gates':return [f('gate_id',"关卡编号",'text',{required:true}),f('name',"关卡名称",'text',{required:true}),f('stage_id',"研究阶段",'select',{options:(manifest?.research_stages??[]).map(s=>({value:s.id,label:s.name}))}),description,status(['not_started','in_progress','passed','failed','blocked']),f('criteria',"判据与来源",'criteria',{default:[],options:linkOptions(ctx?.evidence??[]),hint:'逐条更新判据状态和证据；保留来源边界。'}),link('evidence_ids',"关联证据",ctx?.evidence,true),f('blocking_reason',"阻塞原因",'textarea')];
     case 'parameters':return [f('name','参数名称','text',{required:true}),f('value_type','类型','select',{options:options(['number','integer','string','boolean','object','array']),default:'number'}),f('value','值','json',{default:null,hint:'支持 null 表示未知；数值输入 JSON 数字，字符串使用双引号。'}),f('unit','单位'),f('source_kind','来源类别','select',{options:options(sourceKinds),default:'unknown'}),link('source_id','来源记录',ctx?.sources),f('source_location','来源位置'),f('uncertainty',"不确定度"),f('valid_conditions',"适用条件",'textarea'),f('is_confirmed','已确认','boolean',{default:false})];
-    case 'metrics':return [f('name','指标名称','text',{required:true}),f('value','值','json',{default:null}),f('unit','单位'),f('metric_schema_id',"指标模板",'select',{options:(manifest?.metric_schemas??[]).map(x=>({value:x.id,label:zh(x.name)}))}),status(evidenceStatuses)];
+    case 'metrics':return [f('name','指标名称','text',{required:true}),f('value','值','json',{default:null}),f('unit','单位'),f('metric_schema_id',"指标模板",'select',{options:(manifest?.metric_schemas??[]).map(x=>({value:x.id,label:zh(x.name)}))}),status(evidenceStatuses),f('source_kind','来源类别','select',{options:options(sourceKinds),default:'unknown'}),link('source_id','来源记录',ctx?.sources),f('source_location','来源位置'),f('derivation','推导或处理方法','textarea'),f('uncertainty','不确定度'),f('valid_conditions','适用条件','textarea'),link('artifact_ids','原始数据与研究文件',ctx?.artifacts,true)];
     default:return [];
   }
 }
@@ -43,7 +43,7 @@ export function parseFields(fields:Field[],form:HTMLFormElement):Record<string,u
     if(field.kind==='json'||field.kind==='criteria') {try {result[field.key]=raw?JSON.parse(raw):null;}catch {throw new Error(`${field.label} 需要有效 JSON`);}continue;}
     if(field.kind==='number') {result[field.key]=raw?Number(raw):null;continue;}
     if(field.kind==='datetime-local') {result[field.key]=raw?new Date(raw).toISOString():null;continue;}
-    const nullable=field.key.endsWith('_id')||['unit','source_location','uncertainty','valid_conditions','url','doi','current_stage','started_at','completed_at','target_date','due_date'].includes(field.key);
+    const nullable=field.key.endsWith('_id')||['unit','source_location','derivation','uncertainty','valid_conditions','url','doi','current_stage','started_at','completed_at','target_date','due_date'].includes(field.key);
     result[field.key]=raw||(nullable?null:'');
   }
   return result;

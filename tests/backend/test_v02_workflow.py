@@ -167,7 +167,7 @@ def test_capabilities_defaults_user_selection_and_frozen_upgrade(client):
         == 422
     )
     latest = copy.deepcopy(client.app.state.modules["hdsp"])
-    latest["version"] = "0.2.1"
+    latest["version"] = "0.2.2"
     latest["default_capabilities"] = ["hardware_system"]
     client.app.state.modules["hdsp"] = latest
     plan = client.get(f"/api/projects/{pid}/module-upgrade/preview").json()
@@ -485,6 +485,7 @@ def test_activity_clear_hides_only_feed_audit_exports_survive(client):
 def test_exports_are_readonly_complete_frozen_and_hash_checked(client):
     login(client)
     pid = project(client)
+    frozen_version = client.get(f"/api/projects/{pid}").json()["module_version"]
     rid = run(client, pid)
     client.post(
         f"/api/runs/{rid}/parameters", json={"name": "threshold", "value": None}
@@ -513,7 +514,10 @@ def test_exports_are_readonly_complete_frozen_and_hash_checked(client):
             "README.md",
         } <= set(archive.namelist())
         assert archive.read(f"artifacts/{artifact['id']}/test.csv") == b"synthetic,1\n"
-        assert json.loads(archive.read("module-manifest.json"))["version"] == "0.2.0"
+        assert (
+            json.loads(archive.read("module-manifest.json"))["version"]
+            == frozen_version
+        )
         assert json.loads(archive.read("parameters.jsonl"))["value"] is None
     assert client.get(f"/api/projects/{pid}/research-log").status_code == 200
     assert counts(client) == before

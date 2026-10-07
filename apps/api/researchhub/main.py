@@ -45,7 +45,7 @@ from .schemas import (
     TokenInput,
 )
 from .security import LoginAttempts
-from .storage import ALLOWED_ARTIFACT_TYPES, ARTIFACT_SIGNATURES, S3Objects
+from .storage import ALLOWED_ARTIFACT_TYPES, S3Objects, artifact_signature_valid
 
 
 def digest(value):
@@ -85,7 +85,12 @@ def create_app(database_url=None, initialize=False):
 
         @event.listens_for(engine, "connect")
         def foreign_keys(connection, record):
+            from .intelligence import sqlite_json_equal
+
             connection.execute("PRAGMA foreign_keys=ON")
+            connection.create_function(
+                "researchhub_json_equal", 2, sqlite_json_equal, deterministic=True
+            )
 
     if initialize:
         if not url.startswith("sqlite"):
@@ -709,18 +714,18 @@ def create_app(database_url=None, initialize=False):
         add_collection(kind, cls)
 
     def add_run_values(kind, cls):
-        def listing(rid: UUID, actor=Depends(actor_dep), db=Depends(db_dep)):
-            svc.resource(db, actor, m.ResearchRun, str(rid))
-            return [
-                svc.serialize(db, o)
-                for o in db.scalars(
-                    select(cls).where(
-                        cls.run_id == str(rid),
-                        cls.trashed_at.is_(None),
-                        cls.archived_at.is_(None),
-                    )
-                )
-            ]
+        def listing(
+            rid: UUID,
+            request: Request,
+            response: Response,
+            actor=Depends(actor_dep),
+            db=Depends(db_dep),
+        ):
+            from .intelligence import run_values
+
+            return run_values(
+                db, actor, str(rid), kind, dict(request.query_params), response
+            )
 
         def creating(
             rid: UUID,
@@ -1088,14 +1093,10 @@ def create_app(database_url=None, initialize=False):
             if checksum and not hmac.compare_digest(checksum.lower(), computed):
                 raise HTTPException(422, "Checksum mismatch")
             stream.seek(0)
-            prefix = stream.read(8)
+            prefix = stream.read(65536)
             stream.seek(0)
-            if ext in ("png", "jpg", "jpeg", "pdf"):
-                signatures = ARTIFACT_SIGNATURES
-                if not prefix.startswith(signatures[ext]):
-                    raise HTTPException(
-                        422, "File content does not match declared type"
-                    )
+            if not artifact_signature_valid(ext, prefix):
+                raise HTTPException(422, "File content does not match declared type")
             aid = m.uid()
             key = f"{actor.user.id}/{p.id}/{aid}"
             try:
@@ -1313,8 +1314,10 @@ def create_app(database_url=None, initialize=False):
         db.commit()
         return {"ok": True, "message": "DEMO / SYNTHETIC projects ready"}
 
+    from .intelligence import install_intelligence
     from .workflow import install_workflow
 
+    install_intelligence(app, actor_dep, db_dep)
     install_workflow(app, actor_dep, db_dep, objects)
     return app
 

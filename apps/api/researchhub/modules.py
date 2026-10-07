@@ -1,7 +1,8 @@
+import math
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .schemas import ValueType
 
@@ -51,6 +52,21 @@ class Schema(Named):
     order: int = 0
     help_text: str = ""
     visibility: Literal["basic", "advanced"] = "basic"
+    optimization_direction: Literal[
+        "maximize", "minimize", "target_range", "informational"
+    ] = "informational"
+    target_range: list[float] | None = Field(default=None, min_length=2, max_length=2)
+
+    @model_validator(mode="after")
+    def valid_target_range(self):
+        if self.target_range is not None and (
+            not all(math.isfinite(value) for value in self.target_range)
+            or self.target_range[0] > self.target_range[1]
+        ):
+            raise ValueError("Target range requires finite ordered bounds")
+        if self.optimization_direction == "target_range" and self.target_range is None:
+            raise ValueError("Target range direction requires bounds")
+        return self
 
 
 class FormGroup(Named):
@@ -80,6 +96,41 @@ class StageGate(Stage):
     criteria: list[Criterion]
 
 
+LayoutType = Literal[
+    "research", "runs", "metrics", "evidence", "artifacts", "lineage", "hardware", "lab"
+]
+WidgetKind = Literal[
+    "objective",
+    "stage_gates",
+    "highlighted_runs",
+    "recent_runs",
+    "representative_metrics",
+    "validation",
+    "current_tasks",
+    "evidence_summary",
+    "open_risks",
+    "recent_decisions",
+    "recent_activity",
+]
+
+
+class ViewFilters(Named):
+    description: str = ""
+    run_types: list[str] = []
+    metric_ids: list[str] = []
+    artifact_categories: list[str] = []
+    evidence_filters: dict[Literal["status", "type"], list[str]] = {}
+    layout_type: LayoutType = "research"
+
+
+class CustomView(ViewFilters):
+    pass
+
+
+class DashboardWidget(ViewFilters):
+    kind: WidgetKind
+
+
 class Manifest(Stage):
     version: str
     default_capabilities: list[str] = []
@@ -91,9 +142,9 @@ class Manifest(Stage):
     research_stages: list[Stage]
     stage_gates: list[StageGate]
     artifact_categories: list[str]
-    dashboard_widgets: list[str]
+    dashboard_widgets: list[str | DashboardWidget]
     navigation: list[Named]
-    custom_views: list[Named]
+    custom_views: list[CustomView]
 
     @model_validator(mode="after")
     def references_valid(self):
@@ -116,6 +167,9 @@ class Manifest(Stage):
             self.metric_schemas,
             self.context_fields,
             self.research_stages,
+            self.stage_gates,
+            self.navigation,
+            self.custom_views,
         ):
             if len({x.id for x in collection}) != len(collection):
                 raise ValueError("Duplicate manifest identifier")
@@ -123,11 +177,39 @@ class Manifest(Stage):
             x.id
             for x in self.parameter_schemas + self.metric_schemas + self.context_fields
         }
-        if len(fields) != len(self.parameter_schemas + self.metric_schemas + self.context_fields):
+        if len(fields) != len(
+            self.parameter_schemas + self.metric_schemas + self.context_fields
+        ):
             raise ValueError("Ambiguous run form field identifier")
         if len({form.run_type for form in self.run_forms}) != len(self.run_forms):
             raise ValueError("Duplicate run form type")
         types = {r.id for r in self.run_types}
+        metrics = {metric.id for metric in self.metric_schemas}
+        widget_ids = [
+            widget if isinstance(widget, str) else widget.id
+            for widget in self.dashboard_widgets
+        ]
+        if len(widget_ids) != len(set(widget_ids)):
+            raise ValueError("Duplicate dashboard widget identifier")
+        for view in self.custom_views + [
+            widget for widget in self.dashboard_widgets if not isinstance(widget, str)
+        ]:
+            if (
+                not set(view.run_types) <= types
+                or not set(view.metric_ids) <= metrics
+                or not set(view.artifact_categories) <= set(self.artifact_categories)
+                or view.capability
+                and view.capability not in CAPABILITY_IDS
+            ):
+                raise ValueError("Unknown custom view or widget reference")
+            for identifiers in (
+                view.run_types,
+                view.metric_ids,
+                view.artifact_categories,
+                *view.evidence_filters.values(),
+            ):
+                if len(identifiers) != len(set(identifiers)):
+                    raise ValueError("Duplicate view filter identifier")
         for form in self.run_forms:
             if form.run_type not in types or any(
                 k not in fields for g in form.groups for k in g.fields

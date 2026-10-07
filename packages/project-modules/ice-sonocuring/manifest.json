@@ -1,7 +1,7 @@
 {
   "id": "ice-sonocuring",
   "name": "ICE 声固化",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "双功能 ICE 探头局部声响应封堵研究。路线图仅定义拟议流程，历史结果不作为当前事实。",
   "run_types": [
     {
@@ -193,7 +193,8 @@
       "display_group": "metrics",
       "order": 0,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "informational"
     },
     {
       "id": "leakage",
@@ -206,7 +207,8 @@
       "display_group": "metrics",
       "order": 1,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "minimize"
     },
     {
       "id": "outside_threshold_volume",
@@ -219,7 +221,8 @@
       "display_group": "metrics",
       "order": 2,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "minimize"
     },
     {
       "id": "outside_peak",
@@ -232,7 +235,8 @@
       "display_group": "metrics",
       "order": 3,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "minimize"
     },
     {
       "id": "numerical_sensitivity",
@@ -245,7 +249,8 @@
       "display_group": "metrics",
       "order": 4,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "minimize"
     },
     {
       "id": "psf_width",
@@ -258,7 +263,8 @@
       "display_group": "metrics",
       "order": 5,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "minimize"
     },
     {
       "id": "material_response",
@@ -271,7 +277,8 @@
       "display_group": "metrics",
       "order": 6,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "informational"
     }
   ],
   "research_stages": [
@@ -430,14 +437,69 @@
     "other"
   ],
   "dashboard_widgets": [
-    "current_stage",
-    "current_gate",
-    "gate_progress",
-    "blocking_issues",
-    "recent_runs",
-    "open_risks",
-    "evidence_summary",
-    "tasks"
+    {
+      "id": "stage_gates",
+      "kind": "stage_gates",
+      "name": "阶段与关卡",
+      "layout_type": "research"
+    },
+    {
+      "id": "objective",
+      "kind": "objective",
+      "name": "研究目标",
+      "layout_type": "research"
+    },
+    {
+      "id": "highlighted_runs",
+      "kind": "highlighted_runs",
+      "name": "星标与关键研究",
+      "layout_type": "research"
+    },
+    {
+      "id": "validation",
+      "kind": "validation",
+      "name": "实验验证与证据",
+      "layout_type": "research",
+      "evidence_filters": {
+        "status": [
+          "measured",
+          "calibrated",
+          "validated",
+          "reproduced"
+        ]
+      },
+      "description": "测量与物理验证独立于仿真。"
+    },
+    {
+      "id": "recent_runs",
+      "kind": "recent_runs",
+      "name": "最近研究记录",
+      "layout_type": "research"
+    },
+    {
+      "id": "open_risks",
+      "kind": "open_risks",
+      "name": "未解决风险",
+      "layout_type": "research"
+    },
+    {
+      "id": "current_tasks",
+      "kind": "current_tasks",
+      "name": "待完成任务",
+      "layout_type": "research"
+    },
+    {
+      "id": "evidence_summary",
+      "kind": "evidence_summary",
+      "name": "证据概况",
+      "layout_type": "research"
+    },
+    {
+      "id": "recent_activity",
+      "kind": "recent_activity",
+      "name": "最近活动",
+      "layout_type": "research"
+    }
   ],
   "navigation": [
     {
@@ -461,12 +523,8 @@
       "name": "任务"
     },
     {
-      "id": "milestones",
-      "name": "里程碑"
-    },
-    {
-      "id": "artifacts",
-      "name": "研究文件"
+      "id": "files",
+      "name": "文件"
     },
     {
       "id": "notes",
@@ -477,62 +535,175 @@
       "name": "决策"
     },
     {
-      "id": "timeline",
-      "name": "时间线"
+      "id": "workflow",
+      "name": "工作流"
     }
   ],
   "custom_views": [
     {
       "id": "probe_architecture",
-      "name": "探头架构"
+      "name": "探头架构",
+      "description": "记录探头架构候选、共同几何约束与方案否决。结构选择必须保留适用边界。",
+      "run_types": [
+        "controlled_probe_comparison",
+        "prototype_validation"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "acoustic_screening",
-      "name": "声学筛选"
+      "name": "声学筛选",
+      "description": "数值可信度与声学筛选：固定评价 ROI、冻结参考、覆盖与目标外泄漏。声学代理量不替代实测材料响应。",
+      "run_types": [
+        "numerical_validation",
+        "controlled_probe_comparison",
+        "robustness_test"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "beam_steering",
-      "name": "声束偏转"
+      "name": "声束偏转",
+      "description": "比较偏转条件、主瓣与外域峰值，保存控制条件和适用角度。",
+      "run_types": [
+        "steering_test",
+        "robustness_test"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "sequential_scanning",
-      "name": "顺序扫描"
+      "name": "顺序扫描",
+      "description": "记录扫描路径、停留时间及冻结评价条件，区分扫描协议与单点声场结果。",
+      "run_types": [
+        "scan_protocol_test"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "imaging",
-      "name": "成像"
+      "name": "成像",
+      "description": "记录成像 PSF、分辨率与声驱动条件；双功能探头需独立评估成像性能。",
+      "run_types": [
+        "imaging_psf"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "kwave_validation",
-      "name": "k-Wave 验证"
+      "name": "k-Wave 验证",
+      "description": "保存 k-Wave 复核环境、网格与代码版本，关联数值限制和独立验证证据。",
+      "run_types": [
+        "kwave_validation",
+        "numerical_validation"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "electroacoustics",
-      "name": "电声特性"
+      "name": "电声特性",
+      "description": "电声驱动与原型测量；未知驱动参数保持未知，平方速度积分不等同真实电声功率。",
+      "run_types": [
+        "prototype_validation",
+        "hydrophone_measurement"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "hydrophone_measurement",
-      "name": "水听器测量"
+      "name": "水听器测量",
+      "description": "保存水听器校准、测量条件、不确定度与声场原始数据。",
+      "run_types": [
+        "hydrophone_measurement"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "material_response",
-      "name": "材料响应"
+      "name": "材料响应",
+      "description": "记录实测材料响应、阈值来源与重复性。未测得的阈值保持 null，不从声学覆盖直接推断固化覆盖。",
+      "run_types": [
+        "material_response"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "thermal_flow",
-      "name": "热与流动"
+      "name": "热与流动",
+      "description": "记录温度、流动边界与实验条件，评估模型到物理环境的迁移。",
+      "run_types": [
+        "thermal_flow_test"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "dual_function_coexistence",
-      "name": "双功能共存"
+      "name": "双功能共存",
+      "description": "成像与驱动共存，检查串扰、热影响及功能互相约束。",
+      "run_types": [
+        "imaging_psf",
+        "prototype_validation",
+        "thermal_flow_test"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "tank_validation",
-      "name": "水槽验证"
+      "name": "水槽验证",
+      "description": "将原型与水槽声场测量关联，归档重新标定及独立复核证据。",
+      "run_types": [
+        "prototype_validation",
+        "hydrophone_measurement"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     },
     {
       "id": "phantom_ex_vivo",
-      "name": "模型体与离体验证"
+      "name": "模型体与离体验证",
+      "description": "模型体或离体功能验证。保存封堵判据与证据边界，数值通过不能代替实验评审。",
+      "run_types": [
+        "phantom_test"
+      ],
+      "layout_type": "research",
+      "metric_ids": [],
+      "artifact_categories": [],
+      "evidence_filters": {}
     }
   ],
   "default_capabilities": [
@@ -957,13 +1128,9 @@
           "name": "输入参数与来源",
           "fields": [
             "frequency",
-            "element_count",
-            "pitch",
             "source_velocity",
             "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
+            "sound_speed"
           ],
           "visibility": "basic"
         },
@@ -971,13 +1138,7 @@
           "id": "metrics",
           "name": "输出指标",
           "fields": [
-            "coverage",
-            "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
-            "material_response"
+            "numerical_sensitivity"
           ],
           "visibility": "basic"
         }
@@ -1006,10 +1167,7 @@
             "element_count",
             "pitch",
             "source_velocity",
-            "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
+            "roi"
           ],
           "visibility": "basic"
         },
@@ -1020,10 +1178,7 @@
             "coverage",
             "leakage",
             "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
-            "material_response"
+            "outside_peak"
           ],
           "visibility": "basic"
         }
@@ -1049,13 +1204,9 @@
           "name": "输入参数与来源",
           "fields": [
             "frequency",
-            "element_count",
             "pitch",
             "source_velocity",
-            "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
+            "roi"
           ],
           "visibility": "basic"
         },
@@ -1065,11 +1216,7 @@
           "fields": [
             "coverage",
             "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
-            "material_response"
+            "outside_peak"
           ],
           "visibility": "basic"
         }
@@ -1095,11 +1242,8 @@
           "name": "输入参数与来源",
           "fields": [
             "frequency",
-            "element_count",
-            "pitch",
             "source_velocity",
             "roi",
-            "sound_speed",
             "dwell_time",
             "material_threshold"
           ],
@@ -1110,12 +1254,7 @@
           "name": "输出指标",
           "fields": [
             "coverage",
-            "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
-            "material_response"
+            "outside_threshold_volume"
           ],
           "visibility": "basic"
         }
@@ -1141,13 +1280,9 @@
           "name": "输入参数与来源",
           "fields": [
             "frequency",
-            "element_count",
-            "pitch",
             "source_velocity",
             "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
+            "sound_speed"
           ],
           "visibility": "basic"
         },
@@ -1157,11 +1292,7 @@
           "fields": [
             "coverage",
             "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
-            "material_response"
+            "numerical_sensitivity"
           ],
           "visibility": "basic"
         }
@@ -1191,11 +1322,7 @@
             "frequency",
             "element_count",
             "pitch",
-            "source_velocity",
-            "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
+            "sound_speed"
           ],
           "visibility": "basic"
         },
@@ -1203,13 +1330,7 @@
           "id": "metrics",
           "name": "输出指标",
           "fields": [
-            "coverage",
-            "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
-            "material_response"
+            "psf_width"
           ],
           "visibility": "basic"
         }
@@ -1235,13 +1356,9 @@
           "name": "输入参数与来源",
           "fields": [
             "frequency",
-            "element_count",
-            "pitch",
             "source_velocity",
             "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
+            "sound_speed"
           ],
           "visibility": "basic"
         },
@@ -1249,13 +1366,8 @@
           "id": "metrics",
           "name": "输出指标",
           "fields": [
-            "coverage",
-            "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
             "numerical_sensitivity",
-            "psf_width",
-            "material_response"
+            "coverage"
           ],
           "visibility": "basic"
         }
@@ -1283,13 +1395,8 @@
           "name": "输入参数与来源",
           "fields": [
             "frequency",
-            "element_count",
-            "pitch",
             "source_velocity",
-            "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
+            "roi"
           ],
           "visibility": "basic"
         },
@@ -1299,11 +1406,7 @@
           "fields": [
             "coverage",
             "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
-            "material_response"
+            "outside_peak"
           ],
           "visibility": "basic"
         }
@@ -1332,11 +1435,6 @@
           "name": "输入参数与来源",
           "fields": [
             "frequency",
-            "element_count",
-            "pitch",
-            "source_velocity",
-            "roi",
-            "sound_speed",
             "dwell_time",
             "material_threshold"
           ],
@@ -1346,12 +1444,6 @@
           "id": "metrics",
           "name": "输出指标",
           "fields": [
-            "coverage",
-            "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
             "material_response"
           ],
           "visibility": "basic"
@@ -1381,13 +1473,8 @@
           "name": "输入参数与来源",
           "fields": [
             "frequency",
-            "element_count",
-            "pitch",
             "source_velocity",
-            "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
+            "dwell_time"
           ],
           "visibility": "basic"
         },
@@ -1395,12 +1482,6 @@
           "id": "metrics",
           "name": "输出指标",
           "fields": [
-            "coverage",
-            "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
             "material_response"
           ],
           "visibility": "basic"
@@ -1434,11 +1515,7 @@
             "frequency",
             "element_count",
             "pitch",
-            "source_velocity",
-            "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
+            "source_velocity"
           ],
           "visibility": "basic"
         },
@@ -1447,12 +1524,7 @@
           "name": "输出指标",
           "fields": [
             "coverage",
-            "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
-            "material_response"
+            "leakage"
           ],
           "visibility": "basic"
         }
@@ -1481,11 +1553,6 @@
           "name": "输入参数与来源",
           "fields": [
             "frequency",
-            "element_count",
-            "pitch",
-            "source_velocity",
-            "roi",
-            "sound_speed",
             "dwell_time",
             "material_threshold"
           ],
@@ -1495,12 +1562,6 @@
           "id": "metrics",
           "name": "输出指标",
           "fields": [
-            "coverage",
-            "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
             "material_response"
           ],
           "visibility": "basic"
@@ -1531,28 +1592,8 @@
           "id": "parameters",
           "name": "输入参数与来源",
           "fields": [
-            "frequency",
             "element_count",
-            "pitch",
-            "source_velocity",
-            "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
-          ],
-          "visibility": "basic"
-        },
-        {
-          "id": "metrics",
-          "name": "输出指标",
-          "fields": [
-            "coverage",
-            "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
-            "material_response"
+            "pitch"
           ],
           "visibility": "basic"
         }
@@ -1568,35 +1609,6 @@
           "fields": [
             "source_scope",
             "search_query"
-          ],
-          "visibility": "basic"
-        },
-        {
-          "id": "parameters",
-          "name": "输入参数与来源",
-          "fields": [
-            "frequency",
-            "element_count",
-            "pitch",
-            "source_velocity",
-            "roi",
-            "sound_speed",
-            "dwell_time",
-            "material_threshold"
-          ],
-          "visibility": "basic"
-        },
-        {
-          "id": "metrics",
-          "name": "输出指标",
-          "fields": [
-            "coverage",
-            "leakage",
-            "outside_threshold_volume",
-            "outside_peak",
-            "numerical_sensitivity",
-            "psf_width",
-            "material_response"
           ],
           "visibility": "basic"
         }

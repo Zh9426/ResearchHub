@@ -1,5 +1,6 @@
 // 简体中文显示词汇；不改动数据库/API 标识或用户自由文本。
 const labels: Record<string,string> = {
+  'derivation':'推导或处理方法','source_location':'来源位置','source_kind':'来源类别','source_id':'来源记录','uncertainty':'不确定度','valid_conditions':'适用条件','artifact_ids':'关联文件','is_confirmed':'人工确认','added':'新增','removed':'移除','unchanged':'相同','add':'新增','remove':'移除','set':'设置',
   'email':'邮箱','password':'密码','name':'名称','title':'标题','status':'状态','statement':'陈述','description':'描述',
   'value':'数值','value_type':'数值类型','content':'内容','scientific_outcome':'科研结果','module_id':'项目类型',
   'stage_gates':'阶段关卡','gate_criteria':'关卡判据','project':'项目','run':'研究记录','research_runs':'研究记录',

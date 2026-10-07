@@ -1,7 +1,7 @@
 {
   "id": "hdsp",
   "name": "HDSP",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "固定目标平面的全息超声表面打印；厚度相位板设计、声场、热与固化验证。",
   "run_types": [
     {
@@ -160,7 +160,8 @@
       "display_group": "metrics",
       "order": 0,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "maximize"
     },
     {
       "id": "correlation",
@@ -173,7 +174,8 @@
       "display_group": "metrics",
       "order": 1,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "maximize"
     },
     {
       "id": "coverage",
@@ -186,7 +188,8 @@
       "display_group": "metrics",
       "order": 2,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "informational"
     },
     {
       "id": "p_max",
@@ -199,7 +202,8 @@
       "display_group": "metrics",
       "order": 3,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "informational"
     },
     {
       "id": "Tmax",
@@ -212,7 +216,8 @@
       "display_group": "metrics",
       "order": 4,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "informational"
     },
     {
       "id": "Omega",
@@ -225,7 +230,8 @@
       "display_group": "metrics",
       "order": 5,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "informational"
     },
     {
       "id": "best_z",
@@ -238,7 +244,8 @@
       "display_group": "metrics",
       "order": 6,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "informational"
     },
     {
       "id": "Energy Efficiency",
@@ -251,7 +258,8 @@
       "display_group": "metrics",
       "order": 7,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "maximize"
     },
     {
       "id": "over_cure",
@@ -264,7 +272,8 @@
       "display_group": "metrics",
       "order": 8,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "minimize"
     },
     {
       "id": "under_cure",
@@ -277,7 +286,8 @@
       "display_group": "metrics",
       "order": 9,
       "help_text": "未知值留空，不代表零。",
-      "visibility": "basic"
+      "visibility": "basic",
+      "optimization_direction": "minimize"
     }
   ],
   "research_stages": [
@@ -337,14 +347,82 @@
     "other"
   ],
   "dashboard_widgets": [
-    "current_stage",
-    "current_goal",
-    "recent_runs",
-    "best_metrics",
-    "open_tasks",
-    "recent_decisions",
-    "artifacts",
-    "activity"
+    {
+      "id": "objective",
+      "kind": "objective",
+      "name": "研究目标",
+      "layout_type": "research"
+    },
+    {
+      "id": "stage_gates",
+      "kind": "stage_gates",
+      "name": "阶段与关卡",
+      "layout_type": "research"
+    },
+    {
+      "id": "highlighted_runs",
+      "kind": "highlighted_runs",
+      "name": "星标与关键研究",
+      "layout_type": "research"
+    },
+    {
+      "id": "recent_runs",
+      "kind": "recent_runs",
+      "name": "最近研究记录",
+      "layout_type": "research"
+    },
+    {
+      "id": "representative_metrics",
+      "kind": "representative_metrics",
+      "name": "代表性指标",
+      "layout_type": "research",
+      "metric_ids": [
+        "IoU",
+        "Energy Efficiency",
+        "over_cure",
+        "under_cure"
+      ],
+      "description": "同时关注固化质量与能量成本；保持来源、单位与适用边界。"
+    },
+    {
+      "id": "validation",
+      "kind": "validation",
+      "name": "实验验证与证据",
+      "layout_type": "research",
+      "evidence_filters": {
+        "status": [
+          "measured",
+          "calibrated",
+          "validated",
+          "reproduced"
+        ]
+      },
+      "description": "测量与物理验证独立于仿真。"
+    },
+    {
+      "id": "current_tasks",
+      "kind": "current_tasks",
+      "name": "待完成任务",
+      "layout_type": "research"
+    },
+    {
+      "id": "evidence_summary",
+      "kind": "evidence_summary",
+      "name": "证据概况",
+      "layout_type": "research"
+    },
+    {
+      "id": "recent_decisions",
+      "kind": "recent_decisions",
+      "name": "最近决策",
+      "layout_type": "research"
+    },
+    {
+      "id": "recent_activity",
+      "kind": "recent_activity",
+      "name": "最近活动",
+      "layout_type": "research"
+    }
   ],
   "navigation": [
     {
@@ -368,12 +446,8 @@
       "name": "任务"
     },
     {
-      "id": "milestones",
-      "name": "里程碑"
-    },
-    {
-      "id": "artifacts",
-      "name": "研究文件"
+      "id": "files",
+      "name": "文件"
     },
     {
       "id": "notes",
@@ -384,11 +458,36 @@
       "name": "决策"
     },
     {
-      "id": "timeline",
-      "name": "时间线"
+      "id": "workflow",
+      "name": "工作流"
     }
   ],
-  "custom_views": [],
+  "custom_views": [
+    {
+      "id": "surface_printing",
+      "name": "表面打印工作区",
+      "description": "固定目标面声场—热—Arrhenius 固化流程。宏观厚度相位板不等同于严格声学超透镜。",
+      "run_types": [
+        "phase_retrieval",
+        "phase_plate_design",
+        "acoustic_simulation",
+        "zscan",
+        "thermal_simulation",
+        "curing_prediction",
+        "optimization",
+        "physical_validation",
+        "phase_plate_fabrication",
+        "dataset_analysis"
+      ],
+      "metric_ids": [
+        "IoU",
+        "Energy Efficiency",
+        "over_cure",
+        "under_cure"
+      ],
+      "layout_type": "research"
+    }
+  ],
   "default_capabilities": [
     "code_simulation",
     "lab_experiment",
@@ -643,7 +742,6 @@
           "fields": [
             "frequency",
             "z_target",
-            "pressure",
             "algorithm",
             "iterations",
             "beta",
@@ -655,16 +753,7 @@
           "id": "metrics",
           "name": "输出指标",
           "fields": [
-            "IoU",
-            "correlation",
-            "coverage",
-            "p_max",
-            "Tmax",
-            "Omega",
-            "best_z",
-            "Energy Efficiency",
-            "over_cure",
-            "under_cure"
+            "correlation"
           ],
           "visibility": "basic"
         }
@@ -690,28 +779,7 @@
           "fields": [
             "frequency",
             "z_target",
-            "pressure",
-            "algorithm",
-            "iterations",
-            "beta",
             "phase_levels"
-          ],
-          "visibility": "basic"
-        },
-        {
-          "id": "metrics",
-          "name": "输出指标",
-          "fields": [
-            "IoU",
-            "correlation",
-            "coverage",
-            "p_max",
-            "Tmax",
-            "Omega",
-            "best_z",
-            "Energy Efficiency",
-            "over_cure",
-            "under_cure"
           ],
           "visibility": "basic"
         }
@@ -738,11 +806,7 @@
           "fields": [
             "frequency",
             "z_target",
-            "pressure",
-            "algorithm",
-            "iterations",
-            "beta",
-            "phase_levels"
+            "pressure"
           ],
           "visibility": "basic"
         },
@@ -750,16 +814,9 @@
           "id": "metrics",
           "name": "输出指标",
           "fields": [
-            "IoU",
-            "correlation",
-            "coverage",
             "p_max",
-            "Tmax",
-            "Omega",
-            "best_z",
-            "Energy Efficiency",
-            "over_cure",
-            "under_cure"
+            "coverage",
+            "correlation"
           ],
           "visibility": "basic"
         }
@@ -786,11 +843,7 @@
           "fields": [
             "frequency",
             "z_target",
-            "pressure",
-            "algorithm",
-            "iterations",
-            "beta",
-            "phase_levels"
+            "pressure"
           ],
           "visibility": "basic"
         },
@@ -798,16 +851,8 @@
           "id": "metrics",
           "name": "输出指标",
           "fields": [
-            "IoU",
-            "correlation",
-            "coverage",
-            "p_max",
-            "Tmax",
-            "Omega",
             "best_z",
-            "Energy Efficiency",
-            "over_cure",
-            "under_cure"
+            "p_max"
           ],
           "visibility": "basic"
         }
@@ -833,12 +878,7 @@
           "name": "输入参数与来源",
           "fields": [
             "frequency",
-            "z_target",
-            "pressure",
-            "algorithm",
-            "iterations",
-            "beta",
-            "phase_levels"
+            "pressure"
           ],
           "visibility": "basic"
         },
@@ -846,16 +886,7 @@
           "id": "metrics",
           "name": "输出指标",
           "fields": [
-            "IoU",
-            "correlation",
-            "coverage",
-            "p_max",
-            "Tmax",
-            "Omega",
-            "best_z",
-            "Energy Efficiency",
-            "over_cure",
-            "under_cure"
+            "Tmax"
           ],
           "visibility": "basic"
         }
@@ -882,11 +913,7 @@
           "fields": [
             "frequency",
             "z_target",
-            "pressure",
-            "algorithm",
-            "iterations",
-            "beta",
-            "phase_levels"
+            "pressure"
           ],
           "visibility": "basic"
         },
@@ -895,15 +922,10 @@
           "name": "输出指标",
           "fields": [
             "IoU",
-            "correlation",
-            "coverage",
-            "p_max",
-            "Tmax",
             "Omega",
-            "best_z",
-            "Energy Efficiency",
             "over_cure",
-            "under_cure"
+            "under_cure",
+            "Energy Efficiency"
           ],
           "visibility": "basic"
         }
@@ -945,10 +967,6 @@
             "IoU",
             "correlation",
             "coverage",
-            "p_max",
-            "Tmax",
-            "Omega",
-            "best_z",
             "Energy Efficiency",
             "over_cure",
             "under_cure"
@@ -981,11 +999,7 @@
           "fields": [
             "frequency",
             "z_target",
-            "pressure",
-            "algorithm",
-            "iterations",
-            "beta",
-            "phase_levels"
+            "pressure"
           ],
           "visibility": "basic"
         },
@@ -994,13 +1008,8 @@
           "name": "输出指标",
           "fields": [
             "IoU",
-            "correlation",
             "coverage",
-            "p_max",
             "Tmax",
-            "Omega",
-            "best_z",
-            "Energy Efficiency",
             "over_cure",
             "under_cure"
           ],
@@ -1026,30 +1035,7 @@
           "id": "parameters",
           "name": "输入参数与来源",
           "fields": [
-            "frequency",
-            "z_target",
-            "pressure",
-            "algorithm",
-            "iterations",
-            "beta",
             "phase_levels"
-          ],
-          "visibility": "basic"
-        },
-        {
-          "id": "metrics",
-          "name": "输出指标",
-          "fields": [
-            "IoU",
-            "correlation",
-            "coverage",
-            "p_max",
-            "Tmax",
-            "Omega",
-            "best_z",
-            "Energy Efficiency",
-            "over_cure",
-            "under_cure"
           ],
           "visibility": "basic"
         }
@@ -1069,30 +1055,12 @@
           "visibility": "basic"
         },
         {
-          "id": "parameters",
-          "name": "输入参数与来源",
-          "fields": [
-            "frequency",
-            "z_target",
-            "pressure",
-            "algorithm",
-            "iterations",
-            "beta",
-            "phase_levels"
-          ],
-          "visibility": "basic"
-        },
-        {
           "id": "metrics",
           "name": "输出指标",
           "fields": [
             "IoU",
             "correlation",
             "coverage",
-            "p_max",
-            "Tmax",
-            "Omega",
-            "best_z",
             "Energy Efficiency",
             "over_cure",
             "under_cure"

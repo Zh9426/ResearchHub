@@ -211,6 +211,13 @@ class MetricInput(Input):
     unit: str | None = None
     metric_schema_id: str | None = None
     status: EvidenceState = "unknown"
+    source_kind: SourceKind = "unknown"
+    source_id: UUID | None = None
+    source_location: str | None = None
+    derivation: str | None = None
+    uncertainty: str | None = None
+    valid_conditions: str | None = None
+    artifact_ids: list[UUID] = Field(default_factory=list, max_length=100)
 
 
 class MetricsBatch(Input):

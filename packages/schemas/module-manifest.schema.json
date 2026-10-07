@@ -23,6 +23,208 @@
       "title": "Criterion",
       "type": "object"
     },
+    "CustomView": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capability"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "run_types": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Run Types",
+          "type": "array"
+        },
+        "metric_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Metric Ids",
+          "type": "array"
+        },
+        "artifact_categories": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Artifact Categories",
+          "type": "array"
+        },
+        "evidence_filters": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "default": {},
+          "propertyNames": {
+            "enum": [
+              "status",
+              "type"
+            ]
+          },
+          "title": "Evidence Filters",
+          "type": "object"
+        },
+        "layout_type": {
+          "default": "research",
+          "enum": [
+            "research",
+            "runs",
+            "metrics",
+            "evidence",
+            "artifacts",
+            "lineage",
+            "hardware",
+            "lab"
+          ],
+          "title": "Layout Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "CustomView",
+      "type": "object"
+    },
+    "DashboardWidget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capability"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "run_types": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Run Types",
+          "type": "array"
+        },
+        "metric_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Metric Ids",
+          "type": "array"
+        },
+        "artifact_categories": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Artifact Categories",
+          "type": "array"
+        },
+        "evidence_filters": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "default": {},
+          "propertyNames": {
+            "enum": [
+              "status",
+              "type"
+            ]
+          },
+          "title": "Evidence Filters",
+          "type": "object"
+        },
+        "layout_type": {
+          "default": "research",
+          "enum": [
+            "research",
+            "runs",
+            "metrics",
+            "evidence",
+            "artifacts",
+            "lineage",
+            "hardware",
+            "lab"
+          ],
+          "title": "Layout Type",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "objective",
+            "stage_gates",
+            "highlighted_runs",
+            "recent_runs",
+            "representative_metrics",
+            "validation",
+            "current_tasks",
+            "evidence_summary",
+            "open_risks",
+            "recent_decisions",
+            "recent_activity"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind"
+      ],
+      "title": "DashboardWidget",
+      "type": "object"
+    },
     "FormGroup": {
       "additionalProperties": false,
       "properties": {
@@ -225,6 +427,34 @@
           ],
           "title": "Visibility",
           "type": "string"
+        },
+        "optimization_direction": {
+          "default": "informational",
+          "enum": [
+            "maximize",
+            "minimize",
+            "target_range",
+            "informational"
+          ],
+          "title": "Optimization Direction",
+          "type": "string"
+        },
+        "target_range": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Range"
         }
       },
       "required": [
@@ -419,7 +649,14 @@
     },
     "dashboard_widgets": {
       "items": {
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/$defs/DashboardWidget"
+          }
+        ]
       },
       "title": "Dashboard Widgets",
       "type": "array"
@@ -433,7 +670,7 @@
     },
     "custom_views": {
       "items": {
-        "$ref": "#/$defs/Named"
+        "$ref": "#/$defs/CustomView"
       },
       "title": "Custom Views",
       "type": "array"

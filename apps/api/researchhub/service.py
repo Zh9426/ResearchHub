@@ -10,6 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import ValidationError
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.inspection import inspect
+from sqlalchemy.orm.attributes import flag_modified
 
 from . import models as m
 from .schemas import SCHEMAS
@@ -355,6 +356,15 @@ def apply_data(db, obj, data):
 
                 value = datetime.fromisoformat(value.replace("Z", "+00:00"))
             setattr(obj, key, value)
+            if (
+                key == "value"
+                and isinstance(obj, (m.Parameter, m.Metric))
+                and inspect(obj).persistent
+            ):
+                # Python considers True == 1, including inside dictionaries. JSON
+                # scientific values preserve this distinction even when the ORM's
+                # default equality would incorrectly suppress the UPDATE.
+                flag_modified(obj, key)
     db.flush()
 
 

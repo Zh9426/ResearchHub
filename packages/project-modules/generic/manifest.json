@@ -1,7 +1,7 @@
 {
   "id": "generic",
   "name": "通用科研",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "通用科研工作空间；不预置任何超声参数。",
   "run_types": [
     {
@@ -109,10 +109,48 @@
     "other"
   ],
   "dashboard_widgets": [
-    "research_questions",
-    "tasks",
-    "recent_runs",
-    "evidence_summary"
+    {
+      "id": "objective",
+      "kind": "objective",
+      "name": "研究目标",
+      "layout_type": "research"
+    },
+    {
+      "id": "stage_gates",
+      "kind": "stage_gates",
+      "name": "阶段与关卡",
+      "layout_type": "research"
+    },
+    {
+      "id": "highlighted_runs",
+      "kind": "highlighted_runs",
+      "name": "星标与关键研究",
+      "layout_type": "research"
+    },
+    {
+      "id": "recent_runs",
+      "kind": "recent_runs",
+      "name": "最近研究记录",
+      "layout_type": "research"
+    },
+    {
+      "id": "current_tasks",
+      "kind": "current_tasks",
+      "name": "待完成任务",
+      "layout_type": "research"
+    },
+    {
+      "id": "evidence_summary",
+      "kind": "evidence_summary",
+      "name": "证据概况",
+      "layout_type": "research"
+    },
+    {
+      "id": "recent_activity",
+      "kind": "recent_activity",
+      "name": "最近活动",
+      "layout_type": "research"
+    }
   ],
   "navigation": [
     {
@@ -136,12 +174,8 @@
       "name": "任务"
     },
     {
-      "id": "milestones",
-      "name": "里程碑"
-    },
-    {
-      "id": "artifacts",
-      "name": "研究文件"
+      "id": "files",
+      "name": "文件"
     },
     {
       "id": "notes",
@@ -152,11 +186,37 @@
       "name": "决策"
     },
     {
-      "id": "timeline",
-      "name": "时间线"
+      "id": "workflow",
+      "name": "工作流"
     }
   ],
-  "custom_views": [],
+  "custom_views": [
+    {
+      "id": "hardware_workspace",
+      "name": "硬件工作区",
+      "description": "原型版本、物料、装配、接线、校准、台架测试与故障记录。",
+      "run_types": [
+        "prototype"
+      ],
+      "artifact_categories": [
+        "data",
+        "figure",
+        "report",
+        "protocol"
+      ],
+      "layout_type": "hardware"
+    },
+    {
+      "id": "lab_workspace",
+      "name": "实验工作区",
+      "description": "实验日期、操作者、样品批次、设备条件与现场观察。",
+      "run_types": [
+        "physical_experiment",
+        "material_test"
+      ],
+      "layout_type": "lab"
+    }
+  ],
   "default_capabilities": [
     "code_simulation",
     "lab_experiment",

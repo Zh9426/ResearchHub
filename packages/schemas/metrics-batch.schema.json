@@ -71,6 +71,91 @@
           ],
           "title": "Status",
           "type": "string"
+        },
+        "source_kind": {
+          "default": "unknown",
+          "enum": [
+            "unknown",
+            "synthetic",
+            "assumed",
+            "literature",
+            "manufacturer",
+            "measured",
+            "calibrated",
+            "derived"
+          ],
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "source_location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Location"
+        },
+        "derivation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Derivation"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uncertainty"
+        },
+        "valid_conditions": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Conditions"
+        },
+        "artifact_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Artifact Ids",
+          "type": "array"
         }
       },
       "required": [

@@ -213,6 +213,14 @@ class Metric(Lifecycle, Record, Base):
     unit: Mapped[str | None] = mapped_column(String(100), nullable=True)
     metric_schema_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="unknown")
+    source_kind: Mapped[str] = mapped_column(String(30), default="unknown")
+    source_id: Mapped[str | None] = mapped_column(
+        ForeignKey("sources.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    source_location: Mapped[str | None] = mapped_column(Text, nullable=True)
+    derivation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    uncertainty: Mapped[str | None] = mapped_column(Text, nullable=True)
+    valid_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Source(ProjectRecord, Base):
@@ -406,6 +414,7 @@ for owner, target, k in [
     ("stage_gates", "evidence", "evidence_ids"),
     ("gate_criteria", "evidence", "evidence_ids"),
     ("research_runs", "artifacts", "artifact_ids"),
+    ("metrics", "artifacts", "artifact_ids"),
     *[
         (owner, "tags", "tag_ids")
         for owner in (
@@ -454,6 +463,16 @@ Index(
 )
 Index("ix_runs_parent", ResearchRun.parent_run_id)
 Index("ix_evidence_run", Evidence.linked_run_id)
+Index("ix_evidence_source", Evidence.linked_source_id)
+Index("ix_evidence_artifact", Evidence.linked_artifact_id)
+Index("ix_parameters_source_id", Parameter.source_id)
+Index(
+    "ix_audit_resource_history",
+    AuditLog.owner_id,
+    AuditLog.resource_type,
+    AuditLog.resource_id,
+    AuditLog.timestamp,
+)
 Index("ix_artifacts_run", Artifact.run_id)
 Index("ix_audit_owner_timestamp", AuditLog.owner_id, AuditLog.timestamp, AuditLog.id)
 Index("ix_audit_project_timestamp", AuditLog.project_id, AuditLog.timestamp)

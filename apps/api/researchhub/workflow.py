@@ -116,6 +116,13 @@ def text_filter(cls, q):
     return or_(*(field.ilike(search_pattern(q), escape="\\") for field in fields))
 
 
+def filter_values(value):
+    values = [part.strip() for part in value.split(",") if part.strip()]
+    if not values or len(values) > 100 or any(len(part) > 200 for part in values):
+        raise HTTPException(422, "筛选列表应包含 1–100 个值，每个值不超过 200 字符")
+    return list(dict.fromkeys(values))
+
+
 def collection_statement(db, actor, pid, kind, params):
     svc.project_for(db, actor, pid)
     cls = QUERY_COLLECTIONS.get(kind)
@@ -124,6 +131,38 @@ def collection_statement(db, actor, pid, kind, params):
     clauses = [cls.project_id == pid, *svc.visible_records(cls)]
     if params.get("q"):
         clauses.append(text_filter(cls, params["q"][:300]))
+    for key, column in (
+        ("artifact_categories", getattr(cls, "category", None)),
+        ("evidence_statuses", cls.status if cls is m.Evidence else None),
+        ("evidence_types", getattr(cls, "evidence_type", None)),
+    ):
+        if params.get(key) and column is not None:
+            clauses.append(column.in_(filter_values(params[key])))
+    if params.get("run_types"):
+        types = filter_values(params["run_types"])
+        selected_runs = select(m.ResearchRun.id).where(
+            m.ResearchRun.project_id == pid,
+            m.ResearchRun.run_type.in_(types),
+            *svc.visible_records(m.ResearchRun),
+        )
+        if cls is m.ResearchRun:
+            clauses.append(cls.run_type.in_(types))
+        elif cls is m.Evidence:
+            clauses.append(cls.linked_run_id.in_(selected_runs))
+        elif cls is m.Artifact:
+            link = m.LINKS[("research_runs", "artifact_ids")]
+            clauses.append(
+                or_(
+                    cls.run_id.in_(selected_runs),
+                    cls.id.in_(
+                        select(link.c.target_id).where(
+                            link.c.owner_id.in_(selected_runs)
+                        )
+                    ),
+                )
+            )
+        elif hasattr(cls, "run_id"):
+            clauses.append(cls.run_id.in_(selected_runs))
     aliases = {
         "outcome": "scientific_outcome",
         "type": "evidence_type"

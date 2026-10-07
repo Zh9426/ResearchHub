@@ -18,6 +18,8 @@ ALLOWED_ARTIFACT_TYPES = {
     "zip": {"application/zip", "application/x-zip-compressed"},
     "txt": {"text/plain"},
     "log": {"text/plain"},
+    "mp4": {"video/mp4"},
+    "webm": {"video/webm"},
 }
 ARTIFACT_SIGNATURES = {
     "png": b"\x89PNG\r\n\x1a\n",
@@ -25,6 +27,32 @@ ARTIFACT_SIGNATURES = {
     "jpeg": b"\xff\xd8\xff",
     "pdf": b"%PDF-",
 }
+
+
+def artifact_signature_valid(ext, prefix):
+    if ext in ARTIFACT_SIGNATURES:
+        return prefix.startswith(ARTIFACT_SIGNATURES[ext])
+    if ext == "mp4":
+        return (
+            len(prefix) >= 16
+            and prefix[4:8] == b"ftyp"
+            and int.from_bytes(prefix[:4], "big") >= 16
+            and prefix[8:12]
+            in {
+                b"isom",
+                b"iso2",
+                b"mp41",
+                b"mp42",
+                b"avc1",
+                b"M4V ",
+                b"dash",
+                b"iso5",
+                b"iso6",
+            }
+        )
+    if ext == "webm":
+        return prefix.startswith(b"\x1a\x45\xdf\xa3") and b"webm" in prefix
+    return True
 
 
 class S3Objects:

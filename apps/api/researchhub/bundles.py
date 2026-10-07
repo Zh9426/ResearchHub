@@ -29,7 +29,7 @@ from .schemas import (
     ParameterInput,
     RunInput,
 )
-from .storage import ALLOWED_ARTIFACT_TYPES, ARTIFACT_SIGNATURES
+from .storage import ALLOWED_ARTIFACT_TYPES, artifact_signature_valid
 from .workflow import audit_statement
 
 MAX_BUNDLE_BYTES = 50 * 1024 * 1024
@@ -184,6 +184,10 @@ def validate_bundle(db, actor, project, stream):
         svc.validate_links(db, candidate, run, {})
         for parameter in parameters:
             svc.reference(db, m.Source, parameter["source_id"], project.id)
+        for metric in metrics:
+            svc.reference(db, m.Source, metric["source_id"], project.id)
+            for artifact_id in metric["artifact_ids"]:
+                svc.reference(db, m.Artifact, artifact_id, project.id)
         metric_ids = {item["id"] for item in svc.module_for(project)["metric_schemas"]}
         if any(
             item["metric_schema_id"] and item["metric_schema_id"] not in metric_ids
@@ -222,10 +226,8 @@ def validate_bundle(db, actor, project, stream):
                 raise HTTPException(422, "Artifact 分类未在项目冻结模块中定义")
             hash_ = hashlib.sha256()
             with archive.open(artifact["path"]) as source:
-                prefix = source.read(8)
-                if ext in ARTIFACT_SIGNATURES and not prefix.startswith(
-                    ARTIFACT_SIGNATURES[ext]
-                ):
+                prefix = source.read(65536)
+                if not artifact_signature_valid(ext, prefix):
                     raise HTTPException(422, "Artifact 内容与文件类型不匹配")
                 hash_.update(prefix)
                 while chunk := source.read(65536):
