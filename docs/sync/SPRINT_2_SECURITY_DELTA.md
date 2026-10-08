@@ -90,3 +90,31 @@ Fault验收使用真实TLS socket、Relay子进程/容器与专用PG：请求半
 审查 finding：4项P1、2项P2，均在实现前补充；实现与故障测试须逐项验证，不把设计修订当作测试通过。
 
 不改变RH-C14N-1/DAG/科研屏障/权限规则；crypto层与Relay公钥层分开，Base wrapping不冒称Auth，nonce与退回状态明确fail closed，checkpoint局限不夸大。规范与库review先独立复审，再按计划分块TDD：crypto/envelope/nonce → membership/pair/recover/checkpoint/artifact → actualRelay/TLS/fault/privacy → full regression/security review/report。最终八Gate全部PASS才complete，之后STOP；无Sprint3、真实手机、云/VPS/DNS/tunnel或真实科研传输。
+
+
+## 2026-10-08 网络入口实施前增量
+
+实际带QA label的TCP探针确认：当前Docker Desktop29.8.2上，internal-only容器发布127.0.0.1端口仍无法由host socket访问。现有Relay PG另连default bridge，不能拿其35434连接证明internal-only可达。探针已按label清理，未修改全局daemon/firewall，证据与官方链接见SYNC_RELAY.md。
+
+计划采用两个权限分离的容器：Relay仅连接专用内部data网络，持有其TLS server传输身份及专用Relay PG credentials；另一个入口仅作固定目标TCP双向转发，连接专用transport bridge和data网络，唯一host发布127.0.0.1:38001→入口→Relay TLS8443。入口无TLS私钥、client keys/vault、Domain代码、Docker socket或任意target API；不TLS终止、不解析HTTP/科学payload。所有container/network有独立QA labels，reuse/init/cleanup须核验labels/网络属性/loopback ports，无公网绑定/host network/全局网络设置。
+
+Relay PG可同时接内部data和QA transport bridge以供host直接验收，但仍只发布127.0.0.1:35434，独立role/database，不接client Kernel PG或个人网络。若平台行为需要变更必须重新记录actual probe，不能默默增加公开监听或client filesystem mounts。TLS验证和正常/故障测试通过入口跑实际socket，Relay kill只影响其容器；入口本身失败视作普通网络失败安全retry。
+
+此增量目前DESIGNED ONLY，代码前需独立安全设计复核。真实隔离、TLS/socket、PG断连/重启、keys/canary零命中结果由Task3和最终安全审查证明，不从拓扑名称推断PASS。
+
+独立网络设计复核结论：DESIGN PASS（有实施验收条件）。实施前/每次start-kill-cleanup必须核对labels及actual topology/ports/mounts/privileges，Relay只data internal，PG/入口只两条专用QA网络，现有PG退出default bridge；拒绝额外成员/alias冲突。cleanup使用刚核验的确切container ID，不prune未知资源/卷。正常与故障测试全走入口TLS，wrong CA/hostname/HTTP实际拒绝。入口连接数/超时/缓冲有界，断流/重启safe retry，privacy扫描覆盖其logs/files。脚手架目前仅label guard不足，以上仍Task3待实现，不计八gate PASS。
+
+## 2026-10-08 HTTP 身份实施前补充冻结（ADR-026）
+
+独立只读协议补审为 DESIGN PASS WITH CONDITIONS，发现原一般性“signed request”尚缺4项P1与2项P2的精确规则。以下是实施契约，不是网络验收结果；补充ADR-019/021/022/023，不放宽旧授权或密码规则。
+
+1. Request proof exact fields：`version, audience, method, path, query, opaque_project_id, device_id, membership_epoch, key_epoch, manifest_digest, body_digest, request_id, issued_at, signature`。version=1，QA audience固定`ResearchHub/SecureRelay/QA/v1`；query是endpoint允许字段的规范object，body_digest为实际规范JSON原始bytes的SHA256（GET为空bytes）。签名域`ResearchHub/RelayRequest/v1\0 || canonical(proof_without_signature)`。method/path/query/body必须逐项等于实际请求；GET无body，拒绝重复/未知query和非规范编码，POST仅canonical JSON。公钥来自当前已pin manifest，不能来自proof自身。有效窗口`now-60 <= issued_at <= now+5`秒，时间不可验证时拒绝；这是临时网络认证窗口，不替代checkpoint/epoch授权或依靠时间判科研权限。
+2. `(project,device,request_id)`持久保存proof digest与不可变原响应。首次GET（包括空页）在项目事务内固定完整page/metadata/grant响应后commit再返回；相同proof只返原响应，不重新查询未来消息；不同digest报冲突。每次先验证新鲜签名、当前ACTIVE/role/manifest/双epoch，锁内复核，再查询request/message/pairing receipt。过期或撤销一律先拒绝。等待超窗口的合法客户端用新request UUID和新proof重试，原message/session identity和完整envelope bytes不变；已有同bytes消息返回原durable receipt，不产生新sequence或重新接受历史mutation。membership ACK丢失后的查询须采用新current proof和已提交candidate digest，不重做旧CAS。
+3. bootstrap仅可信QA本地管理员直接pin public roots和初始manifest；HTTP hello不能注册root。ACTIVE reader可pull、自身grant、自己的ACK和checkpoint；owner/writer可push，普通membership/challenge/grant发布仅旧ACTIVE owner。PENDING只可操作已验证owner签名challenge所绑定的自身session；REVOKED拒绝。所有public metadata读取也须认证。recovery使用独立endpoint/profile：仅当前manifest已pin recovery UUID/signing root、当前parent/digest/epochs和合法recovery candidate，不能借此读messages/keys或成为普通设备；candidate newowner不能自授权。
+4. Relay只验证公开签名/scope、转存challenge/recipient submission/owner completion，不宣称验证了它无法解开的X25519 challenge答案。真正possession验证、错误次数、消费、membership/grant receipt仍由trusted Task2事务完成。Relay限制每session最多5个唯一签名submission，exact request retry不重复消耗submission次数但仍计rate。recipient限定公钥来自已验证未过期owner challenge，不能凭session UUID消耗别人次数。公开状态为OPEN/SUBMITTED/OWNER_COMPLETED/EXPIRED，完成必须有合法owner签名材料。第二次消费拒绝，原receipt重试独立接口要求新鲜当前授权、exact scope、recipient ACTIVE及原key epoch仍授权；expiry不把已完成receipt变成新配对。
+5. 资源单位明确：request原始body<=524288 bytes，完整canonical envelope<=262144，batch<=16，page<=100且响应<=524288并不切单envelope；chunk明文<=65536，cipher+tag<=65552；每project pending ciphertext<=16777216实际存储bytes，包含blob，行锁内原子预留，同bytes retry不重复收费，ACK不释放quota。本轮无GC。所有endpoint/失败/重试合计120/min按(project,device)，未知/无效身份另有有界早期全局/连接限制，禁止伪造UUID无限建bucket。header/body/write/DB、入口connect/idle均需固定超时与连接/缓冲上限；request-response缓存也必须有独立有界预算，不能用缓存绕过ciphertext资源限制。
+6. Relay无Device私钥，不签checkpoint、不产生ScientificAccepted。pull返回完整signed envelopes和continuous seq/digest/chain，trusted设备checkpoint原样存储，Task3B从本地anchor验证整页。六阶段只有RELAY_STORED是Relay durable结论，其余为签名绑定device/project/message/seq/stage的设备声明，不给别的设备代报，也不改变Kernel projection。外部错误仅allowlist code/request UUID；未认证统一AUTH_REJECTED，不反射body/SQL/密钥存在性。隐私检查覆盖request receipts/public metadata表、Relay和入口files/logs。
+
+补审三项落实：缓存预算满必须在执行或提交前拒绝；有效proof窗口内不可驱逐receipt后重新执行同UUID，保留原响应或持久seen/tombstone，已见UUID但原响应缺失时fail closed。第1/2条ACTIVE/currentmanifest-key规则只适用于普通profile，第3/4条recovery与pairing是严格限定endpoint的例外；pairing明确覆盖尚未入manifest的新recipient以及PENDING recipient，公钥仅来自已验证exact challenge。Rate固定为rolling60秒最多120次，失败和retry计费、有效窗口跨重启持久，不能在整分钟边界清零；限流记录本身也有界。
+
+实施前负例冻结：捕获GET后插入新消息/换key，重复proof不得获得新响应；过期/撤销先于receipt；修改method/query/body/epochs/manifest/requestUUID拒绝；并发首次GET与ACK丢失返回相同原响应；pair submission retry不重复计次，5次和expiry边界跨Relay restart保存。重放与query歧义依据：[RFC9421 replay guidance](https://www.rfc-editor.org/rfc/rfc9421.html#section-7.2.2)、[query handling](https://www.rfc-editor.org/rfc/rfc9421.html#section-7.5.8)。本协议仍为明确domain-separated QA应用签名，不冒称RFC9421完整实现。

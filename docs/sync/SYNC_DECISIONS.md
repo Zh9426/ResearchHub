@@ -260,3 +260,15 @@
 **Decision**：每artifact独立DEK、≤64KiB AESGCM chunks与context/index/count/size AAD；DEK由AESKW wrap位于签名加密manifest，filename/category/run/title、总size/hash在manifest内。
 **Consequences**：bounded iterable/sink prototype验证错序/缺块/重复/tag/hash/size/epoch/retry；无生产MinIO/OPFS/10GB实测，不把明文checksum去重称无关联泄漏。
 **Open Questions**：大文件cache/primarydurability集成留待另审。
+
+## ADR-026 — QA Relay Ingress and Request Replay Boundary
+
+**Context / old decision**：ADR-019/021/022/023规定当前授权、trusted pairing、durable ACK和checkpoint，但一般signed-request描述未精确限定GET proof重放与receipt权限；internal-only发布端口在当前Docker Desktop实际不可达。
+
+**New evidence**：2026-10-08合成TCP探针host连接失败并已清理；独立网络设计PASS附作用域/实际拓扑/TLS/入口资源验收条件。独立HTTP设计补审发现4项P1、2项P2，尚未执行网络验收。
+
+**Decision (AMENDS, does not supersede scientific semantics)**：采用固定目标窄TCP入口，Relay只接internal data网；PG/入口只接两专用QA网，唯一Relay入口127.0.0.1:38001，TLS client直达Relay。精确request proof绑定audience/method/path/query/bodydigest/project/device/currentmanifest/双epoch/requestUUID/issued_at；60秒过去及5秒未来窗口。GET原响应持久不可变，当前授权优先于任何receipt lookup；网络proof UUID与业务message/session identity分离。bootstrap本地可信pin、recovery独立profile、pairing possession仍trustedclient事务，不让Relay自授authority。详细exact schema、endpoint权限、资源字节/rate/cache预算与错误契约以SPRINT_2_SECURITY_DELTA的HTTP冻结补充为准。
+
+**Consequences**：捕获请求不能不断查询未来tail或以旧receipt绕过撤销；长时retry重签网络proof但复用原sealed bytes。新增TCP入口和request cache均须fault/privacy/限额测试，实际属性guard不能只验label。此ADR不授权公网、真实科研同步、生产migration或Sprint3，DESIGNED ONLY直到Task3真实验收。
+
+**Open Questions**：生产origin/audience、时钟运维、真实presence/配对UX及跨设备透明日志仍需后续专门审查。

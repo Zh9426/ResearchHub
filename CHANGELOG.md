@@ -2,6 +2,28 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-015 — 2026-10-08 — 隔离 HTTPS Relay 与持久传输回执
+
+### 完成内容
+
+- 独立非 root Relay、固定 TCP 入口与专用 PostgreSQL；实际网络、端口、挂载、权限与资源校验，临时 CA/证书、严格 TLS 验证及部分初始化 journal 清理。
+- 严格签名请求绑定当前会员、双 epoch、HTTP 路径/查询/正文与有效期；当前授权先于不可变响应缓存，撤销后旧凭据不能重用回执。
+- PostgreSQL 项目锁内原子保存完整密文、连续 sequence/chain、nonce uniqueness、实际容量和原回执，提交后才返回 RELAY_STORED；受限 pairing/recovery、设备签名 ACK/checkpoint 与 opaque chunk 接口。
+- 真实请求/容量/缓存/限流上限、TLS 断线与 Relay/PG/入口强制退出恢复；实际 HTTP Hypothesis；session 终点扫描 PG dump、全部 bytea 原值、应用/挂载文件与日志。
+- 隐私扫描七种编码与 14 种真实数据库泄漏对照；错误诊断脱敏。保留并如实记录两次 QA 诊断泄漏、凭据失效/新材料重跑及旧扫描假阴性，未保存秘密值。
+
+### 验证结果
+
+- 独立规格复审 PASS：完整网络55项通过（284.64s），原隐私漏检及两项布尔/整数混同均实际 RED→GREEN；自行重放非法 chunk/query 返回400/401且 PG 无副作用。
+- 独立 quality/security APPROVED：完整网络55项（288.64s）、部分初始化清理3项、TLS材料2项通过；12项额外未认证配对畸形输入统一401，无未关闭 Critical/Important。
+- root 提交前完整网络55项通过（284.98s）；隐私v2扫描98,100,447 bytes、11个bytea列859个值、289项私密库存与七种编码，0命中。本地依赖Python220项（含TLS材料）、Node38项、TypeScript类型通过；20个Python文件Ruff/格式、暂存29文件凭据形状扫描及新旧QA服务密码精确扫描均通过。
+
+### 遗留事项
+
+- 本提交仅 Task3A；Task3B不可变客户端 outbox、整页可信验证与 Kernel/transport 同事务、客户端真实进程故障和网络性能仍待实施。
+- Linux secure-relay CI job、最终全系统安全审查/回归、Sprint2报告与八项Gate尚未完成。本地合成测试不等于生产服务验收。
+- 不包含生产密钥库、真实科研同步、手机/公网部署、全量bootstrap/GC或Sprint3；main及v0.2.0冻结基线不变。
+
 ## RH-014 — 2026-10-08 — 可信设备生命周期与持久安全锚点
 
 ### 完成内容
