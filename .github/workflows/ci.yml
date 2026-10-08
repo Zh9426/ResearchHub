@@ -116,6 +116,17 @@ jobs:
         run: |
           python scripts/secure-relay-qa.py --init
           python scripts/secure-relay-qa.py --test
+      - name: 保留 TLS 用例的固定字段诊断
+        if: always()
+        run: python scripts/secure-relay-diagnostics.py
+      - name: 上传 TLS 阶段证据（不含请求或密钥）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tls-stages-${{ github.run_id }}-${{ github.run_attempt }}
+          path: storage/runtime/tls-case-evidence/*.json
+          if-no-files-found: error
+          retention-days: 30
       - name: 销毁本次临时 Relay 与 QA 环境
         if: always()
         run: python scripts/secure-relay-qa.py --destroy

@@ -1,9 +1,14 @@
 """Only real CA/hostname verified HTTPS against the disposable Relay container."""
 
 import importlib.util
+import json
 import socket
 import ssl
+import time
+from pathlib import Path
+from uuid import UUID, uuid4
 
+import httpx
 import pytest
 from researchhub_relay.models import Message, Project
 from sqlalchemy import select
@@ -96,12 +101,100 @@ def test_partial_page_and_out_of_order_retry_do_not_split_messages(project):
         assert db.scalar(select(Project.sequence).where(Project.id == project.id)) == 4
 
 
-def test_concurrent_first_get_snapshots_original_response(project):
+@pytest.mark.parametrize("connection_mode", ["pooled", "fresh"])
+def test_concurrent_first_get_snapshots_original_response(project, connection_mode):
     from concurrent.futures import ThreadPoolExecutor
 
-    prepared = project.prepare("GET", "/v1/messages", query={"cursor": 0, "limit": 100})
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        responses = list(pool.map(lambda _: project.send(prepared).content, range(4)))
-    assert len(set(responses)) == 1
-    assert project.push([project.envelope()]).status_code == 200
-    assert project.send(prepared).content == responses[0]
+    context = project.network["audit_context"]
+    assert context["cohort"] in {"relay", "client", "direct"}
+    identity = {
+        "run": str(UUID(project.network["state"]["run"])),
+        **{key: str(UUID(context[key])) for key in ("trial", "invocation")},
+        "cohort": context["cohort"],
+        "case_id": str(uuid4()),
+    }
+    # Fixed workload, not retry-until-green. The first failing round fails pytest.
+    for round_ in range(10):
+        prepared = project.prepare(
+            "GET", "/v1/messages", query={"cursor": 0, "limit": 100}
+        )
+        traces = [[] for _ in range(4)]
+        started = time.time_ns() // 1000000
+        passed = False
+        operation = "concurrent_get"
+
+        def send(index, prepared=prepared, traces=traces):
+            def trace(event, _info):
+                # _info can contain proof headers and exceptions; never serialize it.
+                allowed = {
+                    "connection.connect_tcp.started",
+                    "connection.connect_tcp.complete",
+                    "connection.connect_tcp.failed",
+                    "connection.start_tls.started",
+                    "connection.start_tls.complete",
+                    "connection.start_tls.failed",
+                    "http11.send_request_headers.started",
+                    "http11.send_request_headers.complete",
+                    "http11.send_request_headers.failed",
+                    "http11.receive_response_headers.complete",
+                    "http11.receive_response_headers.failed",
+                    "http11.receive_response_body.started",
+                    "http11.receive_response_body.complete",
+                    "http11.receive_response_body.failed",
+                }
+                if event in allowed:
+                    traces[index].append(
+                        {"event": event, "time_ms": time.time_ns() // 1000000}
+                    )
+
+            if connection_mode == "fresh":
+                # Explicit fresh CA/hostname-verified handshakes, in addition to
+                # the original shared-pool schedule. No transport retries.
+                with httpx.Client(
+                    base_url="https://127.0.0.1:38001",
+                    verify=project.network["tls"],
+                    trust_env=False,
+                    timeout=12,
+                ) as client:
+                    response = client.request(**prepared, extensions={"trace": trace})
+            else:
+                response = project.network["client"].request(
+                    **prepared, extensions={"trace": trace}
+                )
+            assert response.status_code == 200
+            return response.content
+
+        try:
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                responses = list(pool.map(send, range(4)))
+            operation = "comparison"
+            assert len(set(responses)) == 1
+            operation = "push"
+            assert project.push([project.envelope()]).status_code == 200
+            operation = "replay"
+            assert project.send(prepared).content == responses[0]
+            passed = True
+            operation = "complete"
+        finally:
+            # Persist before any further I/O. No request/proof/body/exception text.
+            directory = (
+                Path(__file__).resolve().parents[2]
+                / "storage/runtime/tls-case-evidence"
+            )
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / (str(uuid4()) + ".json")).write_text(
+                json.dumps(
+                    {
+                        **identity,
+                        "case": "concurrent_first_get",
+                        "connection_mode": connection_mode,
+                        "operation": operation,
+                        "round": round_,
+                        "planned_rounds": 10,
+                        "started_ms": started,
+                        "passed": passed,
+                        "traces": traces,
+                    }
+                ),
+                encoding="utf-8",
+            )

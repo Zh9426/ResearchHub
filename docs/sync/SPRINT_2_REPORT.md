@@ -1,12 +1,12 @@
 # Research Hub v0.3 Sprint 2 — Secure Relay & E2E Transport
 
-状态：Sprint 2 验收完成，八项 Gate 全部 PASS。QA ONLY / SYNTHETIC DATA ONLY / LOCAL LOOPBACK ONLY。已停止，等待人工审查，不开始 Sprint 3。
+状态更新：RH-020 的八项 Gate PASS 保留为历史验收记录；其后最终 CI attempt 1 的 TLS 握手 EOF 已重新打开调查，**TLS-001 OPEN，根因未确定，不以重跑成功结案**。见[完整失败证据与固定复现记录](SPRINT_2_TLS_INCIDENT.md)。QA ONLY / SYNTHETIC DATA ONLY / LOCAL LOOPBACK ONLY，不开始 Sprint 3。
 
 分支 `codex/researchhub-v0.3`；Sprint1基线334e6c0，冻结main/v0.2.0为4a4db4a。仓库保持用户指定Public，运行时科研内容与凭据不入Git。
 
 ## 八项 Gate
 
-以下PASS仅适用于声明的合成QA、支持的进程并发/重启模型与可信锚点边界；不表示生产就绪、完整split-view或硬件故障域保障。最终独立安全审查及补丁复审APPROVED，审查后的本地回归与四job Linux CI均成功。Sprint 2 overall = **PASS**。
+以下PASS是RH-020时的历史结果，仅适用于声明的合成QA、支持的进程并发/重启模型与可信锚点边界；不表示生产就绪、完整split-view或硬件故障域保障。后续绿色CI不能覆盖TLS-001；当前网络稳定性调查仍 **OPEN**。
 
 | Gate | 结果 | 验收证据 |
 |---|---|---|
@@ -238,4 +238,4 @@ DESIGNED ONLY：人工审查通过后可另行规划真实client/vault/presence�
 
 额外案例：nonce重启/并发/损坏有Task1真实多进程证据；rotation、wrong epoch、unsupported suite、downgrade、malformed、recovery/total loss、snapshot signature有双端回归。实际HTTP oversized/rate/pairing abuse、网络Hypothesis和客户端真实kill均通过。最终独立安全审查、其后回归及四job CI通过；当前停止于Sprint2，等待人工审查。
 
-Research Hub v0.3 Sprint 2 — Secure Relay & E2E Transport complete.
+原RH-020完成结论保留作历史记录；TLS-001调查尚未结案，见本报告顶部状态更新。
