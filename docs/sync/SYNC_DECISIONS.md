@@ -272,3 +272,25 @@
 **Consequences**：捕获请求不能不断查询未来tail或以旧receipt绕过撤销；长时retry重签网络proof但复用原sealed bytes。新增TCP入口和request cache均须fault/privacy/限额测试，实际属性guard不能只验label。此ADR不授权公网、真实科研同步、生产migration或Sprint3，DESIGNED ONLY直到Task3真实验收。
 
 **Open Questions**：生产origin/audience、时钟运维、真实presence/配对UX及跨设备透明日志仍需后续专门审查。
+
+**Implementation evidence**：Task3A已完成实际TLS/PG/入口故障、严格请求认证、不可变响应、实际拓扑guard及privacy v2泄漏对照；Task3B已实现不可变outbox、可信整页接收与Kernel同事务。ADR-026上述DESIGNED ONLY是决策时状态，当前QA实现与最终验收分别见Task3A/3B记录和SPRINT_2_REPORT.md，生产边界不变。
+
+## ADR-027 — Complete QA Evidence Without Raising Quotas
+
+**Context**：Relay与客户端测试放在一个session会超过既定64项目预算；仅pytest exit0也不能证明完整suite，因为继承的-k/-m可能悄悄筛选测试。
+
+**Decision**：保留服务配额，以两个顺序cohort执行；各组完成完整privacy v2审计并保存后才运行下一组。每次CLI、cohort绑定唯一trial/invocation及service run，完整文件集、selected/executed/deselected与JUnit相互核验，任何失败/skip/缺证据/错context立即停止。仅清除测试子进程PYTEST_ADDOPTS与config addopts，不改变用户环境。
+
+**Consequences**：前组失败的证据不会被后组清表或后次运行覆盖；完整130项包含实际网络/PG故障与明确单元边界，不能把全部测试称网络验收。不提高资源上限、不用全skip或子集成功替代完整结果。真实测试与独立审查见SPRINT_2_TASK3B_QA.md。
+
+**Open Questions**：当前仅为单机串行QA runner；并行隔离资源调度和生产持续验证另行设计。
+
+## ADR-028 — Linux TLS Copy Helper and Fault Injection Evidence
+
+**Context**：Windows挂载语义下成功的TLS复制helper，在Linux宿主用户拥有0600源key时，uid0且cap-drop ALL/仅CHOWN无法读取该文件。独立Docker volume中的非秘密sentinel已复现PermissionError；旧lifecycle测试只接受通用QA_DOCKER_异常，可能把较早的helper失败误当作稍后的入口故障。
+
+**Decision**：仅短命、network=none、只读rootfs与只读TLS源挂载的复制helper允许精确CHOWN和DAC_READ_SEARCH，TLS源与目标key继续0600；Relay和入口仍cap-drop ALL，不继承此权限。guard必须拒绝多余cap、错误挂载或资源身份。各lifecycle案例必须证明到达指定注入点，并验证本次journal资源清理。
+
+**Consequences**：不通过放宽key模式、共享宿主目录或打印Docker完整诊断解决。Windows本地通过不足以证明Linux初始化成功；最终验收须由实际Linux完整CI确认。实现与独立复审状态见最终安全报告。
+
+**Open Questions**：该helper只服务合成QA临时TLS材料，不是生产secret provisioning方案。

@@ -2,6 +2,23 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-019 — 2026-10-08 — 修复 Linux TLS 初始化权限与故障注入证据
+
+### 完成内容
+
+- 仅离线短命TLS复制helper增加DAC_READ_SEARCH，精确校验CHOWN及该只读cap；保留源只读、key0600及Relay/入口cap-drop ALL。
+- 生命周期测试必须实际到达指定故障点并匹配操作错误码；新增更早helper失败不能冒充后续故障的回归，以及Linux foreign-UID 0600 sentinel实测。
+
+### 验证结果
+
+- 实际Linux内核复现CHOWN-only读取0600 foreign-UID文件PermissionError；添加只读DAC能力后成功且直接写入仍拒绝。更早错误假通过的两个回归均有效RED→GREEN。
+- 实现者lifecycle6 passed/59.25s、TLS材料2项、真实初始化及HTTPS1 passed/8.61s，终点privacy0；实际服务无额外cap，目标key0600/UID10001。
+- 独立安全复核APPROVED，无未关闭Critical/Important：自行执行6项lifecycle/sentinel通过（59.09s）、恢复初始化成功、真实TLS1项通过（8.20s），核验运行服务无额外cap和key0600/UID10001。完整远端LinuxCI需推送后验证，既有失败运行不计通过。
+
+### 遗留事项
+
+- 等待修复后四job CI及最终报告；不扩大生产权限、放松私钥权限或启动Sprint3。
+
 ## RH-018 — 2026-10-08 — 初始化全新 CI checkout 的测试目录
 
 ### 完成内容

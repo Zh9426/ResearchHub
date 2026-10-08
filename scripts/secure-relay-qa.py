@@ -22,6 +22,8 @@ RELAY, INGRESS = "researchhub-secure-relay", "researchhub-secure-relay-ingress"
 DATA, TRANSPORT = "researchhub-secure-relay-qa", "researchhub-secure-relay-transport-qa"
 DB, USER = "researchhub_secure_relay_qa", "researchhub_relay_qa"
 LABEL, RUNLABEL = "researchhub.qa.scope", "researchhub.qa.run"
+# Only the short-lived, offline TLS copy helper needs to read host-owned 0600 files.
+TLS_COPY_CAPABILITIES = ("CHOWN", "DAC_READ_SEARCH")
 
 
 class QAConfig(dict):
@@ -349,7 +351,8 @@ def guard_partial(state, value):
             or helper["Image"] != state["images"][RELAY]
             or host.get("NetworkMode") != "none"
             or host.get("Privileged")
-            or host.get("CapAdd") not in (["CHOWN"], ["CAP_CHOWN"])
+            or sorted(c.removeprefix("CAP_") for c in (host.get("CapAdd") or []))
+            != sorted(TLS_COPY_CAPABILITIES)
             or host.get("CapDrop") != ["ALL"]
             or not host.get("ReadonlyRootfs")
             or host.get("PortBindings")
@@ -496,8 +499,7 @@ def initialize(value):
             "--read-only",
             "--cap-drop",
             "ALL",
-            "--cap-add",
-            "CHOWN",
+            *(arg for cap in TLS_COPY_CAPABILITIES for arg in ("--cap-add", cap)),
             "--security-opt",
             "no-new-privileges",
             "--mount",

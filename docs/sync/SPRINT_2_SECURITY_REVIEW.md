@@ -2,7 +2,34 @@
 
 审查日期：2026-10-08。初审基线为 Sprint 1 `334e6c0` 至 RH016 `ada2d8caa9293373b9db2972fc3551ccf746dd6f`，同时检查工作区待提交的 CI 与协议/报告修改。审查者独立阅读需求第0–72节、冻结设计增量和密码库调查，并检查实际实现；不以 Task1/2/3 的既有批准代替本次审查。
 
-**最终独立安全审查结论：APPROVED。未关闭 Critical：无；未关闭 Important：无。** 初审发现1项 Important/P2，经有效 RED、最小修复和本审查者独立复验后关闭。批准范围包括 RH016 及本轮冻结的 PENDING 配对修复、待提交 CI/协议文档。最终全量回归和新 Linux CI 尚未运行，本记录不宣称八项 Gate 或 Sprint 完成。
+**最终独立安全审查结论：APPROVED。未关闭 Critical：无；未关闭 Important：无。** 初审发现1项 Important/P2，经有效 RED、最小修复和本审查者独立复验后关闭。批准范围包括 RH016 及本轮冻结的 PENDING 配对修复、待提交 CI/协议文档。批准时最终全量回归和新 Linux CI 尚未运行；其后 CI 首次失败与最小修复的只读复核见下节。本记录不宣称八项 Gate 或 Sprint 完成。
+
+## RH018 — 首次 Linux CI 失败后的最小修复复核
+
+root 对首次真实 Linux CI 的原始首个调用栈核对结果：全新 checkout 尚无被忽略的 `storage/runtime`，pytest 创建指定 basetemp 时 `Path.mkdir` 不递归建立父目录，触发 `FileNotFoundError`；该轮为14 failed、9 passed、151 errors，尚未进入 Relay 网络测试。这是实际失败，不能记作 crypto 或网络 Gate 成功。本审查者本次读取了 RH018 提交与 workflow 差异，未重复获取远端原始日志；上述首次执行统计由 root 的原始证据核验提供。
+
+独立只读确认 `a1810a1b766489d2fe32f5c06423868c1556547d` 仅修改 workflow 与 CHANGELOG；唯一执行行为变化是在密码/属性测试前增加 `mkdir -p storage/runtime`。路径固定于 checkout 内已有忽略规则覆盖的运行时目录；未增加权限、secrets、网络目标、端口、服务、挂载或访问范围，也未改变密码原语、授权、验签、nonce、测试选择或失败判定。因此该最小修复不改变已批准安全契约，**安全复核 APPROVED**。
+
+该次复核未运行网络或重复整体审计。在该次复核时，修复后的远端 Linux CI 正在重跑，root 的审计后本地完整回归仍在进行；未宣称 RH018 远端 GREEN。其后新增失败与定向复审见下节。
+
+## Linux TLS helper 与 lifecycle 到达点补充审查（已关闭）
+
+RH018 的实际 Linux CI run `37785421799` 随后在 `--init` 阶段报 `QA_DOCKER_START_FAILED`，尚未进入 TLS 网络测试；此前 crypto174/Node48 通过不抵充初始化成功。root/修复者提供的诊断为 Linux UID0 在 cap-drop ALL、仅 CHOWN 时不能读取 host UID 所有的0600 TLS源文件。本审查者随后独立重跑 Docker Linux volume 的非秘密 sentinel 对照，直接验证了该权限边界。
+
+另一个验收缺口是旧 `test_partial_init.py` 只接受通用 `QA_DOCKER_`，较早 helper 故障会使 ingress_create/ingress_connect 案例假通过。修复者记录了有效 RED：两项 earlier-helper 测试 `DID NOT RAISE AssertionError`，见 `SPRINT_2_LINUX_TLS_QA.md`。旧三项通过计数不能单独证明曾到达后两个注入点。本次将初始化可用性及故障证据缺口按 Important/P2 处理；定向修复与独立复验后均关闭。
+
+冻结补丁范围为 runner、partial-init tests、新 Linux sentinel test 与 QA记录。独立只读复核 **ADR-028 APPROVED**：仅短命 TLS复制helper 使用精确 `CHOWN,DAC_READ_SEARCH`；无 DAC_OVERRIDE，仍 network=none、readonly rootfs、no-new-privileges，源仅只读挂载本次TLS server目录、目标仅确切owned TLS卷。cap guard规范化 `CAP_` 前缀后精确比较，缺少或额外cap均拒绝。运行中的Relay和入口保持无CapAdd/cap-drop ALL。实际源只读是权限边界的一部分；不把 sentinel 的“直接写入被拒”夸大成 CHOWN+可写挂载下任何操作都无法改写文件。
+
+本审查者取得独占QA锁后，先用现有guard核对并destroy旧owned Relay/入口/TLS资源，保留原专用PG；随后独立执行：
+
+- `HUB_RELAY_QA=1 pytest tests/secure_relay_lifecycle -q --tb=short -p no:cacheprovider --basetemp storage/runtime/s2-independent-linux-lifecycle`：**6 passed / 59.09s**。三处真实故障要求精确到达点及 START/CREATE/NETWORK 错误；两处更早helper失败负例确认不会假通过。实际Linux volume的 UID1000/0600 sentinel：CHOWN-only读取拒绝，精确双cap读取成功；直接写入拒绝且内容/owner/mode保持，精确卷清理。缺/多cap测试属于inspect公开字段副本的guard检查，未冒称真实容器权限变化。
+- `HUB_RELAY_QA=1 python scripts/secure-relay-qa.py --init`：**QA_READY TLS:127.0.0.1:38001 PG:127.0.0.1:35434**。
+- `HUB_RELAY_QA=1 pytest tests/secure_relay/test_network.py::test_real_https_ca_hostname_and_plaintext_rejection -q --tb=short -p no:cacheprovider --basetemp storage/runtime/s2-independent-linux-tls`：**1 passed / 8.20s**。
+- 只读取 allowlist Docker字段和文件stat，实际确认Relay/入口均 `CapAdd=null, CapDrop=[ALL], User=10001:10001`；`/tls/server.key` mode0600、uid/gid10001。未读取key内容或输出Env。
+
+本次TLS烟测终点privacy v2为0 hits、124,676 bytes、48个模式、1个bytea值；该烟测未生成Device/Project私钥，private inventory为0，因此不拿它替代此前生命周期和完整套件的钥匙保密验证。无秘密统计另存 ignored `storage/runtime/s2-independent-linux-tls-privacy.json`；service run=`5c80b273-1d00-4344-876d-bc53d8774f9a`，trial=`718a2b0c-a079-4a63-826c-b765d30ecd9e`，invocation=`13037bbc-d32a-493a-8586-7978f3348e9a`。
+
+**补充安全复审 APPROVED；未关闭 Critical/Important：无。** QA服务已恢复READY，网络锁已释放。未重复不变的全部密码/内核回归或130项套件；第三次真实Linux完整CI仍待root推送后验证，本机Docker Linux DAC证据不冒称GitHub runner已经GREEN。
 
 ## S2-FINAL-01 — PENDING 配对无法完成（Important / P2，已关闭）
 
