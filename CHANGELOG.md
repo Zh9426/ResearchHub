@@ -2,6 +2,21 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-018 — 2026-10-08 — 初始化全新 CI checkout 的测试目录
+
+### 完成内容
+
+- 在安全CI密码测试之前显式创建被Git忽略的storage/runtime父目录，使pytest能建立指定basetemp。
+
+### 验证结果
+
+- RH017首次Linux安全CI真实失败：14 failed、9 passed、151 errors；首个异常为Path.mkdir(parents=False)遇到缺失父目录的FileNotFoundError，未进入Relay网络测试，不能算通过。
+- 已核对实际调用栈，最小修复仅新增mkdir -p；修复后的完整LinuxCI需此次推送后重跑。
+
+### 遗留事项
+
+- 等待新CI完整结果及正在运行的审计后本地回归，再填写最终八Gate与报告。不改变密码或权限规则。
+
 ## RH-017 — 2026-10-08 — 完成待配对设备激活并接入安全回归 CI
 
 ### 完成内容

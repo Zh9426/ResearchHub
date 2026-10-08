@@ -106,6 +106,7 @@ jobs:
           npm ci --prefix packages/secure-sync
       - name: 独立 Python 与 TypeScript 互操作及属性验证
         run: |
+          mkdir -p storage/runtime
           python -m pytest tests/secure_sync -q --basetemp storage/runtime/ci-secure-crypto
           npm --prefix packages/secure-sync test
           npm --prefix packages/secure-sync run typecheck
