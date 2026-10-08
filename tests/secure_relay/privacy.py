@@ -158,6 +158,7 @@ def audit(network, private_material, canaries):
         "audit_version": 2,
         "scope": "SYNTHETIC_LOOPBACK_ONLY",
         "run": state["run"],
+        **network["audit_context"],
         "private_material_count": len(private_material),
         "canary_count": len(canaries),
         "unique_pattern_count": len(markers),

@@ -60,18 +60,18 @@ Task3范围较大，按依赖拆为两个依次实施的子任务，每个均需
 1. **Task3A — Relay与隔离网络**：QA guard、固定TCP入口、实际TLS、public-only image、严格signed request、会员/配对public metadata、PG durable receipt、opaque chunk、quota/log/error、真实Relay/PG/入口故障及直接DB隐私检查。完成不等于Network Durability Gate通过，因为可信客户端原子接收尚待Task3B。
 2. **Task3B — 可信客户端与完整故障证据**：不可变outbox、完整page预验证、outer cursor/chain与Kernel同事务、历史隔离、double authentication、client真实kill、完整canary与成熟网络property测试、实际网络性能。不得改变Sprint1科研语义。
 
-Task3A当前：实现与两个独立审查已通过。spec首轮P1隐私扫描假阴性和2项P2类型混同均实际RED→GREEN；spec复审55 passed / 284.64s，quality55 passed / 288.64s、lifecycle3、TLS2及12个额外配对负例通过。root提交前网络55 passed / 284.98s、v2隐私98,100,447 bytes零命中、本地依赖220/Node38/typecheck通过；本次RH-015记录Task3A。Task3B尚未开始。
+Task3A当前：实现与两个独立审查已通过。spec首轮P1隐私扫描假阴性和2项P2类型混同均实际RED→GREEN；spec复审55 passed / 284.64s，quality55 passed / 288.64s、lifecycle3、TLS2及12个额外配对负例通过。root提交前网络55 passed / 284.98s、v2隐私98,100,447 bytes零命中、本地依赖220/Node38/typecheck通过；RH015=1c52edb已推送、远端一致、CI37760044169现有三job success。Task3B已完成实现、spec PASS和quality/security APPROVED；独立最新完整55+75项及两组privacy0命中，root交叉核对证据通过。RH016待提交；Task4最终审查/回归尚未完成。
 
 聚焦提交编号依次递增；拆分后Task4编号相应顺延，不固定使用RH016。Task2两个审查均通过后才派发Task3A。
 
-- [ ] RED QA guard：无opt-in/个人DB/远程host拒绝；只允许 actual researchhub_secure_relay_qa/researchhub_relay_qa 35434，initialize 核验 current_database/current_user。
-- [ ] 启动专用PG与TLS server，随机临时credentials/CA/servercert存在storage忽略目录；127.0.0.1SAN。用httpx CA/hostname verification；wrongCA/hostname/HTTP拒绝。
-- [ ] RED→GREEN strict signedrequests，绑定method/path/project/device/currentepoch/body或query/requestID；ratequota/body/page/batch/timeouts/pairing attempts；reader不能write，uuid-onlyGET不能read，SQL/path injection无执行入口。
-- [ ] PG project行锁，envelope signature+membership验证；unique messageID/digest与epoch/nonce；同ID同bytes返originalreceipt，异bytes失败。sequence/ciphertext/receipt sync_commit 同事务，commit才ACK。Relay包与image无Domain decoder/AEAD/project/privatekeys、无clientvault mounts。
-- [ ] 客户端 validate whole page contiguous chain、envelope/digest/epochs，然后使用本地principal/grant调用Kernel；transport cursor持久化与apply同一个QA Kernel session（额外transport状态只在QA表）。重复wrapper不扩大innercursor；科研candidate可transport ACK但不能scientific ACK；Device签名不能制造Human。
-- [ ] 实际 TLS socket 半上传/上传后断开、子进程killbeforecommit/aftercommitbeforeACK、ACK丢失、duplicate POST/GET、partialpage、outoforderretry、Relayrestart和PGrestart。每故障验证PG完整性、retryreceipt、cursor/gap与Kernel幂等。
-- [ ] 直接PGdump、Relay persisted files/log scan synthetic research canaries及runtime钥匙多种编码；zero hits；allowlist日志与HTTP稳定errorcode无payload/SQLstack。retain_until_ack仅metadata，无GC。
-- [ ] Task3A/3B分别两阶段独立review与聚焦commit/push，RH015起依次递增；未完成gate明确未完成。
+- [x] RED QA guard：无opt-in/个人DB/远程host拒绝；只允许 actual researchhub_secure_relay_qa/researchhub_relay_qa 35434，initialize 核验 current_database/current_user。
+- [x] 启动专用PG与TLS server，随机临时credentials/CA/servercert存在storage忽略目录；127.0.0.1SAN。用httpx CA/hostname verification；wrongCA/hostname/HTTP拒绝。
+- [x] RED→GREEN strict signedrequests，绑定method/path/project/device/currentepoch/body或query/requestID；ratequota/body/page/batch/timeouts/pairing attempts；reader不能write，uuid-onlyGET不能read，SQL/path injection无执行入口。
+- [x] PG project行锁，envelope signature+membership验证；unique messageID/digest与epoch/nonce；同ID同bytes返originalreceipt，异bytes失败。sequence/ciphertext/receipt sync_commit 同事务，commit才ACK。Relay包与image无Domain decoder/AEAD/project/privatekeys、无clientvault mounts。
+- [x] 客户端 validate whole page contiguous chain、envelope/digest/epochs，然后使用本地principal/grant调用Kernel；transport cursor持久化与apply同一个QA Kernel session（额外transport状态只在QA表）。重复wrapper不扩大innercursor；科研candidate可transport ACK但不能scientific ACK；Device签名不能制造Human。
+- [x] 实际 TLS socket 半上传/上传后断开、子进程killbeforecommit/aftercommitbeforeACK、ACK丢失、duplicate POST/GET、partialpage、outoforderretry、Relayrestart和PGrestart。每故障验证PG完整性、retryreceipt、cursor/gap与Kernel幂等。
+- [x] 直接PGdump、Relay persisted files/log scan synthetic research canaries及runtime钥匙多种编码；zero hits；allowlist日志与HTTP稳定errorcode无payload/SQLstack。retain_until_ack仅metadata，无GC。
+- [x] Task3A/3B分别两阶段独立review与聚焦commit/push，RH015起依次递增；未完成gate明确未完成。
 
 ## Task 4 — Complete gates / independent security audit / regression / report / CI
 

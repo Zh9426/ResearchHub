@@ -1,6 +1,6 @@
 # Checkpoint / Rollback Detection / Snapshot Manifest
 
-状态：Task 2 纯公共 chain/checkpoint 校验、SQLite monotone anchor 和最小 encrypted snapshot prototype 已实现；PG/Kernel 同 session adapter 未实现。完整transparency/keytransparency/gossip/split-view防护NOT IMPLEMENTED。
+状态：Task 2 纯公共 chain/checkpoint 校验、SQLite monotone anchor 和最小 encrypted snapshot prototype 已实现；Task 3B 另实现 QA client PG/Kernel 同 Session adapter，实际验证记录见 `SPRINT_2_TASK3B_QA.md`。完整transparency/keytransparency/gossip/split-view防护NOT IMPLEMENTED。
 
 ## 持久锚点
 
@@ -33,7 +33,9 @@ manifest包含opaqueproject、snapshotcursor、module_snapshot_hash、state_dige
 
 checkpoint exact fields：`version, opaque_project_id, membership_epoch, key_epoch, cursor, chain_digest, creator_device_id, signature`；安全整数严格拒绝 bool/unsafe/negative。cursor0 必须 zero64 chain digest，`extend_chain`、`verify_checkpoint`、`CheckpointStore.pin` 均执行同一 genesis 规则，合法签名的非零 genesis 也拒绝。domain 为 `ResearchHub/Checkpoint/v1\0`，signature 覆盖除 signature 外全部字段；creator 从受信当前 manifest 的 ACTIVE member 获取。`verify_advance` 拒绝 older cursor、same cursor wrong chain、membership epoch 或 key epoch 任一回退、context mismatch、坏 candidate 签名、缺 sequence、最终 chain mismatch；同 cursor 或 cursor 增长均不能降低任一 epoch。exact 相同 checkpoint + 空 rows 可幂等确认。
 
-trusted Python `CheckpointStore`（Node 同名）用 TEST ONLY FULL SQLite 持久 opaque project/cursor/chain/signed checkpoint，`pin` 必须来自本地 trusted bootstrap/pairing，不能接受 Relay 单独提供的“最新根”；`get` / `advance` 重启后保留 monotone anchor。此接口只验证并持久 transport anchor，**尚未实现和 QA PG Kernel apply 同事务**；上文原子性段是后续 Task 3 的必要契约，不能把 Task 2 单测当作网络服务/Kernel 验收。
+trusted Python `CheckpointStore`（Node 同名）用 TEST ONLY FULL SQLite 持久 opaque project/cursor/chain/signed checkpoint，`pin` 必须来自本地 trusted bootstrap/pairing，不能接受 Relay 单独提供的“最新根”；`get` / `advance` 重启后保留 monotone anchor。此 SQLite 接口只验证并持久 transport anchor，不与 QA PG Kernel apply 同事务；Task 3B 使用下述独立 PG adapter，不能把 Task 2 单测当作网络服务/Kernel 验收。
+
+Task 3B 的 `transport_pg.Trust` 保存完整根 pin/连续签名 history、outer cursor/chain 与 signed checkpoint；`receiver.checked_anchor` 每次从可信完整 history 取历史 creator 验签，再核对 PG 行 cursor/chain/project。没有 checkpoint 仅在 cursor=0 且 zero chain 的显式本地初始化成立。`receiver.receive` 持同一 Trust 行锁先预验全页，调用 Kernel `apply_in_session(relay_seq=None)`，最后同 Session 保存 `sign_checkpoint(current_manifest, local_device, cursor, chain)`；后续 membership 更新不能插入这个锁窗口。`SecureTransport.accept_checkpoint` 只接受当前 verified manifest 签名且 cursor/chain 精确匹配本地已消费位置的 checkpoint，旧位置、同位置错误 chain、旧双 epoch 或未消费的新位置拒绝，不用 remote checkpoint 跳过缺失消息。
 
 `verify_advance(anchor, checkpoint, manifest, rows, *, bootstrap=False)`（Node 第5参数 `bootstrap=false`）默认要求完整 strict signed anchor，包括两个 safe integer epochs、creator UUID、signature 编码；这里 anchor 必须此前已由调用方认证，`validate_anchor/validateAnchor` 仅做结构校验，candidate 仍完整验签。只允许可信初次 pin 调用显式 `bootstrap=True` / `true`，此时 anchor 必须精确为 `{opaque_project_id, cursor, chain_digest}`。字段缺失不能自动推断初次状态。
 

@@ -136,6 +136,11 @@ def network():
             "config": config,
             "tls": context,
             "retired_project_count": len(old_projects),
+            "audit_context": {
+                "trial": os.environ.get("HUB_QA_TRIAL", str(uuid4())),
+                "cohort": os.environ.get("HUB_QA_COHORT", "direct"),
+                "invocation": os.environ.get("HUB_QA_INVOCATION", str(uuid4())),
+            },
         }
         yield value
         from privacy import audit
@@ -276,3 +281,42 @@ class ProjectClient:
 @pytest.fixture
 def project(network, tmp_path):
     return ProjectClient(network, tmp_path)
+
+
+@pytest.fixture
+def trusted(project):
+    from researchhub.sync.authority import register_principal
+    from researchhub.sync.kernel import register_project
+    from researchhub.sync.secure.transport import SecureTransport
+    from researchhub.sync.secure.transport_pg import client_engine, initialize, pin
+
+    engine = client_engine()
+    initialize(engine)
+    semantic = str(uuid4())
+    person = {
+        k: str(uuid4()) for k in ("principal_id", "user_id", "session_id", "actor_id")
+    }
+    person.update(
+        project_id=semantic, device_id=project.owner.device_id, actor_type="codex"
+    )
+    with Session(engine) as db, db.begin():
+        register_project(db, semantic, "a" * 64)
+        register_principal(db, **person)
+    pin(
+        engine,
+        project.manifest,
+        project.owner.signing_public,
+        project.kit.signing_public,
+        semantic,
+        {project.owner.device_id: person["principal_id"]},
+    )
+    client = SecureTransport(
+        engine,
+        project.id,
+        project.owner,
+        project.network["state"]["tls_directory"] + "/ca.crt",
+        {1: project.key},
+    )
+    yield client, person
+    client.close()
+    engine.dispose()

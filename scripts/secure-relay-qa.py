@@ -686,6 +686,163 @@ def destroy(state, value):
     STATE.unlink()
 
 
+def preflight_client():
+    """Fail before either destructive QA fixture if client PG opt-in is missing."""
+    if any(os.environ.get(name) != "1" for name in ("HUB_RELAY_QA", "HUB_SYNC_QA")):
+        raise RuntimeError("QA_BOTH_RELAY_AND_SYNC_OPTINS_REQUIRED")
+    sys.path[:0] = [str(ROOT), str(ROOT / "apps/api")]
+    from researchhub.sync.secure.transport_pg import client_engine
+
+    engine = client_engine()
+    engine.dispose()
+
+
+def run_test_cohorts(state):
+    """Preserve fixed 64-project quota and each cohort's complete privacy evidence."""
+    import xml.etree.ElementTree as ET
+
+    preflight_client()
+    files = sorted((ROOT / "tests/secure_relay").glob("test_*.py"))
+    cohorts = {
+        "relay": [str(p) for p in files if not p.name.startswith("test_transport")],
+        "client": [str(p) for p in files if p.name.startswith("test_transport")],
+    }
+    env = {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join(
+            (
+                str(ROOT),
+                str(ROOT / "apps/api"),
+                str(ROOT / "apps/relay"),
+                str(Path(__file__).parent),
+            )
+        ),
+    }
+    # User process/global settings are preserved; only complete QA subprocesses
+    # ignore inherited selectors and pytest.ini addopts.
+    env.pop("PYTEST_ADDOPTS", None)
+    runtime = ROOT / "storage/runtime"
+    runtime.mkdir(parents=True, exist_ok=True)
+    summaries = []
+    trial = str(uuid4())
+    for name, paths in cohorts.items():
+        if not paths:
+            raise RuntimeError("QA_EMPTY_COHORT")
+        invocation = str(uuid4())
+        evidence_id = state["run"] + "-" + trial + "-" + name
+        junit = runtime / ("secure-relay-tests-" + evidence_id + ".xml")
+        collection_path = runtime / ("secure-relay-collection-" + evidence_id + ".json")
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                *paths,
+                "-q",
+                "-o",
+                "addopts=",
+                "-p",
+                "secure_relay_pytest",
+                "--rh-collection-report",
+                str(collection_path),
+                "--tb=short",
+                "-p",
+                "no:cacheprovider",
+                "--basetemp",
+                str(runtime / ("secure-relay-pytest-" + evidence_id)),
+                "--junitxml",
+                str(junit),
+            ],
+            env={
+                **env,
+                "HUB_QA_TRIAL": trial,
+                "HUB_QA_COHORT": name,
+                "HUB_QA_INVOCATION": invocation,
+                "HUB_QA_SERVICE_RUN": state["run"],
+            },
+            check=False,
+        )
+        if result.returncode:
+            return (
+                result.returncode
+            )  # Never clear failed cohort evidence by continuing.
+        try:
+            privacy = json.loads(
+                (runtime / "secure-relay-privacy-result.json").read_text()
+            )
+        except (OSError, ValueError):
+            raise RuntimeError("QA_PRIVACY_EVIDENCE_REQUIRED") from None
+        if (
+            privacy.get("audit_version") != 2
+            or privacy.get("hits") != 0
+            or any(
+                privacy.get(field) != value
+                for field, value in {
+                    "run": state["run"],
+                    "trial": trial,
+                    "cohort": name,
+                    "invocation": invocation,
+                }.items()
+            )
+        ):
+            raise RuntimeError("QA_PRIVACY_EVIDENCE_REQUIRED")
+        evidence = runtime / ("secure-relay-privacy-" + evidence_id + ".json")
+        evidence.write_text(json.dumps(privacy), encoding="utf-8")
+        suite = ET.parse(junit).getroot().find("testsuite")
+        if suite is None or any(
+            int(suite.get(field, "0")) for field in ("errors", "failures", "skipped")
+        ):
+            raise RuntimeError("QA_COMPLETE_COHORT_REQUIRED")
+        count = int(suite.get("tests", "0"))
+        try:
+            collection = json.loads(collection_path.read_text())
+        except (OSError, ValueError):
+            raise RuntimeError("QA_COMPLETE_COHORT_REQUIRED") from None
+        expected_context = {
+            "run": state["run"],
+            "trial": trial,
+            "cohort": name,
+            "invocation": invocation,
+        }
+        if (
+            count <= 0
+            or any(collection.get(k) != v for k, v in expected_context.items())
+            or (
+                collection.get("selected") != count
+                or collection.get("executed") != count
+                or collection.get("deselected") != 0
+                or collection.get("exitstatus") != 0
+                or collection.get("collected_paths")
+                != sorted(str(Path(p).resolve()) for p in paths)
+            )
+        ):
+            raise RuntimeError("QA_COMPLETE_COHORT_REQUIRED")
+        summaries.append(
+            {
+                "name": name,
+                "tests": int(suite.get("tests", "0")),
+                "collection_file": collection_path.name,
+                "collection": collection,
+                "privacy_file": evidence.name,
+                "privacy": privacy,
+            }
+        )
+        (
+            runtime
+            / ("secure-relay-suite-result-" + state["run"] + "-" + trial + ".json")
+        ).write_text(
+            json.dumps(
+                {
+                    "scope": "SYNTHETIC_LOOPBACK_ONLY",
+                    "trial": trial,
+                    "cohorts": summaries,
+                }
+            ),
+            encoding="utf-8",
+        )
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser()
     for flag in ("init", "start", "test", "stop", "destroy", "status"):
@@ -726,29 +883,7 @@ def main():
         print("QA_TOPOLOGY_VERIFIED", state["run"])
     if args.test:
         wait_tls(state)
-        env = {
-            **os.environ,
-            "PYTHONPATH": os.pathsep.join(
-                (str(ROOT), str(ROOT / "apps/api"), str(ROOT / "apps/relay"))
-            ),
-            "HUB_RELAY_QA": "1",
-        }
-        return subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "pytest",
-                "tests/secure_relay",
-                "-q",
-                "--tb=short",
-                "-p",
-                "no:cacheprovider",
-                "--basetemp",
-                "storage/runtime/secure-relay-pytest-" + state["run"],
-            ],
-            env=env,
-            check=False,
-        ).returncode
+        return run_test_cohorts(state)
     if args.destroy:
         destroy(state, value)
         print("QA_OWNED_RESOURCES_REMOVED existing_PG_and_unrelated_services_retained")

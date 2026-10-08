@@ -43,3 +43,17 @@ ACKstage分RELAY_STORED、DEVICE_RECEIVED、DEVICE_DECRYPTED、KERNEL_APPLIED、
 直接dumpRelayPG、扫描全部Relaypersistedfiles/logs，搜索每种syntheticresearchmarker以及所有runtimeproject/device/recoveryprivatekey的raw/hex/base64表示；0hits才ConfidentialityPASS。公共TESTONLYfixedvectors不得挂载Relay；TLSprivatekey与PGpassword另有明确传输/服务权限范围，不混称projectkey。
 
 Relay可主动丢弃/回滚/重排密文，客户端现有anchor只检测明显rollback/gaps/伪造；availability、完整splitview、隐藏未锚定消息、trustedendpointcompromise不在保障范围。
+
+## Task 3B 实际可信客户端
+
+`apps/api/researchhub/sync/secure/transport.py` 使用固定、CA/hostname 验证的 loopback HTTPS；成熟 httpx 流式接收累计最多 524288 bytes，不信 Content-Length，不接受压缩响应。response body 使用不重聚合的 `iter_raw()`，每次底层 chunk 与 EOF 检查 15 秒 body deadline；单次 socket read timeout 也为 15 秒，因此阻塞读取可能使检查比 deadline 晚至一个 read timeout 加调度误差。它不是含 connect/TLS/headers 的严格 15 秒总请求上限，也不是完整 DoS 防护。直接 receive 输入在 canonical 编码前后同样检查预算。边界单元测试使用真正 httpx Response/SyncByteStream 与模拟时钟，只证明库迭代/限额逻辑；实际服务验收由独立 HTTPS/PG 测试完成。
+
+`transport_pg.py` 的 outbox 保存完整 immutable canonical envelope bytes；proof 每次 fresh UUID/time 并使用当时持锁读取的当前 manifest，重复请求不会 seal 或烧新 nonce。S1 client PG 仅精确隔离的 35433/database/role，拒绝 URL query 覆盖、缺密码及产品连接回退。trusted history 与 receive 外层状态同 PG 行锁，完整根 pin/transition history 在读取时复验，更新不能穿过预验证到 commit 的锁窗口。
+
+`receiver.py` 完整 page 通过 crypto/映射预验证后才调用既有 `apply_in_session(relay_seq=None)`；同事务写入 outer receipt/cursor/chain 与新 signed checkpoint。旧 page 必须核对已持久原 bytes/digest/chain，不能只见 cursor 小就忽略；新 wrapper 同 SemTx 不增加 Kernel Audit/inner seq。历史合法项只 transport quarantine；无效 AEAD/签名/digest/history/gap 均整页回滚。checkpoint 保存完整签名并按已 pin 的历史 creator 验签，远端 checkpoint 不得跳过未消费历史。
+
+fresh mock HumanGrant 与注册 principal 继续遵循 Sprint 1；传输签名不自授 Human。客户端 ACK 表示 `DEVICE_DECRYPTED`，包括可解密且已持久的 candidate/quarantine；不发自动 `SCIENTIFIC_ACCEPTED`。实际子进程 kill 前后、错误矩阵与网络测量见 [Task 3B QA](SPRINT_2_TASK3B_QA.md)。
+
+完整 `scripts/secure-relay-qa.py --test` 现在要求 **HUB_RELAY_QA=1 与 HUB_SYNC_QA=1**，以及现有 S1 client PostgreSQL 可用。为保持原 64 project budget，顺序执行 Relay 与 client 两 cohort；任一失败或缺少本次完整 privacy v2 证据立即停止，不开始下组清表。每 CLI trial UUID、cohort invocation UUID 绑定 service run/cohort，并保留独立 aggregate JSON/JUnit，避免下组或后次执行覆盖前组证据。Task 3A 历史的单 Relay opt-in 命令仅代表当时范围。
+
+完整 runner 仅对子进程清除 `PYTEST_ADDOPTS` 并覆盖配置 addopts，保留用户进程/全局环境。独立 pytest evidence plugin 记录 selected/executed/deselected、cohort 实际文件集和 invocation；runner 必须核对正数 JUnit tests 与 selected/executed 一致、deselected=0、全部指定文件均收集且无失败/skip，不能把 `-k/-m` 子集或缺收集证据当完整成功。没有硬编码当前测试总数。

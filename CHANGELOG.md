@@ -2,6 +2,26 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-016 — 2026-10-08 — 可信客户端原子接收与端到端故障验证
+
+### 完成内容
+
+- 实际固定验证TLS客户端、PG不可变密文outbox与fresh签名proof；严格专用client PG守卫和完整签名会员历史。
+- 整页签名/AEAD/chain/semantic预验证，outer receipt/cursor/checkpoint与既有Kernel同事务；跨wrapper幂等、历史隔离、独立HumanGrant和持久receipt ACK。
+- 真实客户端提交前/后强制退出、晚Kernel错误全页回滚、实际HTTPS属性调度、100 push/pull及128KiB Artifact测量。
+- 两组串行QA保留既定配额，独立隐私证据与collection/JUnit交叉核验，拒绝子集/跳过/过期证据；修复PYTEST_ADDOPTS漏测及httpx重聚合延迟body deadline检查，均有实际RED→GREEN。
+
+### 验证结果
+
+- 独立spec PASS：55+75项、无失败/skip/deselection，privacy0/0；独立quality/security APPROVED：55 passed/264.47s、75 passed/47.68s，无未关闭Critical/Important。
+- root独立核对最新完整aggregate/collection/JUnit/privacy：两组扫描98,115,591/4,730,640 bytes，0命中。客户端75项包含明确的单元边界，不能全部称为网络测试。
+- root本地依赖220 passed/26.35s、Node38/typecheck通过；最新Ruff/diff及三份QA服务凭据精确扫描通过。运行证据与超时界限见SPRINT_2_TASK3B_QA.md。
+
+### 遗留事项
+
+- Task4最终全系统独立安全审查、其后完整旧版本回归、新增Linux secure-relay CI与八Gate报告尚待完成。
+- 仅合成loopback QA；生产vault、真实presence、全量bootstrap/GC、完整split-view/可信状态一致回滚防护未实现。不进入Sprint3，main/v0.2.0保持冻结。
+
 ## RH-015 — 2026-10-08 — 隔离 HTTPS Relay 与持久传输回执
 
 ### 完成内容
