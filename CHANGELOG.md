@@ -2,6 +2,28 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-014 — 2026-10-08 — 可信设备生命周期与持久安全锚点
+
+### 完成内容
+
+- Python/Node独立实现设备和项目密钥、完整authority-signed membership历史、HPKE grant、单次配对、撤销轮换及高熵Recovery Kit；Relay不持有这些私钥。
+- 配对挑战、失败次数、会员变更和原wrapped receipt持久事务；所有权威读取重新验证完整会员链，SQL索引列与signed body逐项交叉核对，损坏历史不计配对尝试或写入。
+- Recovery Kit公共journal/head持久加载；manifest/checkpoint/journal/head同事务，真实重启和SQLite COMMIT失败整体回滚，seed-only不能恢复freshness。
+- checkpoint双epoch与cursor/chain单调、BOOTSTRAP/SIGNED显式类型、持久公共验证上下文及每次读取真实验签；局部签名/body/context损坏拒绝且不覆写原锚点。
+- 小Artifact fresh DEK、AESKW内置加密manifest、64KiB分块及严格顺序/size/hash/tag校验；签名加密snapshot原型，双端独立互操作。
+
+### 验证结果
+
+- 最新实现交接：Python secure162与合并220（各含root未纳入本提交的TLS材料2）；root排除TLS独立合并218通过，Node38及严格类型通过，Ruff/格式/diff通过。
+- 真实子进程Kit恢复、SQLite deferred-FK COMMIT失败、配对异常事务、Hypothesis生成grant/epoch/chunk负例通过；没有以替身宣称PG/网络验收。
+- 已发现的历史授权、checkpoint双epoch及持久旧签名损坏均有有效行为RED→GREEN；独立spec最终复审PASS，两语言各11类额外损坏探针拒绝且无副作用；quality/security APPROVED，两语言各22个额外负例检查通过，无未关闭Critical/Important。本结论仅限本轮本地合成QA。
+
+### 遗留事项
+
+- 继续Task3真实隔离HTTPS Relay/PG、不可变outbox、客户端与Kernel同事务、故障/隐私验收及最终八Gate；本轮本地库测试不等于网络验收。
+- Node CheckpointStore.get与pairing.retryReceipt改为async，仓内调用方全部await；旧无验证信息的QA SQLite格式fail closed，不自动降级或迁移。
+- 生产keystore、真实presence、Kit导出UX、完整bootstrap/split-view/GC、移动/公网/Sprint3均未实施。完整可信本地材料一致恶意回滚仍有明确限制。
+
 ## RH-013 — 2026-10-08 — Sprint 2 Crypto / Envelope / Nonce
 
 ### 完成内容
