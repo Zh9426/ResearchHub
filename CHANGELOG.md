@@ -2,6 +2,25 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-020 — 2026-10-08 — 完成 Sprint2 八项安全 Gate 与验收报告
+
+### 完成内容
+
+- 最终30主题报告与A–Z验收映射，更新协议、状态机、威胁边界、故障恢复及测试计划；八项Gate全部PASS，仅限合成loopback QA。
+- 记录完整独立安全审查、PENDING配对和Linux权限/故障注入修复、失败CI与成功重跑，明确运行时密钥扫描和各类测试边界。
+
+### 验证结果
+
+- RH019实现提交982c6ef的四job GitHub CI全部success；安全job实际Python174、Node48/typecheck、lifecycle6、Relay55/client75及最终清理通过，无skip/deselection冒充成功。
+- 本地审计后Python原型+secure208、Sprint1向量/内核/实际PG149、backend/MCP/release137；Node48与协议7、前端46/typecheck、隔离Docker生产构建通过。
+- 完整本地Relay55/client75通过，实际dump/bytea/files/log七编码扫描98,143,940/4,733,490 bytes，0/0 hits，包含14泄漏正对照。最终helper补丁复审后另重跑原型34、真实v0.2服务21、备份恢复1、服务重启持久性1，均通过。
+- 最终独立审查及补丁复审APPROVED，无未关闭Critical/Important。文档30主题/相对链接、diff及凭据检查通过；本提交仅文档，提交后的精确远端SHA和CI另行核对。
+
+### 遗留事项
+
+- 按要求STOP并等待人工审查；不启动Sprint3、不合并main、不移动v0.2.0。
+- 生产vault、真实user-presence、完整split-view/key transparency、所有可信材料一致回滚防护、全量bootstrap/GC、移动与公网/真实科研同步仍NOT IMPLEMENTED。
+
 ## RH-019 — 2026-10-08 — 修复 Linux TLS 初始化权限与故障注入证据
 
 ### 完成内容

@@ -1,4 +1,16 @@
-# Sprint 1 Kernel 验收与正式不变量
+# Sync Kernel 与 Secure Transport 验收
+
+## Sprint2 当前验收状态
+
+Task1/2已完成本地标准密码和生命周期独立复审。root/spec/quality各自准确排除TLS材料的合并回归218通过，Node38/typecheck通过；详见[Task2 QA](SPRINT_2_TASK2_QA.md)。本地库测试不抵充真实网络/PG/客户端原子集成，最终独立安全审查之后仍须完整重跑。
+
+八Gate的正式结果以[SPRINT_2_REPORT.md](SPRINT_2_REPORT.md)为准，目前全部PENDING：Crypto Interoperability、Relay Confidentiality、Envelope Integrity、Replay & Epoch Safety、Device Lifecycle、Network Durability、Nonce Safety、Rollback Detection。任一FAIL即overall FAIL，PENDING不可宣布complete。
+
+Task3必须实际HTTPS/CA+hostname验证，专用Relay PG和固定TCP入口，真实socket断连、commit前/后kill、ACKloss、Relay/PG/入口/client重启及持久性；直接PGdump、所有Relay/入口files/logs与运行时钥匙/研究canaries多编码0命中。客户端整页验证、outer cursor/checkpoint与Kernel同事务，以及有效设备签名不能伪造Human grant，均需实际QA PG证据。TestClient/Mock/静态导入/材料生成不算网络验收。
+
+成熟Hypothesis覆盖crypto roundtrip/mutations、nonce schedules、grant/epoch/chunk permutations；Task3另有实际HTTP retry/idempotency/invalid-page/chunk schedules及oversize/rate/配对滥用测试。完整CLI按Relay/client两cohort串行运行，各自在结束时完成独立privacy v2扫描；selected/executed/文件集与JUnit、trial/invocation必须一致且没有skip/deselection。Case A–Z、实际命令和缺口逐项映射见Sprint2报告，禁止用局部计数替代整个Gate。
+
+## Sprint1 已冻结验收
 
 当前验收使用专用 PostgreSQL 17.11：`researchhub_sync_kernel_qa` / `researchhub_sync_qa` / loopback 35433。`HUB_SYNC_QA=1` 显式 opt-in，缺配置失败，不回退个人 DATABASE_URL。完整执行结果与 CASE A–Z 对应关系见 [SPRINT_1_REPORT.md](SPRINT_1_REPORT.md)。
 
@@ -48,10 +60,10 @@ E:\node\npm.ps1 --prefix packages/sync-protocol run typecheck
 | I02 | Apply(Apply(D,t),t) = Apply(D,t)，对象、审计、游标相同 | duplicate pull/push 原型 |
 | I03 | 同 BASE 的不同科学更新 ⇒ 所有非因果 heads 保留，不能自动单值覆盖 | pressure 1.6/1.8 与人工结论原型 |
 | I04 | Audit ID 的内容不可更新/删除；相同 ID 异内容必须拒绝 | Sprint 0 当时只测原型；Sprint 1 已验证真实 QA append-only trigger |
-| I05 | verified(bytes) ⇒ sha256/size/manifest 均符合；失败不能 success | synthetic checksum 与 context dedup 原型；AEAD 未实现 |
+| I05 | verified(bytes) ⇒ sha256/size/manifest 均符合；失败不能 success | Sprint2本地双端AEAD/签名manifest/chunk负例及小Artifact实际HTTPS传输验证；生产MinIO同步未实现 |
 | I06 | trash/edit 不自动 restore；purge 不通过普通 ChangeSet | 原型 lifecycle 负向测试；生产 purge 未实现 |
 | I07 | project.module_snapshot 不随本地 registry 改变；解释绑定 hash | 设计及将来 module fixture，原型不证明真实模块 UI |
-| I08 | Human-only accepted mutation ⇒ 可信 Human grant 绑定该 heads/operation | 合成 AI 拒绝测试只验证规则；真实 consent/signature 未实现 |
+| I08 | Human-only accepted mutation ⇒ 可信 Human grant 绑定该 heads/operation | Sprint1实际QA PG synthetic principal/mock fresh grant通过；真实用户consent未实现，外层Device签名不能替代 |
 | I09 | Cloud/AI entry 的有效权限 ≤ 原 Domain AI scope；不得冒充 Human | 设计 + synthetic principal，真实 Remote MCP 未实现 |
 | I10 | outcome 不依赖 Primary role 或 wall-clock 选胜者 | head-set 推导/双副本并发测试；没有生产 Primary 服务 |
 | I11 | T 的所有 ChangeSet 可见性为全有/全无；无半个 Run/参数视图 | push-half/pull-crash 原型；业务 conflict 全批次待审查策略见实现说明 |
@@ -61,7 +73,7 @@ E:\node\npm.ps1 --prefix packages/sync-protocol run typecheck
 | I15 | bytes dedup 仅 project/key epoch 内；不同 metadata ID/来源均保留 | same SHA/context 测试 |
 | I16 | unresolved heads > 1 ⇒ conflict；resolution 消费指定完整 heads，新的解决分叉仍保留 | concurrent resolution 原型 |
 | I17 | bootstrap 不覆写未 ACK local changes；log compaction 有验证快照与 tail | 设计；bootstrap/compaction 未实现 |
-| I18 | Relay 无 plaintext project key，错误 key/nonce/signature 不能入 Domain | 设计；本原型无加密，不能宣称此项被运行证明 |
+| I18 | Relay 无 plaintext project key，错误 key/nonce/signature 不能入 Domain | Sprint2密码负例、真实Relay dump/bytea/files/log扫描与14泄漏对照、客户端Kernel认证路径；最终证据见Sprint2报告，不代表所有威胁均已解决 |
 
 ## 用户要求的十个核心案例
 
@@ -92,4 +104,4 @@ E:\node\npm.ps1 --prefix packages/sync-protocol run typecheck
 
 Sprint 0 不重复将原型结果充当 PostgreSQL、MinIO、PWA、签名或真实账户测试。v0.2 真服务重新验收见 [RELEASE_V0.2.0.md](../RELEASE_V0.2.0.md)；本分支应以 git diff 确认 apps/infrastructure/migrations 不变。既有 GitHub CI 仍测稳定应用，未自动纳入原型测试，需单独报告本地原型命令。
 
-Sprint 0 当时仅提议的 Sprint 1 已经人工授权并完成本页顶部 QA 验收。网络/密钥、真实浏览器清理、长期离线、E2E 同步与安全恢复仍须未来独立批准验收；本轮 STOP。
+Sprint0当时的STOP已结束；Sprint1经人工授权完成冻结验收，用户现已授权Sprint2继续实施。当前实现限于Secure QA；真实浏览器清理、长期离线/完整bootstrap、移动与生产接入不在本轮范围。只有Sprint2全部八Gate、最终独立安全审查和完整回归通过后才到新的STOP，等待人工审查，不自动开始Sprint3。当前结果以SPRINT_2_REPORT.md为准。

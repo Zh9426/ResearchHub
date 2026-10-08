@@ -1,6 +1,16 @@
 # Failure Mode Analysis
 
-状态：**DECIDED** 为恢复规范。注明“原型”的机制仅在合成 SQLite 验证；真实网络、E2E、快照、撤销、移动端均未实现。
+状态：下表保留架构恢复规范与历史原型边界。Sprint1内层事务已在真实QA PostgreSQL验证；Sprint2已实现双语言E2E、撤销/恢复、持久checkpoint、小snapshot/Artifact原型及真实QA HTTPS/客户端Kernel原子集成。最终验收见SPRINT_2_REPORT.md；移动/公网/完整bootstrap未实现。
+
+## Sprint2 当前 fail-closed 行为
+
+- nonce ledger/witness缺失、损坏、回滚或overflow拒绝继续加密，不默默清零；全部可信材料一致回滚后的恢复必须rotate。
+- public manifest SQL列与signed body/digest/连续history及pinned roots不符时，权威读取拒绝；配对不消耗尝试或写入，不能漏读撤销。
+- 持久SIGNED checkpoint body/context/kind任何局部损坏在读取/推进前拒绝；真验签先于digest信任，不覆盖原锚点、不推进cursor，合法历史creator撤销不使已认证旧cp失效。
+- Kit journal/head、manifest/cp完整组合重验后才恢复；metadata缺失报RECOVERY_FRESHNESS_UNVERIFIABLE，不能用旧seed/cp0重新初始化。recovery事务失败整体rollback，commit后才改变内存。
+- 坏AEAD/tag/wrapped key/snapshot signature/chunk size/hash/order均ERROR，无明文fallback或READY。所有Device私钥和Kit全丢报E2E_DATA_UNRECOVERABLE。
+
+上述有双端实际负例与独立复审证据，见[Task2 QA](SPRINT_2_TASK2_QA.md)。网络中断、Relay/PG/入口真实kill见[Task3A QA](SPRINT_2_TASK3A_QA.md)，client真实kill与传输cursor/Kernel同事务见[Task3B QA](SPRINT_2_TASK3B_QA.md)。这些测试不证明掉电、磁盘损坏或多故障域耐久性。
 
 | 故障 | Detection | Recovery | Data-loss risk | User-facing behavior |
 | --- | --- | --- | --- | --- |

@@ -60,7 +60,7 @@ Task3范围较大，按依赖拆为两个依次实施的子任务，每个均需
 1. **Task3A — Relay与隔离网络**：QA guard、固定TCP入口、实际TLS、public-only image、严格signed request、会员/配对public metadata、PG durable receipt、opaque chunk、quota/log/error、真实Relay/PG/入口故障及直接DB隐私检查。完成不等于Network Durability Gate通过，因为可信客户端原子接收尚待Task3B。
 2. **Task3B — 可信客户端与完整故障证据**：不可变outbox、完整page预验证、outer cursor/chain与Kernel同事务、历史隔离、double authentication、client真实kill、完整canary与成熟网络property测试、实际网络性能。不得改变Sprint1科研语义。
 
-Task3A当前：实现与两个独立审查已通过。spec首轮P1隐私扫描假阴性和2项P2类型混同均实际RED→GREEN；spec复审55 passed / 284.64s，quality55 passed / 288.64s、lifecycle3、TLS2及12个额外配对负例通过。root提交前网络55 passed / 284.98s、v2隐私98,100,447 bytes零命中、本地依赖220/Node38/typecheck通过；RH015=1c52edb已推送、远端一致、CI37760044169现有三job success。Task3B已完成实现、spec PASS和quality/security APPROVED；独立最新完整55+75项及两组privacy0命中，root交叉核对证据通过。RH016待提交；Task4最终审查/回归尚未完成。
+Task3A当前：实现与两个独立审查已通过。spec首轮P1隐私扫描假阴性和2项P2类型混同均实际RED→GREEN；spec复审55 passed / 284.64s，quality55 passed / 288.64s、lifecycle3、TLS2及12个额外配对负例通过。root提交前网络55 passed / 284.98s、v2隐私98,100,447 bytes零命中、本地依赖220/Node38/typecheck通过；RH015=1c52edb已推送、远端一致、CI37760044169现有三job success。Task3B已完成实现、spec PASS和quality/security APPROVED；独立最新完整55+75项及两组privacy0命中，root交叉核对证据通过。RH016=ada2d8c已推送、远端SHA一致；Task4已完成独立安全审查与修复、完整回归及RH019四job Linux CI验收；见最终SPRINT_2_REPORT.md。
 
 聚焦提交编号依次递增；拆分后Task4编号相应顺延，不固定使用RH016。Task2两个审查均通过后才派发Task3A。
 
@@ -77,11 +77,13 @@ Task3A当前：实现与两个独立审查已通过。spec首轮P1隐私扫描�
 
 **Modify:** `.github/workflows/ci.yml` 加secure-relay-qa job；`docs/sync/{SYNC_SECURITY_MODEL,SYNC_PROTOCOL,SYNC_STATE_MACHINE,SYNC_FAILURE_RECOVERY,SYNC_TEST_PLAN,SYNC_DECISIONS}.md`；新增 `SPRINT_2_REPORT.md`；`CHANGELOG.md`。
 
-- [ ] 成熟 Hypothesis覆盖crypto roundtrip/signature mutations、nonce concurrent/restart generated schedules、idempotency/retry/invalid envelopes/chunk permutations；property nofake standalone random loop。
-- [ ] 实测 encrypt/decrypt/verify、100消息push/pull、小Artifact性能，记录机器/limits/timing/no分布式承诺。
-- [ ] 新 CI 真实隔离PG、Node/Python独立库、临时keys/TLS/network/fault/canary、finally destroy，旧frontend/backend/kernel jobs保留green。
-- [ ] 独立 securityreview逐项keys/log/DB/nonce/replay/signatureAAD/downgrade/revoke/pair/recover/errors/staged Git。每finding有RED→fix→GREEN，review PASS后跑完整test。
-- [ ] 重新运行Sprint0 prototype、Sprint1vectors/TS/实际PG、backend/MCP/release、frontend/typecheck/isolatedbuild、实际v02QA integration/restart/backup；无skip记证据。未运行必须给原因，不抵充验收。
-- [ ] Report30主题及A–Z需求映射、IMPLEMENTED/CROSS-LANGUAGE/NETWORK/SECURITY/DESIGNED ONLY/NOT IMPLEMENTED/BLOCKED准确分类；八gate PASS/FAIL逐项命令证据，任何FAIL overallFAIL。
-- [ ] 最终使用下一递增RH编号commit四段正文、暂存差异与secretcheck，推送当前trackingbranch，核对remoteSHA与所有CI job。main/tagfreeze不动。
-- [ ] 只有八gatePASS和requiredchecks完成才final complete；之后STOP，等待人工审查，不开始Sprint3。
+- [x] 成熟 Hypothesis覆盖crypto roundtrip/signature mutations、nonce concurrent/restart generated schedules、idempotency/retry/invalid envelopes/chunk permutations；property nofake standalone random loop。
+- [x] 实测 encrypt/decrypt/verify、100消息push/pull、小Artifact性能，记录机器/limits/timing/no分布式承诺。
+- [x] 新 CI 真实隔离PG、Node/Python独立库、临时keys/TLS/network/fault/canary、finally destroy，旧frontend/backend/kernel jobs保留green。
+- [x] 独立 securityreview逐项keys/log/DB/nonce/replay/signatureAAD/downgrade/revoke/pair/recover/errors/staged Git。每finding有RED→fix→GREEN，review PASS后跑完整test。
+- [x] 重新运行Sprint0 prototype、Sprint1vectors/TS/实际PG、backend/MCP/release、frontend/typecheck/isolatedbuild、实际v02QA integration/restart/backup；无skip记证据。未运行必须给原因，不抵充验收。
+- [x] Report30主题及A–Z需求映射、IMPLEMENTED/CROSS-LANGUAGE/NETWORK/SECURITY/DESIGNED ONLY/NOT IMPLEMENTED/BLOCKED准确分类；八gate PASS/FAIL逐项命令证据，任何FAIL overallFAIL。
+- [x] 最终使用下一递增RH编号commit四段正文、暂存差异与secretcheck，推送当前trackingbranch，核对remoteSHA与所有CI job。main/tagfreeze不动。
+- [x] 只有八gatePASS和requiredchecks完成才final complete；之后STOP，等待人工审查，不开始Sprint3。
+
+最终证据：RH019=982c6efa02bac9d998d4672da1c2b1b1d206fe99，Actions37787853895四job success，含Python174/Node48/lifecycle6/实际Relay55+client75与cleanup。PENDING与Linux helper/故障到达点问题均独立复审关闭。RH020仅文档收尾，提交后核验精确HEAD同步与CI。八Gate PASS；STOP，等待人工审查，不开始Sprint3。

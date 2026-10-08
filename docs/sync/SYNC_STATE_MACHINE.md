@@ -1,6 +1,16 @@
 # 同步状态机
 
-状态：Sprint 1 的本地明文 QA Kernel 状态已实现并在真实 PostgreSQL 验证；下图 PUSHING/RELAY_STORED/PULL 网络状态仍为设计，Sprint 0 SQLite 原型仅作历史参照。
+状态：Sprint1内层QA Kernel已在真实PostgreSQL验证；Sprint2已实现SecureEnvelope、可信设备生命周期、持久checkpoint与Artifact原型，以及QA HTTPS push/pull和outer cursor/Kernel同事务。最终整体验收见SPRINT_2_REPORT.md；图中完整UI、bootstrap与生产存储仍为设计。Sprint0 SQLite原型仅作历史参照。
+
+## Sprint2 本地安全状态
+
+会员为PENDING/ACTIVE/REVOKED，角色owner/writer/reader；PENDING没有Project Key或mutation权限，只有旧ACTIVE owner连续签名transition可正常加入。revoke/recovery永久保留旧成员与nonce prefix并轮换key epoch，REVOKED不可复活或复用prefix。
+
+配对challenge五分钟单session、最多五次持久失败；完整证明与文本确认后，消费/会员变更/wrapped receipt同SQLite事务。再次消费拒绝，原receipt独立lookup也必须当前授权。真实presence/UI未实现。
+
+checkpoint由显式BOOTSTRAP推进SIGNED，后续永不隐式降回初始化；持久SIGNED读取真实验签、双epoch与cursor/chain非下降。坏body/context签名或存储异常ERROR且不写入；Recovery Kit缺可信journal/head组合为RECOVERY_FRESHNESS_UNVERIFIABLE，全密钥丢失为E2E_DATA_UNRECOVERABLE。
+
+outer transport cursor与inner received_cursor/accepted_watermark是不同水位。Task3集成整页预验并同事务更新outer与Kernel；Relay只有RELAY_STORED，其他ACK均为设备声明，不能由Relay判科学accepted。
 
 ## 已实现的 QA Kernel 状态
 
@@ -8,7 +18,7 @@
 
 `received_cursor` 在 Inbox 与结果同事务持久后推进：ACCEPTED/CANDIDATE 路径另包含 revision/projection 判定与 Audit；QUARANTINED 只保存不可变 raw transaction/receipt，不解释业务也不生成 Domain Audit。`accepted_watermark` 是连续已完成判定（ACCEPTED/SUPERSEDED）的 receipt 水位，遇到 CANDIDATE/QUARANTINED 停止，晚到冲突可降低水位。`fully_synced` 必须同时无未决事务/冲突。重复回执保留不可变 `receipt_state`，返回的 `state` 反映当前状态，不能因旧回执曾 accepted 显示绿色。
 
-在线 resolution 在项目行锁内核验完整当前 heads 与短期一次性 Human grant；离线 resolution 只是 proposal，可保留 RA/RB 新分叉，不完成科学确认。未知 protocol/schema/module hash 保存原始消息为 QUARANTINED，不解释为 Domain 写入。解隔离、网络 ACK 和密钥恢复尚未实现。
+在线 resolution 在项目行锁内核验完整当前 heads 与短期一次性 Human grant；离线 resolution 只是 proposal，可保留 RA/RB 新分叉，不完成科学确认。内层未知 schema/module hash依Sprint1保存原始消息为 QUARANTINED；外层未知协议/套件直接拒绝且不推进cursor。客户端网络ACK仅表示已持久解密receipt。通用解隔离尚未实现；高熵Kit密钥恢复与科研批次重新批准是不同操作。
 
 ## 将来的传输状态
 
@@ -18,11 +28,9 @@ stateDiagram-v2
   LOCAL_COMMITTED --> PUSHING: 使用原 transaction_id
   PUSHING --> LOCAL_COMMITTED: 中断 / ACK 丢失
   PUSHING --> RELAY_STORED: durable ACK
-  PUSHING --> CONFLICT_STORED: 已知 base 分叉；候选保留
   PUSHING --> BLOCKED: 身份 / schema / 依赖失败
   BLOCKED --> LOCAL_COMMITTED: 人工或依赖恢复后重试
   RELAY_STORED --> PULL_RECEIVED
-  CONFLICT_STORED --> PULL_RECEIVED
   PULL_RECEIVED --> APPLYING: 验证签名、业务、版本
   APPLYING --> PULL_RECEIVED: 崩溃 rollback；cursor 不提前
   APPLYING --> APPLIED: domain + inbox + audit + cursor 提交
