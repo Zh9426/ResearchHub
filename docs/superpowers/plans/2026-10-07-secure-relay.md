@@ -14,8 +14,8 @@
 
 - [x] 保存完整需求，核对现有 branch/HEAD/远端/CI，读取原 Kernel 与安全文档。
 - [x] 写安全增量和官方库比较；npm registry 实查 core latest1.9.0、MIT、依赖common^1.10.0；冻结 lockfile 时记录实际树。
-- [ ] 独立安全设计审查，修正具体问题，记录前置 gate SELECTED。
-- [ ] 写 ADR016–025；后续协议文档必须与实现一致。
+- [x] 独立安全设计审查PASS；六项状态规则缺口及recovery唯一授权例外修订，记录前置 gate SELECTED。
+- [x] 写 ADR016–025；RH012=5aef6e7已推送，后续协议文档必须与实现一致。
 
 ## Task 1 — Crypto / SecureEnvelope / durable nonce
 
@@ -34,7 +34,7 @@ assert canonical_bytes(open_envelope(sealed, key, signer_public, expected)) == c
 - [ ] NonceVault API `reserve(key_fingerprint,prefix)->bytes`：SQLite BEGIN IMMEDIATE/sync FULL → append/fsync witness → commit → return。存储注册身份不可悄悄清零；恢复缺失/回滚 fail closed；overflow fail closed；unique prefix authority 分配。两语言共格式可并行预约；支持范围与全可信材料同时 rollback 限制明确。
 - [ ] RED→GREEN：真实子进程并发、重启、crash 各切点、删除 ledger、恢复旧 ledger、witness 损坏、overflow、缓存 exact retry/new wrapper semantic identity；Hypothesis generated schedules 与 ciphertext/header mutations。
 - [ ] Run `.venv/Scripts/python -m pytest tests/secure_sync -q`、`npm --prefix packages/secure-sync test`、`npm --prefix packages/secure-sync run typecheck`。首轮仅本任务 tests，不能提前声称 Relay gate。
-- [ ] 独立规格审查→修复→复审；独立质量/安全审查→修复→复审。根代理按 RH012 聚焦提交、四段中文正文、CHANGELOG、推送。
+- [ ] 独立规格审查→修复→复审；独立质量/安全审查→修复→复审。根代理按 RH013 聚焦提交、四段中文正文、CHANGELOG、推送。
 
 ## Task 2 — Trusted lifecycle / pairing / recovery / anchors / chunks
 
@@ -47,7 +47,7 @@ assert canonical_bytes(open_envelope(sealed, key, signer_public, expected)) == c
 - [ ] RED→GREEN recovery：lostphone/PC/密码/new trusted device/kit；密码不等于keys；kit高熵材料与公开 trust anchor；全丢精确 `E2E_DATA_UNRECOVERABLE`。撤销最后owner的授权与recovery scope必须验证，无服务端master。
 - [ ] RED→GREEN anchor：持久cursor+chain，older/samecursor不同hash/缺页/伪造签名拒绝；签名加密snapshotmanifest prototype；split-view/transparency明确NOT IMPLEMENTED。
 - [ ] RED→GREEN chunks：小合成文件 freshDEK/AESKW inside encrypted manifest；每块≤64KiB、AAD context/index/count/size，bounded iterable/sink；错顺序/缺块/重复/size/hash/epoch/tag拒绝，重试不重复写sink。TS与Python独立 roundtrip。
-- [ ] 运行本任务、Task1所有 crypto/property/vector/typecheck；两阶段独立审查后 RH013 聚焦提交推送。
+- [ ] 运行本任务、Task1所有 crypto/property/vector/typecheck；两阶段独立审查后 RH014 聚焦提交推送。
 
 ## Task 3 — Actual HTTPS PG Relay / trusted receive / faults
 
@@ -60,7 +60,7 @@ assert canonical_bytes(open_envelope(sealed, key, signer_public, expected)) == c
 - [ ] 客户端 validate whole page contiguous chain、envelope/digest/epochs，然后使用本地principal/grant调用Kernel；transport cursor持久化与apply同一个QA Kernel session（额外transport状态只在QA表）。重复wrapper不扩大innercursor；科研candidate可transport ACK但不能scientific ACK；Device签名不能制造Human。
 - [ ] 实际 TLS socket 半上传/上传后断开、子进程killbeforecommit/aftercommitbeforeACK、ACK丢失、duplicate POST/GET、partialpage、outoforderretry、Relayrestart和PGrestart。每故障验证PG完整性、retryreceipt、cursor/gap与Kernel幂等。
 - [ ] 直接PGdump、Relay persisted files/log scan synthetic research canaries及runtime钥匙多种编码；zero hits；allowlist日志与HTTP稳定errorcode无payload/SQLstack。retain_until_ack仅metadata，无GC。
-- [ ] 两阶段独立 review；RH014 聚焦commit/push（未完成gate明确未完成）。
+- [ ] 两阶段独立 review；RH015 聚焦commit/push（未完成gate明确未完成）。
 
 ## Task 4 — Complete gates / independent security audit / regression / report / CI
 
@@ -72,5 +72,5 @@ assert canonical_bytes(open_envelope(sealed, key, signer_public, expected)) == c
 - [ ] 独立 securityreview逐项keys/log/DB/nonce/replay/signatureAAD/downgrade/revoke/pair/recover/errors/staged Git。每finding有RED→fix→GREEN，review PASS后跑完整test。
 - [ ] 重新运行Sprint0 prototype、Sprint1vectors/TS/实际PG、backend/MCP/release、frontend/typecheck/isolatedbuild、实际v02QA integration/restart/backup；无skip记证据。未运行必须给原因，不抵充验收。
 - [ ] Report30主题及A–Z需求映射、IMPLEMENTED/CROSS-LANGUAGE/NETWORK/SECURITY/DESIGNED ONLY/NOT IMPLEMENTED/BLOCKED准确分类；八gate PASS/FAIL逐项命令证据，任何FAIL overallFAIL。
-- [ ] 最终 RH015 commit四段正文、暂存差异与secretcheck，推送当前trackingbranch，核对remoteSHA与所有CI job。main/tagfreeze不动。
+- [ ] 最终 RH016 commit四段正文、暂存差异与secretcheck，推送当前trackingbranch，核对remoteSHA与所有CI job。main/tagfreeze不动。
 - [ ] 只有八gatePASS和requiredchecks完成才final complete；之后STOP，等待人工审查，不开始Sprint3。

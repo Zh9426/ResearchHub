@@ -2,6 +2,27 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-013 — 2026-10-08 — Sprint 2 Crypto / Envelope / Nonce
+
+### 完成内容
+
+- Python cryptography50.0.2与Node WebCrypto/@hpke/core1.9.0各自实现AES256GCM、Ed25519、RFC9180 Base HPKE和AESKW；锁common1.10.1，无自研primitive。
+- 独立publicwire仅canonical/公共验签；SecureEnvelope全部字段绑定AAD/signature，严格canonicaldecoder与semantictransaction映射/digest/device/deps验证，包裹不改变revision。
+- Python/Node共格式SQLite FULL/BEGIN IMMEDIATE与fsync witness预约nonce，提交后才加密，缺失/坏尾部/回滚/溢出fail closed，真实跨进程并发和退出窗口。
+- 公开TEST ONLY primitive及完整canonicaltransaction/envelope固定向量，双向独立seal/open/sign/verify/wrap/unwrap；非法decryptedparser错误归一为INVALID_PLAINTEXT。
+
+### 验证结果
+
+- Root及独立规格/质量复审均实际通过：Python39、Node6、严格类型；Root合并Sprint1wire/property59通过，Ruff/diff检查通过，无skip。
+- 六个真实Python/Node进程120唯一nonce、重启121/122；四个实际强制退出窗口、九种账本损坏双端拒绝；Hypothesis50 freshkey roundtrip/mutation与30nonce schedules。
+- 独立审查P2缺fixedcanonicaltransaction向量已RED→GREEN修复并复审PASS/APPROVED；parser numeric secret token泄漏也行为RED→GREEN修复。
+- 100×1KiB本地均值seal8.566ms/open1.007ms/verify0.636ms，含nonce fsync，非网络性能。本机default sandbox临时文件权限失败不作为功能失败，实际escalated合成QA重跑通过。
+
+### 遗留事项
+
+- 本提交仅Task1；生命周期、配对/撤销/恢复、真实HTTPS Relay、immutable network outbox、网络故障/隐私及完整八gate待后续迭代。
+- 无生产keystore、真实用户presence/科研传输、产品migration、移动/公网/Sprint3。所有随机运行时key仅内存/忽略QA文件，Git固定key是明确公开TEST ONLY例外。
+
 ## RH-012 — 2026-10-07 — Sprint 2 安全设计与密码库 gate
 
 ### 完成内容

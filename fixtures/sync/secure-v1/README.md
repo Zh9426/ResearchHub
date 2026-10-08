@@ -1,0 +1,13 @@
+# PUBLIC TEST ONLY vectors
+
+本目录的deterministic key与seed是公开测试数据，任何环境均不得用于真实内容加密、设备身份或生产授权。AES固定nonce只用于已知向量；运行时seal只从持久NonceVault预约nonce，不接受caller指定nonce。
+
+primitives.TEST_ONLY.json固定32-byte AES key、32-byte Ed25519/X25519 seed、AAD、12-byte nonce、标准ciphertext||tag、Ed25519签名、AES-KW以及RFC9180 Base HPKE enc||ct。HPKE fixture由标准库产生一次ephemeral context，保存稳定密文；没有保存ephemeral私钥。Python与Node分别独立解密、验签与unwrap，不能以一端调用另一端primitive冒充互操作。
+
+transaction-envelope.TEST_ONLY.json使用另一个公开TEST ONLY key与prefix，包含既有Sprint1 `multi_change_valid` canonical transaction明文字节、semantic transaction/revision digests、完整SecureEnvelope、AAD、ciphertext/tag、签名preimage/签名、两公钥、wrapped key/context、完整canonical envelope bytes/SHA256及固定expected verification。oracle一次性直接调用cryptography标准AESGCM/Ed25519/原生HPKE与已固定Sprint1协议向量生成，没有调用被测seal实现。Python与Node独立seal_transaction/sealTransaction输出必须逐字节匹配该固定envelope；两端独立open_transaction/openTransaction与可信bindings负例同时验收。此已知向量的固定key/nonce例外不作为运行时nonce安全证明。
+
+NonceVault是SQLite与独立fsync witness的合成QA原型，不是生产browser vault。keys仅通过内存参数传入，不存在vault DB或witness。必须显式register_new/registerNew新key/prefix；文件缺失、注册row缺失、任何ledger/witness不一致、损坏或counter越界均拒绝。全部可信文件一起恶意回滚仍不受支持，恢复备份须新epoch/key/prefix。
+
+seal_record/sealRecord每次调用都预约新nonce并生成新wrapper。网络retry必须由TrustedClient持久outbox重发已缓存完整canonical envelope bytes；不得重新调用seal、改message_id或nonce。合法re-encryption使用新message_id，semantic transaction/revision/digest保持不变。
+
+open_transaction/openTransaction调用者提供可信opaque到Domain project_id映射与manifest设备/prefix/epoch；方法验证签名、绑定、AEAD、canonical plaintext、semantic digest、Domain wire schema/device/dependencies后返回交易。principal与Human grant仍由Kernel可信上下文判定；snapshot/artifact_manifest仅返回generic record，专用decoder负责其严格schema。

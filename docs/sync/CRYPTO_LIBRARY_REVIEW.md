@@ -35,3 +35,9 @@ cryptography的[安全公告](https://github.com/pyca/cryptography/security/advi
 npm registry 已实际查询：2026-10-07 latest `@hpke/core=1.9.0`，MIT，Node>=16，依赖`@hpke/common ^1.10.0`。原候选1.8.0仍存在，但本轮采用精确1.9.0及lockfile冻结传递树；不能依据GitHub release页面缺少tag就假设npm也没有该版本。尚未安装或执行互操作，执行结果另列。
 
 两端必须独立运行AES encrypt/decrypt、Ed sign/verify、HPKE wrap/unwrap，固定公开TEST ONLY向量与运行时随机材料都验收；错误key/info/project/epoch/tag/signature拒绝。生成的私钥仅在内存或忽略的临时vault，测试日志不打印。若实际版本/API/互操作失败，gate改BLOCKED，不能放宽校验或自实现primitive。
+
+## 实际 Task 1 证据
+
+lockfile实际解析 `@hpke/core 1.9.0 → @hpke/common 1.10.1`（声明范围^1.10.0），两package MIT；Python实际cryptography50.0.2，Hypothesis6.168.5。固定vectors与随机临时key双向AES/Ed25519/HPKE/AESKW、完整envelope互操作由两种语言各自primitive实现完成；没有通过一端调用另一端密码代码替代互通。
+
+Root与独立规格/质量审查分别实际重跑 `pytest tests/secure_sync` 最终39项、Node6项及typecheck通过；Root合并已有wire/property实际59项通过。支持prefix/counter与SQLite/witness的真实六进程、重启和四个强制退出窗口。§13固定canonicaltransaction完整envelope向量已补齐，两端seal逐bytes对齐；decrypted-parser numeric token错误已统一INVALID_PLAINTEXT。Library gate继续SELECTED。仅Task1实现通过审查，最终安全gate还须覆盖生命周期、Relay网络与独立完整安全审查，不能从这些基础结果推断整个Sprint2已完成。
