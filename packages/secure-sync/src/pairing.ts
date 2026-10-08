@@ -95,9 +95,13 @@ export async function consume(store: TrustedStore, owner: Device, c: PublicObjec
             if (proof.challenge_digest !== digest(c) || digest(proof.confirmation) !== digest(confirmation(c)) || typeof proof.challenge_response !== 'string' || !/^[0-9a-f]{64}$/.test(proof.challenge_response) || createHash('sha256').update(Buffer.from(proof.challenge_response, 'hex')).digest('hex') !== row.response_digest)
                 throw new Error('PAIRING_PROOF_INVALID');
             await verifySigned('PairingProof', proof, c.recipient.signing_public_key);
-            const next = await transition(manifest, owner, {
-                add: c.recipient, now: options.now
-            }), grant = await makeGrant(next, owner, c.recipient.device_id, c.session_id, key);
+            const existing = manifest.members.find((m: PublicObject) => m.device_id === c.recipient.device_id);
+            // Activation may change only status, never pinned identity or scope.
+            if (existing && (existing.status !== 'PENDING' || digest(c.recipient) !== digest({...existing, status: 'ACTIVE'})))
+                throw new Error('PAIRING_SCOPE_MISMATCH');
+            const next = await transition(manifest, owner, existing
+                ? {activate: c.recipient.device_id, now: options.now}
+                : {add: c.recipient, now: options.now}), grant = await makeGrant(next, owner, c.recipient.device_id, c.session_id, key);
             result = {
                 challenge_digest: digest(c), manifest: next, grant
             };

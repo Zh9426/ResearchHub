@@ -147,3 +147,137 @@ def test_pairing_persistence_failure_after_manifest_write_rolls_back(
     with pytest.raises(ValueError, match="SYNTHETIC_PERSISTENCE_FAILURE"):
         p.consume(store, owner, challenge, proof, bytes(32), now=102)
     assert store.current(old["opaque_project_id"]) == old
+
+
+@pytest.mark.parametrize("fault", [None, "before_commit", "after_commit"])
+def test_pending_pairing_activates_exact_identity_atomically(tmp_path, fault):
+    k, owner, b, _, old, store = setup_project(tmp_path)
+    p = api("pairing")
+    pending = k.transition(old, owner, add=b.member("writer", 7, status="PENDING"))
+    store.accept(pending)
+    recipient = {**pending["members"][-1], "status": "ACTIVE"}
+    challenge = p.create_challenge(store, owner, recipient, now=100)
+    proof = p.answer_challenge(
+        challenge, pending, b, confirmation=p.confirmation(challenge), now=101
+    )
+    key = k.TestOnlyKeyVault().create(old["opaque_project_id"], 1)
+    if fault:
+        with pytest.raises(RuntimeError, match="SYNTHETIC_CRASH"):
+            p.consume(store, owner, challenge, proof, key, now=102, crash_point=fault)
+        store = k.TrustedStore(store.path)
+        if fault == "before_commit":
+            assert store.current(old["opaque_project_id"]) == pending
+            with store.transaction() as db:
+                assert db.execute(
+                    "SELECT attempts,used,receipt FROM challenges"
+                ).fetchone() == (0, 0, None)
+            receipt = p.consume(store, owner, challenge, proof, key, now=102)
+        else:
+            receipt = p.retry_receipt(store, challenge, b.device_id)
+    else:
+        receipt = p.consume(store, owner, challenge, proof, key, now=102)
+    assert receipt["manifest"]["members"] == [pending["members"][0], recipient]
+    assert receipt["manifest"]["membership_epoch"] == pending["membership_epoch"] + 1
+    assert receipt["manifest"]["key_epoch"] == pending["key_epoch"]
+    assert bool(k.open_grant(receipt["grant"], receipt["manifest"], b) == key)
+    assert (
+        p.retry_receipt(k.TrustedStore(store.path), challenge, b.device_id) == receipt
+    )
+    with pytest.raises(ValueError, match="PAIRING_USED"):
+        p.consume(store, owner, challenge, proof, key, now=102)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "ACTIVE",
+        "REVOKED",
+        "role",
+        "nonce_prefix",
+        "signing_public_key",
+        "recipient_public_key",
+        "granted_at",
+    ],
+)
+def test_pending_pairing_rejects_existing_identity_changes(tmp_path, change):
+    k, owner, b, _, old, store = setup_project(tmp_path)
+    p = api("pairing")
+    pending = k.transition(
+        old,
+        owner,
+        add=b.member(
+            "writer",
+            7,
+            status="PENDING" if change not in ("ACTIVE", "REVOKED") else "ACTIVE",
+        ),
+    )
+    store.accept(pending)
+    if change == "REVOKED":
+        pending = k.transition(pending, owner, revoke=b.device_id)
+        store.accept(pending)
+    recipient = b.member("writer", 7)
+    answerer = b
+    if change in ("signing_public_key", "recipient_public_key"):
+        other = k.Device.generate()
+        # A valid proof for the proposed identity must still not replace pinned keys.
+        answerer = k.Device(
+            b.device_id,
+            other.signing_seed if change == "signing_public_key" else b.signing_seed,
+            other.recipient_seed
+            if change == "recipient_public_key"
+            else b.recipient_seed,
+        )
+        recipient = answerer.member("writer", 7)
+    elif change == "role":
+        recipient[change] = "reader"
+    elif change == "nonce_prefix":
+        recipient[change] = 8
+    elif change == "granted_at":
+        recipient[change] = 1
+    challenge = p.create_challenge(store, owner, recipient, now=100)
+    proof = p.answer_challenge(
+        challenge, pending, answerer, confirmation=p.confirmation(challenge), now=101
+    )
+    with pytest.raises(ValueError):
+        p.consume(store, owner, challenge, proof, bytes(32), now=102)
+    assert store.current(old["opaque_project_id"]) == pending
+    with store.transaction() as db:
+        assert db.execute(
+            "SELECT attempts,used,receipt FROM challenges"
+        ).fetchone() == (1, 0, None)
+
+
+@pytest.mark.parametrize("trigger", ["manifest", "receipt"])
+def test_pending_pairing_sql_failure_rolls_back_all_state(tmp_path, trigger):
+    k, owner, b, _, old, store = setup_project(tmp_path)
+    p = api("pairing")
+    pending = k.transition(old, owner, add=b.member("writer", 7, status="PENDING"))
+    store.accept(pending)
+    challenge = p.create_challenge(
+        store, owner, {**pending["members"][-1], "status": "ACTIVE"}, now=100
+    )
+    proof = p.answer_challenge(
+        challenge, pending, b, confirmation=p.confirmation(challenge), now=101
+    )
+    with store.transaction() as db:
+        target = (
+            "AFTER INSERT ON manifests"
+            if trigger == "manifest"
+            else "AFTER UPDATE OF receipt ON challenges"
+        )
+        db.execute(
+            f"CREATE TRIGGER fail_pending {target} BEGIN SELECT RAISE(ABORT, 'SYNTHETIC_WRITE'); END"
+        )
+    import sqlite3
+
+    with pytest.raises(sqlite3.IntegrityError, match="SYNTHETIC_WRITE"):
+        p.consume(store, owner, challenge, proof, bytes(32), now=102)
+    store = k.TrustedStore(store.path)
+    assert store.current(old["opaque_project_id"]) == pending
+    with store.transaction() as db:
+        assert db.execute(
+            "SELECT attempts,used,receipt FROM challenges"
+        ).fetchone() == (0, 0, None)
+        db.execute("DROP TRIGGER fail_pending")
+    receipt = p.consume(store, owner, challenge, proof, bytes(32), now=102)
+    assert p.retry_receipt(store, challenge, b.device_id) == receipt

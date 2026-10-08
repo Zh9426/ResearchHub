@@ -72,3 +72,49 @@ jobs:
           npm --prefix packages/sync-protocol run typecheck
       - name: 真实隔离 PostgreSQL 内核与故障回归
         run: python -m pytest tests/sync_kernel tests/sync_pg -q
+  secure-relay-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      client-postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: researchhub_sync_kernel_qa
+          POSTGRES_USER: researchhub_sync_qa
+          POSTGRES_PASSWORD: ephemeral-secure-ci-only
+        ports:
+          - 35433:5432
+        options: >-
+          --health-cmd "pg_isready -U researchhub_sync_qa -d researchhub_sync_kernel_qa"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      HUB_SYNC_QA: '1'
+      HUB_RELAY_QA: '1'
+      HUB_SYNC_QA_URL: postgresql+psycopg://researchhub_sync_qa:ephemeral-secure-ci-only@127.0.0.1:35433/researchhub_sync_kernel_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 安装独立密码库与 QA 依赖
+        run: |
+          pip install -r apps/api/requirements.txt -r apps/relay/requirements.txt -r tests/secure_sync/requirements.txt -r tests/sync_kernel/requirements.txt
+          npm ci --prefix apps/web
+          npm ci --prefix packages/secure-sync
+      - name: 独立 Python 与 TypeScript 互操作及属性验证
+        run: |
+          python -m pytest tests/secure_sync -q --basetemp storage/runtime/ci-secure-crypto
+          npm --prefix packages/secure-sync test
+          npm --prefix packages/secure-sync run typecheck
+      - name: 隔离初始化失败后只清理本次 QA 资源
+        run: python -m pytest tests/secure_relay_lifecycle -q --basetemp storage/runtime/ci-relay-lifecycle
+      - name: 真实 loopback TLS、隔离 PG、进程故障与明文扫描
+        run: |
+          python scripts/secure-relay-qa.py --init
+          python scripts/secure-relay-qa.py --test
+      - name: 销毁本次临时 Relay 与 QA 环境
+        if: always()
+        run: python scripts/secure-relay-qa.py --destroy

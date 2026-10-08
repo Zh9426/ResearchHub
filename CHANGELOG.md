@@ -2,6 +2,25 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-017 — 2026-10-08 — 完成待配对设备激活并接入安全回归 CI
+
+### 完成内容
+
+- 最终独立审计发现并修复Python/Node的PENDING配对完成缺口：严格匹配已锚定身份、公钥、角色与nonce前缀后激活，保留单次challenge与membership/grant/receipt原子性。
+- 两端新增替换/重放/持久提交失败负例，并补实际HTTPS完整配对链、独立grant解包和激活后角色权限验证。
+- 新增独立secure-relay-qa CI job，使用临时client PG、运行时随机钥匙、loopback TLS Relay、完整两组测试和always清理；保留原有三job。
+
+### 验证结果
+
+- 两端均先有效复现PREFIX_OR_DEVICE_COLLISION，再取得GREEN；实现者Python安全测试174项、Node48项及类型检查通过；实际HTTPS定向1项通过且终点privacy0命中。
+- 最终独立安全复审APPROVED，无未关闭Critical/Important；原Python/Node探针GREEN、配对互操作26项、Node身份替换/原子性10项、真实HTTPS完整链1项及privacy0通过。root Ruff/diff与三份QA服务凭据精确扫描通过。
+- 新增Linux CI尚待推送后实际运行。不能以静态工作流解析替代远端执行。
+
+### 遗留事项
+
+- 审计批准后重跑全部Sprint0/1、安全传输、backend/MCP/release、frontend/隔离构建及v0.2实际备份/恢复回归，完成八Gate报告。
+- 限于合成loopback QA；生产vault/presence、完整split-view、真实科研同步和移动/公网部署仍未实现。
+
 ## RH-016 — 2026-10-08 — 可信客户端原子接收与端到端故障验证
 
 ### 完成内容

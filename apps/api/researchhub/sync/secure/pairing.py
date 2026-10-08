@@ -136,7 +136,27 @@ def consume(store, owner, challenge, proof, key, *, now, crash_point=None):
             verify_signed(
                 "PairingProof", proof, challenge["recipient"]["signing_public_key"]
             )
-            new = transition(manifest, owner, add=challenge["recipient"], now=now)
+            recipient = challenge["recipient"]
+            existing = next(
+                (
+                    m
+                    for m in manifest["members"]
+                    if m["device_id"] == recipient["device_id"]
+                ),
+                None,
+            )
+            if existing is None:
+                new = transition(manifest, owner, add=recipient, now=now)
+            else:
+                # Activation may change only status, never pinned identity or scope.
+                if existing["status"] != "PENDING" or recipient != {
+                    **existing,
+                    "status": "ACTIVE",
+                }:
+                    raise ValueError("PAIRING_SCOPE_MISMATCH")
+                new = transition(
+                    manifest, owner, activate=recipient["device_id"], now=now
+                )
             grant = make_grant(
                 new,
                 owner,

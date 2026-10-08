@@ -612,3 +612,68 @@ test('Node foreign valid recovery chain cannot change either project or kit', as
         assert.equal(aKit.manifestAnchor + ':' + digest(aKit.checkpointAnchor), before);
     }
 });
+
+test('Node PENDING pairing exact activation and crash receipts', async () => {
+    const { k, p } = await modules();
+    for (const fault of [undefined, 'before_commit', 'after_commit']) {
+        const owner = await k.Device.generate(), b = await k.Device.generate(), kit = await k.RecoveryKit.generate(), old = await k.bootstrap(randomUUID(), owner, kit), path = mkdtempSync('../../storage/runtime/s2-pending-') + '/trusted.sqlite';
+        let store = new k.TrustedStore(path);
+        await store.bootstrap(old, owner.signingPublic, kit.signingPublic);
+        const pending = await k.transition(old, owner, {add: b.member('writer', 7, 'PENDING')});
+        await store.accept(pending);
+        const recipient = {...pending.members[1], status: 'ACTIVE'}, challenge = await p.createChallenge(store, owner, recipient, {now: 100}), proof = await p.answerChallenge(challenge, pending, b, {confirmation: p.confirmation(challenge), now: 101}), key = randomBytes(32);
+        let receipt;
+        if (fault) {
+            await assert.rejects(p.consume(store, owner, challenge, proof, key, {now: 102, crashPoint: fault}), /SYNTHETIC_CRASH/);
+            store = new k.TrustedStore(path);
+            if (fault === 'before_commit') {
+                assert.equal(digest(store.current(old.opaque_project_id)), digest(pending));
+                const db = new DatabaseSync(path), row = db.prepare('SELECT attempts,used,receipt FROM challenges').get(); db.close();
+                assert.deepEqual({...row}, {attempts: 0, used: 0, receipt: null});
+                receipt = await p.consume(store, owner, challenge, proof, key, {now: 102});
+            } else receipt = await p.retryReceipt(store, challenge, b.deviceId);
+        } else receipt = await p.consume(store, owner, challenge, proof, key, {now: 102});
+        assert.equal(digest(receipt.manifest.members), digest([pending.members[0], recipient]));
+        assert.equal(receipt.manifest.membership_epoch, pending.membership_epoch + 1);
+        assert.equal(receipt.manifest.key_epoch, pending.key_epoch);
+        assert.ok(Buffer.from(await k.openGrant(receipt.grant, receipt.manifest, b)).equals(key));
+        assert.equal(digest(await p.retryReceipt(new k.TrustedStore(path), challenge, b.deviceId)), digest(receipt));
+        await assert.rejects(p.consume(store, owner, challenge, proof, key, {now: 102}), /PAIRING_USED/);
+    }
+});
+for (const change of ['ACTIVE', 'REVOKED', 'role', 'nonce_prefix', 'signing_public_key', 'recipient_public_key', 'granted_at']) test(`Node PENDING pairing rejects ${change} identity replacement`, async () => {
+    const {k, p} = await modules(), owner = await k.Device.generate(), b = await k.Device.generate(), kit = await k.RecoveryKit.generate(), old = await k.bootstrap(randomUUID(), owner, kit), path = mkdtempSync('../../storage/runtime/s2-pending-negative-') + '/trusted.sqlite', store = new k.TrustedStore(path);
+    await store.bootstrap(old, owner.signingPublic, kit.signingPublic);
+    let pending = await k.transition(old, owner, {add: b.member('writer', 7, ['ACTIVE', 'REVOKED'].includes(change) ? 'ACTIVE' : 'PENDING')});
+    await store.accept(pending);
+    if (change === 'REVOKED') {pending = await k.transition(pending, owner, {revoke: b.deviceId}); await store.accept(pending);}
+    let answerer = b;
+    if (['signing_public_key', 'recipient_public_key'].includes(change)) {
+        const other = await k.Device.generate(), signing = change === 'signing_public_key';
+        answerer = new k.Device(b.deviceId, signing ? other.signingSeed : b.signingSeed, signing ? b.recipientSeed : other.recipientSeed, signing ? other.signingPublic : b.signingPublic, signing ? b.recipientPublic : other.recipientPublic);
+    }
+    const recipient = answerer.member('writer', 7);
+    if (change === 'role') recipient.role = 'reader';
+    if (change === 'nonce_prefix') recipient.nonce_prefix = 8;
+    if (change === 'granted_at') recipient.granted_at = 1;
+    const challenge = await p.createChallenge(store, owner, recipient, {now: 100}), proof = await p.answerChallenge(challenge, pending, answerer, {confirmation: p.confirmation(challenge), now: 101});
+    await assert.rejects(p.consume(store, owner, challenge, proof, randomBytes(32), {now: 102}), /PAIRING_SCOPE_MISMATCH/);
+    assert.equal(digest(store.current(old.opaque_project_id)), digest(pending));
+    const db = new DatabaseSync(path), row = db.prepare('SELECT attempts,used,receipt FROM challenges').get(); db.close();
+    assert.deepEqual({...row}, {attempts: 1, used: 0, receipt: null});
+});
+for (const target of ['AFTER INSERT ON manifests', 'AFTER UPDATE OF receipt ON challenges']) test(`Node PENDING pairing SQL rollback ${target}`, async () => {
+    const {k, p} = await modules(), owner = await k.Device.generate(), b = await k.Device.generate(), kit = await k.RecoveryKit.generate(), old = await k.bootstrap(randomUUID(), owner, kit), path = mkdtempSync('../../storage/runtime/s2-pending-sql-') + '/trusted.sqlite';
+    let store = new k.TrustedStore(path);
+    await store.bootstrap(old, owner.signingPublic, kit.signingPublic);
+    const pending = await k.transition(old, owner, {add: b.member('writer', 7, 'PENDING')}); await store.accept(pending);
+    const challenge = await p.createChallenge(store, owner, {...pending.members[1], status: 'ACTIVE'}, {now: 100}), proof = await p.answerChallenge(challenge, pending, b, {confirmation: p.confirmation(challenge), now: 101}), key = randomBytes(32);
+    const db = new DatabaseSync(path); db.exec(`CREATE TRIGGER fail_pending ${target} BEGIN SELECT RAISE(ABORT, 'SYNTHETIC_WRITE'); END`); db.close();
+    await assert.rejects(p.consume(store, owner, challenge, proof, key, {now: 102}), /SYNTHETIC_WRITE/);
+    store = new k.TrustedStore(path);
+    assert.equal(digest(store.current(old.opaque_project_id)), digest(pending));
+    const check = new DatabaseSync(path), row = check.prepare('SELECT attempts,used,receipt FROM challenges').get();
+    assert.deepEqual({...row}, {attempts: 0, used: 0, receipt: null}); check.exec('DROP TRIGGER fail_pending'); check.close();
+    const receipt = await p.consume(store, owner, challenge, proof, key, {now: 102});
+    assert.equal(digest(await p.retryReceipt(store, challenge, b.deviceId)), digest(receipt));
+});

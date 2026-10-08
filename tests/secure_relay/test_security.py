@@ -437,42 +437,18 @@ def test_grant_get_cache_does_not_query_future_grant(project):
 
 
 def test_pending_pairing_exception_is_own_session_only(project):
+    genesis = project.manifest
     pending = project.add(status="PENDING")
-    # TrustedStore bootstrap only accepts genesis, so build signed public
-    # challenge using the already verified current manifest and client crypto.
-    from researchhub.sync.secure.crypto import wrap_key
-
-    from packages.secure_wire.membership import challenge_sas
-
+    store = keys.TrustedStore(project.directory / "pending-trusted.sqlite")
+    store.bootstrap(genesis, project.owner.signing_public, project.kit.signing_public)
+    store.accept(project.manifest)
     member = next(
         m for m in project.manifest["members"] if m["device_id"] == pending.device_id
     )
     recipient = {**member, "status": "ACTIVE"}
     now = int(time.time())
-    session = str(uuid4())
-    challenge = {
-        "version": 1,
-        "session_id": session,
-        "opaque_project_id": project.id,
-        "manifest_digest": digest(project.manifest),
-        "membership_epoch": project.manifest["membership_epoch"],
-        "key_epoch": project.manifest["key_epoch"],
-        "authority_device_id": project.owner.device_id,
-        "recipient": recipient,
-        "issued_at": now,
-        "expires_at": now + 300,
-        "wrapped_challenge": b64encode(
-            wrap_key(
-                bytes.fromhex(pending.recipient_public),
-                bytes(range(32)),
-                keys.grant_context(project.manifest, recipient, session),
-            )
-        ),
-    }
-    challenge["sas"] = challenge_sas(challenge)
-    challenge = keys.signed_object(
-        "PairingChallenge", challenge, project.owner.signing_seed
-    )
+    challenge = pairing.create_challenge(store, project.owner, recipient, now=now)
+    session = challenge["session_id"]
     assert (
         project.request(
             "POST", "/v1/pairing/challenge", {"challenge": challenge}
@@ -514,6 +490,43 @@ def test_pending_pairing_exception_is_own_session_only(project):
         == 200
     )
     assert project.pull(signer=pending).status_code == 401
+    previous = project.manifest
+    receipt = pairing.consume(
+        store, project.owner, challenge, proof, project.key, now=now
+    )
+    assert (
+        project.request(
+            "POST", "/v1/pairing/complete", {"session_id": session, "receipt": receipt}
+        ).status_code
+        == 200
+    )
+    project.manifest = receipt["manifest"]
+    assert project.manifest["membership_epoch"] == previous["membership_epoch"] + 1
+    assert project.manifest["key_epoch"] == previous["key_epoch"]
+    assert project.manifest["members"] == [previous["members"][0], recipient]
+    found = project.request(
+        "GET", "/v1/pairing/receipt", query={"session_id": session}, signer=pending
+    )
+    assert found.status_code == 200 and found.json()["result"] == receipt
+    grant = project.request(
+        "GET", "/v1/grants", query={"session_id": session}, signer=pending
+    )
+    assert grant.status_code == 200
+    assert bool(
+        keys.open_grant(grant.json()["result"], project.manifest, pending)
+        == project.key
+    )
+    assert project.pull(signer=pending).status_code == 200
+    assert (
+        project.push([project.envelope(signer=pending)], signer=pending).status_code
+        == 401
+    )
+    assert (
+        project.request(
+            "POST", "/v1/membership", {"manifest": project.manifest}, signer=pending
+        ).status_code
+        == 401
+    )
 
 
 def test_request_expiry_is_rechecked_after_project_lock_wait(project):
