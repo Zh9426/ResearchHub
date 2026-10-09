@@ -3,9 +3,12 @@ import {readFileSync,writeFileSync,existsSync} from 'node:fs';
 import {resolve} from 'node:path';
 import os from 'node:os';
 import {createHash} from 'node:crypto';
-const phases=new Set('START BROWSER_LAUNCH BROWSER_VERSION UNTRUSTED_CA HOSTNAME_NEGATIVE FRESH_UI OWNER_START B_NATIVE_PROOF OWNER_CONFIRM INJECTED_HELLO_NETWORK_LOSS B_VERIFY_AND_FETCH RECEIPT_RESUME BAD_PROOF UNAUTHORIZED_ORIGIN SCREENSHOTS COMPLETE C_PC_BASELINE_UI C_B_NATIVE_EDIT_UI C_PC_READ_AND_EDIT_UI C_CLEAN_EDITOR_REFRESH C_PC_DIRTY_BASELINE_CAS C_DIRTY_EDITOR_PRESERVED C_DURABLE_NATIVE_PEER_RECEIPTS'.split(' '));
+const phases=new Set('START BROWSER_LAUNCH BROWSER_VERSION UNTRUSTED_CA HOSTNAME_NEGATIVE FRESH_UI OWNER_START B_NATIVE_PROOF OWNER_CONFIRM INJECTED_HELLO_NETWORK_LOSS B_VERIFY_AND_FETCH RECEIPT_RESUME BAD_PROOF UNAUTHORIZED_ORIGIN SCREENSHOTS COMPLETE C_PC_BASELINE_UI C_B_NATIVE_EDIT_UI C_PC_READ_AND_EDIT_UI C_CLEAN_EDITOR_REFRESH C_PC_DIRTY_BASELINE_CAS C_DIRTY_EDITOR_PRESERVED C_DURABLE_NATIVE_PEER_RECEIPTS C_B_READ_BASELINE_RUN C_B_SAVE_RUN C_B_STAR_RUN C_B_SELECT_NOTE C_B_SAVE_NOTE_FIRST C_B_SAVE_NOTE_SECOND C_B_UNCONFIRMED_BEFORE_SEND C_B_SEND_PENDING C_B_RELAY_ONLY_ASSERT C_PC_APPLY_B_PENDING C_B_COLLECT_PEER_RECEIPTS C_B_PEER_ASSERT C_B_CONFIRMATION_COUNT'.split(' '));
 export function safePhase(value:unknown){return typeof value==='string'&&phases.has(value)?value:'START';}
+const manualCodes=new Set('RELAY_REJECTED RESPONSE_MISSING RESPONSE_TOO_LARGE NONCANONICAL_RESPONSE MAPPING_NOT_CONVERTED MAPPING_CAS_MISMATCH BINDING_CHANGED ENVELOPE_NOT_READY SEALED_MISSING IDENTITY_COLLISION BUSINESS_ABORTED VAULT_IDENTITY_MISMATCH VAULT_MISSING_OR_INCOMPLETE VAULT_INITIALIZATION_INCOMPLETE VAULT_AUTHORIZATION_MISMATCH AUTHORIZATION_CHANGED AUTHORIZATION_NOT_READY MANUAL_CLAIM_LOST MANUAL_SYNC_BUSY OPERATION_BASE_REQUIRED OPERATION_DEPENDENCY_CYCLE EXACT_PEER_TARGET_REQUIRED HISTORICAL_EPOCH_BLOCKED PEER_RECEIPT_CAS PEER_RECEIPT_CHANGED PEER_RECEIPT_RELAY_MISMATCH RECEIPT_CAS RELAY_RECEIPT_CHANGED RELAY_RECEIPT_MISMATCH INVALID_SIGNATURE INVALID_ENVELOPE DEPENDENCY_REQUIRED SYNC_NETWORK_UNCONFIRMED SYNC_BLOCKED MANUAL_FAILURE_UNCLASSIFIED'.split(' '));
+export function safeManualDiagnostic(value:unknown){const match=typeof value==='string'?/^Error: ([A-Z_]+)$/.exec(value):null;return match&&manualCodes.has(match[1])?match[1]:'MANUAL_FAILURE_UNCLASSIFIED';}
 const diagnostics=new Set('ERR_CERT_AUTHORITY_INVALID ERR_CERT_COMMON_NAME_INVALID ERR_CONNECTION_REFUSED OTHER_NETWORK_FAILURE NO_CERTIFICATE_FAILURE ASSERTION_OR_OPERATION_FAILED'.split(' '));
+for(const code of manualCodes)diagnostics.add(code);
 const errorTypes=new Set(['Error','TypeError','ReferenceError','SyntaxError','TimeoutError']);
 const diagnosticPatterns:Record<string,string[]>={ACCESS_DENIED:['EACCES','Permission denied'],OPERATION_NOT_PERMITTED:['EPERM','Operation not permitted'],MISSING_BROWSER:["Executable doesn't exist"],MISSING_MODULE:['MODULE_NOT_FOUND'],SANDBOX_UNAVAILABLE:['No usable sandbox'],MISSING_SHARED_LIBRARY:['error while loading shared libraries'],BROWSER_DEPENDENCIES_MISSING:['Host system is missing dependencies'],BROWSER_CLOSED:['Target page, context or browser has been closed'],BROWSER_LAUNCH_TIMEOUT:['launchPersistentContext: Timeout']};
 // Literal messages verified in Chromium Crashpad handler_main.cc, sandbox.c,
@@ -27,10 +30,20 @@ function processExits(message:string):ProcessExit[]{
 export function safeDiagnostics(message:string):string[]{
  return Object.keys(diagnosticPatterns).filter(code=>diagnosticPatterns[code].some(needle=>message.includes(needle)));
 }
+function sourceLocations(stack:string){
+ const result:{file:string;line:number;column:number}[]=[];
+ // Only two reviewed test source basenames and bounded integer positions escape.
+ for(const match of stack.matchAll(/[\\/]tests-network[\\/](manual-roundtrip\.ts|network\.spec\.ts):([1-9][0-9]{0,4}):([1-9][0-9]{0,3})(?=[)\s]|$)/g)){
+  const value={file:match[1],line:Number(match[2]),column:Number(match[3])};
+  if(!result.some(old=>old.file===value.file&&old.line===value.line&&old.column===value.column))result.push(value);
+  if(result.length===8)break;
+ }
+ return result;
+}
 export function summarizeError(error:{name?:string;message?:string;stack?:string}){
  const name=error.name??error.message?.match(/^(Error|TypeError|ReferenceError|SyntaxError|TimeoutError):/)?.[1];
  // Hash the complete diagnostic input; never emit any fragment of it.
- return {errorType:name&&errorTypes.has(name)?name:'UNKNOWN',sha256:createHash('sha256').update(JSON.stringify({name:error.name??null,message:error.message??null,stack:error.stack??null})).digest('hex'),diagnostics:safeDiagnostics(error.message??''),processExits:processExits(error.message??'')};
+ return {errorType:name&&errorTypes.has(name)?name:'UNKNOWN',sha256:createHash('sha256').update(JSON.stringify({name:error.name??null,message:error.message??null,stack:error.stack??null})).digest('hex'),diagnostics:safeDiagnostics(error.message??''),processExits:processExits(error.message??''),locations:sourceLocations(error.stack??'')};
 }
 function reviewedSummary(raw:any){return {errorType:errorTypes.has(raw?.errorType)?raw.errorType:'UNKNOWN',sha256:typeof raw?.sha256==='string'&&/^[a-f0-9]{64}$/.test(raw.sha256)?raw.sha256:null,diagnostics:Array.isArray(raw?.diagnostics)?raw.diagnostics.filter((v:unknown)=>typeof v==='string'&&Object.hasOwn(diagnosticPatterns,v)):[]};}
 /** Fixed-field summary only; errors, DOM, network bodies and stdout stay private. */

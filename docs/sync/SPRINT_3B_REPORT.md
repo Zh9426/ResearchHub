@@ -193,7 +193,13 @@ RH040已提交并同步 `7b5ee670d97ff3f05211da73cbac76875082bc0f`；首次 [CI3
 
 后续仍需 PC secure receiver 的可信 record policy 接入、PC Outbox→sealed bridge、手动双向传输、设备签名应用回执、冲突界面、显式旧3A导入及完整A–P验收。本片不宣称完成这些范围；TLS-001/PC013继续OPEN。
 
-### C-传输 — 持久发送与设备应用回执（工作树实施中）
+### C-传输 — 持久发送与设备应用回执（RH041，网络首败保留）
+
+RH041 `2fcdf3cc1a00f481354f137dc743a73f52e04c6a` 已提交且远端同SHA。首次 [CI37928298229](https://github.com/Zh9426/ResearchHub/actions/runs/37928298229) attempt1六job成功、一job失败：实际Linux浏览器停在 `C_B_NATIVE_EDIT_UI`，错误摘要类型Error、SHA256 `30e52582a198b140843bb8de4972de8b693e1749ded236b6d516001fcf90becb`，retries=0、cleanup PASS。该阶段之前的正常配对、PC baseline发送、B接收和PC验证三条应用回执断言已通过；浏览器编辑/发送/PC应用/回执确认中的具体失败步骤尚不能从现有粗粒度摘要判定。不得据此声明完整双向通过，也没有证据把它归因于原TLS EOF。下一补丁先增加固定安全子阶段与白名单诊断，不猜改业务、放宽断言或重跑同SHA。
+
+完整首败归档 `storage/runtime/browser-local-qa/ci-37928298229-attempt1/`：失败日志zip SHA256 `fc32a3068dfc81855f5ceb17b1f1ad156a700c1097e4106b20e3f4356f764686`，网络zip `7c196eed91344bb80b71cc4a077e62281dd1c6a74e1c3ecda162c53ac701384c`，TLSzip `c58bb08c8ba5755cab232c132af6db8b102e79ca4a030d46733c525962fe4095`。原TLS固定20轮通过、错误CA确切拒绝通过，但不覆盖本次业务失败；TLS-001/PC013继续OPEN。本次未到SCREENSHOTS阶段，没有新增最终业务截图。
+
+RH041同SHA的Linux原生接收30项、C1内核差异24项、旧3A和浏览器安全套件通过；接收摘要dirty=false、bundle与本机最终相同。RH042仅补首败观测：原阶段拆为固定子阶段，错误位置只允许两份网络测试源码文件名及有界行列（最多八项），UI同步诊断只匹配现有固定错误码；其余内容不导出。诊断读取失败仍重新抛出原业务断言，不继续成功。根协调者独立Node诊断五项和类型检查通过；缺少位置字段的实际RED、测试进程EPERM分别保留。未改业务、原断言、超时、TLS参数或重试次数，不声明已经修复RH041首败。
 
 当前工作树新增 PeerApplyReceipt v1 的 Python/浏览器独立验证及 Relay 不可变存取；签名绑定具体目标设备、项目、原消息、事务/密文摘要和 epoch。回执来自已提交接收结果并先缓存后发送，只表示历史应用事实。PC 新桥接保留原 Outbox 事务与稳定 message ID，密封在短 PG 事务外执行；完整密文提交后才允许网络发送。两端手动周期采用持久claim、固定集合、有界批次与原密文重试。尚无本片严格 HTTPS 的实际 UI 往返通过证据，不能据此提升 G4/G5。
 
@@ -214,7 +220,7 @@ RH038质量复审发现READY前停滞无法取得清理句柄的旧helper缺口�
 | G1 项目与协议一致 | 局部已验证：同项目加入、版本契约、稳定操作与父链；完整往返集成待验收 |
 | G2 浏览器安全接入 | B检查点PASS；B1正式密码与RH038实际Linux配对/严格TLS/Fetch通过，后续C变更仍需回归 |
 | G3 本地可靠性 | INCOMPLETE；3A回归通过不替代3B |
-| G4 实际双向传输 | INCOMPLETE；B2通过，C实施中，尚无双向业务验收 |
+| G4 实际双向传输 | FAIL / INCOMPLETE；RH041首次CI停在C_B_NATIVE_EDIT_UI，已保留证据，尚未定位具体失败操作 |
 | G5 冲突与幂等 | NOT VERIFIED |
 | G6 人类体验与状态 | INCOMPLETE |
 | G7 隔离与回归 | INCOMPLETE；A1回归已通过，后续改动待验收 |
