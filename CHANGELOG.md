@@ -2,6 +2,26 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-029 — 2026-10-09 — 建立独立同步工作区与稳定操作转换
+
+### 完成内容
+
+- 新增3314隔离profile/IDB/构建，复用原工作台adapter，保留3313；专门星标命令CAS、脏正文隔离与原子operation/audit/base。
+- 公共项目绑定仅严格预览、不自授权；v2操作稳定身份/父链/prepare token/修订映射；hash事务外、提交CAS，收到新基线后旧操作明确阻塞。
+- 星标wire仅三字段，冻结模块规则与Python对齐，旧未知字段和对象/项目错配明确BLOCKED，原内容保留。
+- 补实际截图与进行中报告、安全跨库恢复及DAG边界设计；完整Sprint3B仍INCOMPLETE。
+
+### 验证结果
+
+- 最终专项4项PASS（2 Node规则、2真实Chromium），11.02s；无fixture普通入口1项与星标夹带字段原子拒绝定向1项PASS；typecheck/build通过。
+- Windows Chromium156.0.8078.4，正常全进程关闭重开/离线/CAS/IDB abort；原3A最终17项51.6s通过。Python模块规则7场景纯函数对照通过。
+- 独立规格与质量审查发现nil UUID、null principal、冻结模块绕过问题，均最小修复并复审PASS；保留原失败与每个attempt。
+- RH028精确首次CI37875621054五job全部成功，TLS20轮与旧3A17项证据归档；TLS001仍OPEN。
+
+### 后续工作
+
+- A2b PC业务服务/受控读取，B真实配对/浏览器安全，C双向传输与冲突失败验收；3A导入待实现，不进入3C或生产。
+
 ## RH-028 — 2026-10-09 — 建立 Sprint3B 显式 Run/Note v2 契约
 
 ### 完成内容

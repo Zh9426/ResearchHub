@@ -1,0 +1,5 @@
+import {useState} from 'react';
+import {previewBinding,type BindingPreview} from './binding';
+export function BindingPanel(){const [text,setText]=useState(''),[preview,setPreview]=useState<BindingPreview|null>(null);
+ return <section className="qa-content"><h2>项目加入</h2><p>尚未加入受信项目。尚未验证项目所有者和设备授权，暂不能转换或发送。</p><label>公共项目绑定（待验证预览）<textarea value={text} onChange={e=>setText(e.target.value)}/></label><button onClick={async()=>{try{setPreview(await previewBinding(JSON.parse(text)));}catch{setPreview({state:'BLOCKED',reasons:['JSON: invalid input']});}}}>预览公共绑定</button>{preview&&<div role="status"><p>{preview.state==='UNVERIFIED'?'内容校验通过，尚未验证信任；未加入项目。':'绑定预览受阻'}</p>{preview.binding&&<p>项目 UUID：{preview.binding.semantic_project_id} · 模块 {preview.binding.module_snapshot.id}</p>}<ul>{preview.reasons.map((r,i)=><li key={i}>{r}</li>)}</ul></div>}<details><summary>诊断</summary><p>local: independent · conversion: BLOCKED · transport: BLOCKED · peer: UNCONFIRMED · review: NOT_REQUESTED</p><p>3A 救援导入：NOT IMPLEMENTED。不会克隆设备身份或 nonce。</p></details></section>;
+}

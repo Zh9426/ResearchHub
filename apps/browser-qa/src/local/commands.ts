@@ -14,15 +14,24 @@ function validate(object:LocalObject){
 export class LocalCommandService {
  private abortNext=false;
  private quotaNext=false;
- readonly notifications=typeof BroadcastChannel==='undefined'?null:new BroadcastChannel('researchhub-synthetic-local-changes-v1');
- snapshot=readSnapshot;
+ readonly notifications:BroadcastChannel|null;
+ constructor(private open=openLocalDatabase,channel='researchhub-synthetic-local-changes-v1',private captureSyncBase=false){this.notifications=typeof BroadcastChannel==='undefined'?null:new BroadcastChannel(channel);}
+ snapshot=()=>readSnapshot(this.open);
+ async setHighlight(id:string,expectedVersion:number,patch:Pick<import('./model').Run,'is_highlighted'|'highlight_type'|'highlight_note'>){
+  if(!patch||Object.keys(patch).some(k=>!['is_highlighted','highlight_type','highlight_note'].includes(k)))throw Error('星标命令仅允许星标字段');
+  const snapshot=await this.snapshot();const current=snapshot.objects.find(o=>o.id===id);
+  if(!current||current.kind!=='Run')throw Error('Run 不存在');
+  if(current.local_edit_version!==expectedVersion)throw new LocalConflictError();
+  return this.persist({...current,is_highlighted:patch.is_highlighted,highlight_type:patch.highlight_type,highlight_note:patch.highlight_note},true);
+ }
  // QA-only fault hook; abort follows successful write requests, before commit.
  injectNextAbort(){this.abortNext=true;}
  injectNextQuota(){this.quotaNext=true;}
- async save(input:LocalObject):Promise<LocalObject>{
+ async save(input:LocalObject):Promise<LocalObject>{return this.persist(input);}
+ private async persist(input:LocalObject,highlightOnly=false):Promise<LocalObject>{
   const object=structuredClone(input);validate(object);
   const operationId=crypto.randomUUID(),auditId=crypto.randomUUID(),time=new Date().toISOString();
-  const abort=this.abortNext,quota=this.quotaNext;this.abortNext=false;this.quotaNext=false;const db=await openLocalDatabase();
+  const abort=this.abortNext,quota=this.quotaNext;this.abortNext=false;this.quotaNext=false;const db=await this.open();
   return new Promise((resolve,reject)=>{
    const tx=db.transaction([...STORES],'readwrite');let failure:Error|undefined;let result:LocalObject;
    const fail=(error:Error)=>{failure=error;tx.abort();};
@@ -45,12 +54,12 @@ export class LocalCommandService {
      identityRequest.onsuccess=()=>{
       const identity=identityRequest.result as Identity|undefined;if(!identity||identity.scope!=='SYNTHETIC_QA'){fail(Error('请先初始化合成工作区'));return;}
       result={...object,local_edit_version:object.local_edit_version+1};
-      const event=!current?'create':object.kind==='Run'&&current.kind==='Run'&&(object.is_highlighted!==current.is_highlighted||object.highlight_note!==current.highlight_note||object.highlight_type!==current.highlight_type)?'highlight':'update';
+      const event=!current?'create':highlightOnly?'highlight':this.captureSyncBase?'update':object.kind==='Run'&&current.kind==='Run'&&(object.is_highlighted!==current.is_highlighted||object.highlight_note!==current.highlight_note||object.highlight_type!==current.highlight_type)?'highlight':'update';
       const source={workspace_id:identity.workspace_id,device_id:identity.device_id};
       const operation:LocalOperation={id:operationId,project_id:object.project_id,object_id:object.id,object_type:object.kind,operation_type:event,payload:result,known_base_revision:null,local_format_version:1,source,state:'pending',wire_adapter:'NEEDS_WIRE_ADAPTER',created_at:time};
       const audit:LocalAudit={id:auditId,operation_id:operationId,object_id:object.id,project_id:object.project_id,event,local_edit_version:result.local_edit_version,source,created_at:time,local_format_version:1};
       tx.objectStore('objects').put(result);tx.objectStore('operations').add(operation);const last=tx.objectStore('audit').add(audit);
-      last.onsuccess=()=>{if(quota){fail(new DOMException('TEST ONLY：模拟配额不足；真实事务回滚，本次修改尚未保存','QuotaExceededError'));}else if(abort){fail(Error('TEST ONLY：写请求后真实事务中止，本次修改尚未保存'));}else tx.commit();};
+      last.onsuccess=()=>{const commit=()=>{if(quota){fail(new DOMException('TEST ONLY：模拟配额不足；真实事务回滚，本次修改尚未保存','QuotaExceededError'));}else if(abort){fail(Error('TEST ONLY：写请求后真实事务中止，本次修改尚未保存'));}else tx.commit();};if(this.captureSyncBase){const base=tx.objectStore('meta').get(`received-heads:${object.id}`);base.onsuccess=()=>{const saved=tx.objectStore('meta').add({id:`operation-base:${operationId}`,operation_id:operationId,received_heads:base.result??null,local_edit_version:result.local_edit_version});saved.onsuccess=commit;};}else commit();};
      };
     };
    };

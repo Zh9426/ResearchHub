@@ -31,3 +31,40 @@ npm start --prefix apps/browser-qa
 组合接口：`src/main.tsx` 的 `QaShell({children})` 包含 `Workbench`；`Workbench.extension({snapshot,draft,dirty,refresh})` 用于本地诊断/救援扩展。`localCommands.snapshot()` 以同一只读事务返回一致快照。共享纯展示组件 `apps/web/src/components/presentational.tsx` 与纯翻译表可在浏览器导入；旧 `ui.tsx` 兼容reexport但仍包含服务端API调用，QA不得导入它。前端bundle由esbuild platform=browser及输入图禁止API/auth/Next依赖。所有Node imports只存在build/test/CLI工具中，不作为浏览器业务计算。
 
 专用浏览器异常退出恢复：若 `browser-owner.json` 残留，先使用该文件记录的PID在任务管理器/`Get-Process -Id <pid>`核查控制进程，并检查是否仍有命令行指向 `storage/runtime/browser-local-qa/profiles/manual` 的Chromium进程。只要任一进程仍在，或无法确定归属，就不要删除owner文件，不要启动第二个浏览器；正常关闭该QA浏览器/控制进程后再检查。仅在确认控制进程和该专用profile浏览器均已退出后，删除 `storage/runtime/browser-local-qa/browser-owner.json` 再运行browser命令。保留profile内容，不删除个人浏览器锁、不终止未知进程。CLI默认拒绝残留owner，防止误入仍在使用的profile。
+
+## Sprint 3B A2a 独立工作区与协议适配切点
+
+3A 原有命令、3313、业务 IDB 和离线测试保持默认。3B 复用 `QaShell` / `Workbench`，由 `WorkbenchAdapter` 注入存储和命令；将来 PC 3315 可以复用此视图，但此提交尚未提供 PC 服务。
+
+```powershell
+cd H:\ResearchHub\apps\browser-qa
+npm run build:sync
+npm run start:sync       # 独立终端，http://127.0.0.1:3314
+npm run browser:sync     # 独立终端，专用人工 QA profile
+npm run browser:sync:stop
+npm run stop:sync
+```
+
+专用数据：`storage/runtime/browser-sync-qa/`；业务 IDB `researchhub-browser-sync-qa-business-v1`；仅共享已安装 Chromium 可执行文件，不共享 profile/身份。启动不接管已有端口。静态页面明确“受控同步实验版 · 仅合成数据”。本地合成数据仍是明文。
+
+正常 UI 仅能初始化未授权的合成项目、编辑和查看公共绑定预览。预览验证内容 hash、版本、ID 和 principal 映射，**始终是 UNVERIFIED 或 BLOCKED**；所提供 roots/chain 不是独立 pin，不建立信任。同名不同 UUID 不合并。owner 签名、独立 pin、真实配对、非空历史 bootstrap、PC 服务、密钥/nonce、Relay 传输、接收/冲突和3A救援导入均 **NOT IMPLEMENTED**。不能据此声称已加入或 G1/G2/G4 完成。
+
+- `src/sync/binding.ts`：`PublicProjectBinding` 精确版本化结构，选中 principal 与完整 `principal_map`、owner/recovery roots、epoch/head/完整公共链位置。仅支持本轮 module schema 0.2.1。
+- `src/sync/wire.ts`：使用 `packages/sync-protocol/src/browser.ts` 的标准浏览器 canonical/revision/digest；业务库 meta 中稳定 `mapping:<operationID>` 存 tx/change/audit/message IDs、`prepare_id=operationID`、token、绑定 generation/fingerprint、parents/dependencies、revision/digest、envelope 占位和独立传输/对端/科研状态。原 operation/audit 不改写。WebCrypto 在写事务外；提交 CAS 检查 token/绑定/本地 head/收到的 baseline。中断重入保留业务身份；已转换内容不重建。
+- 3B 保存同时写 `operation-base:<operationID>`，快照捕获收到的 baseline。`local-wire-heads:<objectID>` 仅代表本地转换链；`received-heads:<objectID>` 留给未来接收服务。保存后收到 baseline 变化会 BLOCKED，不能把旧正文静默接到新远端 head。当前没有实际接收实现，不能凭此声明冲突已解决。
+- 星标是独立命令：先读持久对象，再 CAS 保存星标字段。原子写对象/operation/audit/base；不提交/丢弃脏正文，不覆盖其他 tab 的较新正文。正式 highlight payload 仅三项星标字段；普通整表 save 使用 update。
+- context 严格依据实际 snapshot 的 context_fields、run_forms 的 allowed 字段和 running/completed 必填规则，并匹配 Python workflow 的大小限制；当前只支持 string 类型。没有额外旧字段白名单：旧3A的 `generic.context`、`ice-sonocuring.experiment_conditions` 或不适用于所选 run_type 的字段会逐字段 BLOCKED，保留本地内容，不删字段或修改 snapshot/hash。`repository/config` 只在对应 run_forms 允许时转换。Note.body 映射 content，不修剪 Unicode/空白；Run scientific_outcome unknown 原样保留。
+- 未来接收服务必须将 baseline/revisions/cursor 与对象工作副本、pending、dirty 编辑分开；`ReceivedBaseline` 仅契约，接收尚未实现。安全库必须独立，业务 IDB 不存密钥或 nonce。
+
+显式测试构建（不是真实授权；页面标明 TEST ONLY，普通构建不包含注入接口）：
+
+```powershell
+$env:RH_QA_TEST_ONLY='1'
+npm run build:sync
+$env:RH_A2_ATTEMPT='unique-attempt-name'
+npm run test:sync
+Remove-Item Env:RH_QA_TEST_ONLY
+npm run build:sync       # 恢复无 fixture 的普通入口
+```
+
+每次新 attempt 保存到 `storage/runtime/browser-sync-qa/a2/<attempt>/`，`retries=0`。基础验证覆盖实际 Chromium 156 的离线星标/多 tab CAS/Unicode/稳定身份/连续父链/准备中断/真实 IDB abort/并发 token/正常全进程关闭重开；binding 单元测试是 Node 结构测试，不能冒充配对或浏览器网络证明。截图为合成数据，移动 viewport 不等于实体手机。原3A测试仍用 `npm test`。

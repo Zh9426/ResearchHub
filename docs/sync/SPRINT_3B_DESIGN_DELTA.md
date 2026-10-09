@@ -34,6 +34,10 @@ PC owner建立空合成项目，生成semantic/opaque ID、冻结module snapshot
 
 authority永久唯一prefix + counterBE8；短IDB事务预约/镜像/准备token提交后加密，完整不可变envelope落盘后才发送。失败耗号；完整envelope已落盘只能exact retry。预约后但完整密封落盘前崩溃，恢复时先CAS替换准备token，再为同一不可变事务/message预约新nonce；旧计算token不得提交或发送，只能有一个最终持久envelope；缺失/损坏旧key或账本停写，保留业务内容；全部可信状态一致回滚不可检测，生产BLOCKED。
 
+密钥解封的短暂raw阶段计算内部 `SHA256(key):prefix` 身份并与non-extractable CryptoKey持久绑定；相同key重新导入不能清零。key/nonce/token同vault IDB，业务mapping在另一IDB，明确不存在跨库原子事务。恢复顺序：业务先固化operation/tx/message/digest/prepareID；vault同prepareID预约nonce+token；密码运算后在同vault事务CAS token并永久写sealed完整bytes/digest，作为唯一密文提交点；业务再CAS复制对应sealed为ready。prepareID永久绑定业务身份、key fingerprint/prefix/epochs，不能重建。未seal崩溃可换token耗新nonce；已seal只能复制原字节；已ready只能相等幂等写，不一致则identity collision。发送只读ready并核对vaultsealed及当前trust/role/epoch；seal后信任变化保留密文BLOCKED，绝不自动reseal。任一库缺失/损坏均停写保留内容。此跨库顺序已独立设计复审PASS，尚待实现故障验收。
+
+完整链另与持久pin的head epoch/digest核对，拒绝合法旧链截断或同epoch fork；checkpoint保留签名时历史creator公钥/epoch验证上下文，当前撤销不抹除历史验证依据。全profile可信状态一起回滚仍无法可靠检测。
+
 验证完整pinned链、sender principal/role/epoch、signature/AEAD/canonical/digest/内部绑定。只开放Run/Note普通草稿，protected科学确认与模块升级无fresh Human grant拒绝。接收先事务外预验证，短事务CAS重验trust/head/token，再原子写修订/状态/receipt/cursor；整页失败不推进。
 
 CORS精确允许 `http://127.0.0.1:3314`、GET/POST、`content-type,x-rh-proof`，不允许credentials；OPTIONS在proof之前处理，仅preflight响应，无业务读写或nonce消费。实际请求仍完整proof验证，错误响应也只向允许origin暴露。B的CSP固定 `connect-src 'self' https://127.0.0.1:38001`。
@@ -44,7 +48,9 @@ CORS精确允许 `http://127.0.0.1:3314`、GET/POST、`content-type,x-rh-proof`�
 
 新增独立版本的device-signed应用回执，绑定项目、sender/target、原message/envelope/transaction digest、epochs与stage。应用回执只从durable接收结果产生，拒绝/隔离不签KERNEL_APPLIED；公共Relay只校验存取，不裁决科学结果；B验证目标签名后才显示PC已应用，冲突状态另列。旧v1 ACK不改义。
 
-B仅实现本轮Run/Note所需保守DAG/整批屏障，使用相同向量与Python Kernel差异验证；不移植完整产品内核。并发同BASE保留全部head，三方BASE/本地/远端按字段展示，用户选择/手填，expected_heads CAS拒绝过期解决。新resolution revision/audit，不改历史。普通冲突采用原offline_proposal语义：显示“冲突解决提案已同步，待人工批准”，始终CANDIDATE，不推进AcceptedProjection。发送/接收的受信QA策略仅对整个v2 Run/Note普通resolve事务选择该模式，检查结果/parents/当前heads均未protected、锁内expected_heads精确相等，不能由payload选权限；不修改原Kernel离线历史heads契约。禁止LWW，回显不创建新local operation。
+B仅实现本轮Run/Note所需保守DAG/整批屏障，使用相同向量与Python Kernel差异验证；不移植完整产品内核。并发同BASE保留全部head，三方BASE/本地/远端按字段展示，用户选择/手填，expected_heads CAS拒绝过期解决。新resolution revision/audit，不改历史。普通冲突采用原offline_proposal语义：显示“冲突解决提案已同步，待人工批准”，始终CANDIDATE，不推进AcceptedProjection。发送/接收的受信QA策略仅对整个v2 Run/Note普通resolve事务选择该模式，检查结果/parents/当前heads均未protected、锁内expected_heads精确相等，不能由payload选权限；不修改原Kernel离线历史heads契约。禁止LWW，回显不创建新local operation。接收先完成principal与txid/raw/digest幂等识别，已应用相同事务直接返回持久结果，再对新resolve检查exact-head；否则自己的解决提案回显会被错误判stale。晚分叉递归使争议事务及Dependency后代成为CANDIDATE，按事务撤回整批AcceptedProjection，不能仅隐藏冲突对象。业务Kernel序列与Relay cursor分别持久，不合并为一个watermark。
+
+浏览器DAG优先抽取sync-protocol纯record-kernel-core，独立对照Python相同v2 transcript；共享严格payload校验，不复制字段表。依次完成principal/幂等、冻结module、parent/change/audit身份、完整物化、权限、依赖、heads/common BASE、晚冲突整批/依赖撤回、状态/审计/序列。BASE是唯一最大共同祖先，不能按时间选；offline proposal永远CANDIDATE。页内先在staged snapshot顺序计算，末尾短IDB CAS一次提交；任一步失败无半页。接收的transaction当前state与初始receipt_state分开，旧ACCEPTED回执不能覆盖晚冲突后的CANDIDATE。差异向量覆盖到达顺序、同BASE、独立对象、缺parent/dependency、身份collision、批次+后继撤回、resolution重复回显/过期拒绝、页失败与预验证后CAS变化。
 
 已保存Run星标单击独立字段命令：读持久记录+CAS，只改显式星标字段，dirty正文保持；列表/详情/队列一致。正文/星标/对端状态的机器细节在诊断抽屉。
 
