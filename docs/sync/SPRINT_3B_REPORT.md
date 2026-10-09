@@ -94,6 +94,12 @@ RH032 已推送 `e7eedb7b56eb417d5ae9bef26a4391fae349316f`，远端同 SHA，mai
 
 ## 失败保留
 
+RH037（`8cd1005f3b27575a4fbe1db583c63147559c6111`）首次 [CI37913330768](https://github.com/Zh9426/ResearchHub/actions/runs/37913330768) attempt1：六个既有job通过，网络job仍FAIL。隔离Chromium156.0.8078.4已实际启动；错误CA拒绝通过，trusted流程通过错误hostname拒绝后到达`OWNER_START`并失败，尚无正向browser Fetch（preflights/signedPosts均0）。清理前继承XDG目录仍EACCES；清理后两个账户均为HOME_FALLBACK、目录实际位于自己的home且临时目录创建/清理成功；browser close与账户进程归零均通过。因此只确认启动隔离补丁有效，不计完整B2通过。
+
+完整归档 `storage/runtime/browser-local-qa/ci-37913330768-attempt1/`：失败日志zip `35610910e1c7e659962068e61b8e07ca7bceb139bd49aaccec01880ade167ae7`，网络zip `5787a7038c8cbbcc078680f565f710d01a9a9d359c4a963f21d6f3e9e268dfba`，TLS zip `0bf405f4bfdeb8aeee2c7eb3f9c2cd5bc74beb8024ab26372cde0ca43d8cabfe`。原固定20轮通过仍不关闭TLS-001。未重跑该SHA。
+
+RH038定向定位：PC配对接口要求canonical JSON字节，界面适配器却使用普通JSON.stringify。独立本机合成节点与新profile在 `b2-local/owner-canonical-red-20261009-01` 实际复现start422 `CANONICAL_PAIRING_REQUEST_REQUIRED`；原Linux CI只有阶段与错误摘要，不能说直接取得了其HTTP422。最小修补仅start/confirm/resume三个配对路径的编码；后端校验不变。新节点/profile的 `owner-canonical-green-20261009-01` 实际Chromium用例1项通过：start200、B原生WebCrypto证明、confirm200 COMPLETE。类型检查与授权后普通PC构建通过；首次sandbox构建EPERM保留于 `owner-canonical-build-20261009-01`，成功构建另存02。本地验证涉及PC严格TLS路径，未验证Windows浏览器Relay Fetch；新SHA Linux首次验收仍待执行。
+
 RH036（`7d54e1d89e696442c058dfcb5af69fdbc1a27acb`）首次 [CI37912368218](https://github.com/Zh9426/ResearchHub/actions/runs/37912368218) 网络 job FAIL，已保留 `storage/runtime/browser-sync-qa/rh036-network-diagnostic/`，网络zip `75f597dbcf6aa14ba7b8047abc46f5be5fe3018e5454754304f4a872fae4b2a5`。同一新OS用户、相同cwd和环境的Node探针观察到：`selector=XDG_CONFIG_HOME`，路径为绝对路径且实际/词法均在home外，最近目录访问 `DENIED / EACCES`，未尝试外部写入；实际HOME仍匹配账户。随后Chromium仍在BROWSER_LAUNCH以CRASHPAD_DATABASE_REQUIRED/SIGTRAP退出。该观测确认继承配置目录的隔离缺口，与官方源码所示初始化失败链吻合；探针本身不证明运行中二进制路径或修补后网络已通过。
 
 RH037修补仅在QA浏览器子进程移除继承的CHROME/XDG目录覆盖，依赖新账户真实home的标准默认目录，不重写HOME、全局环境或ACL。保留清理前观测，并在相同干净环境中核验清理后目录与启动。修补效果必须由新提交首次实际Chromium验收确认，原失败与TLS-001仍保留。
@@ -126,6 +132,8 @@ A2a独立复审修复了nil UUID、null principal与模块额外字段错误接�
 
 ## A–P 验收进度（整体尚未验收）
 
+RH038规格复审另发现测试清理串行调用可能因证据写入或浏览器close失败漏停owned PC。修补为各步骤独立执行，主错误与全部清理错误一并抛出；确定性RED 3失败/1通过，GREEN 4通过，保存于 `b2-local/owner-cleanup-{red-20261009-02,green-20261009-01}`。red01是sandbox spawn EPERM，单独保留，不计业务RED。根协调者独立执行4项测试和tsc通过；该测试已纳入CI，不以捕获异常继续成功。
+
 | 场景 | 当前实际证据与缺口 |
 |---|---|
 | A 同一项目加入 | PC签名公共绑定、浏览器严格预览已有；真实配对正在B2实施，未计通过 |
@@ -140,7 +148,7 @@ A2a独立复审修复了nil UUID、null principal与模块额外字段错误接�
 | J 保存和接收失败 | 本地IDB/CAS及安全持久化负例已验证；接收整页事务待C |
 | K 星标字段隔离 | A2/B1本地即时保存、dirty隔离及协议映射已验证；跨端待C |
 | L 版本与身份 | v1/v2/Python/Chromium密码与身份负例已验证；完整网络路径待验收 |
-| M 浏览器网络边界 | FAIL / INCOMPLETE；RH033首次Linux网络测试启动或版本读取前段失败，具体位置待诊断，TLS/CORS未到达；Windows未验证 |
+| M 浏览器网络边界 | FAIL / INCOMPLETE；RH037实际Chromium启动、错误CA/hostname拒绝已有证据，OWNER_START失败，正向Fetch/CORS尚未通过；Windows未验证 |
 | N 撤销与旧epoch | B1 vault撤销/history负例已验证；PC真实撤销与网络待验收 |
 | O 旧3A记录适配 | NOT IMPLEMENTED；不能按名字合并或克隆发送身份 |
 | P 状态真实性 | 本地工作与可信PC投影已分列；peer receipt与双端状态尚未实现 |
@@ -149,10 +157,12 @@ A2a独立复审修复了nil UUID、null principal与模块额外字段错误接�
 
 ## 当前 Gate
 
+RH038质量复审发现READY前停滞无法取得清理句柄的旧helper缺口，本次新回归复用该路径，故补受限启动检查：15秒未就绪即失败，只回收本次spawn的子进程，最多5秒等待退出；未产生PID不等待不存在的exit，清理失败与原错误一并保留。不修改PC服务、TLS或已有网络超时。`b2-local/owner-start-red-20261009-01` 保留1失败/2通过；`owner-start-green-20261009-03` 四项通过（无READY、提前退出、spawn失败、分段READY/监听器清理），根协调者独立复验四项和tsc通过。
+
 | Gate | 当前状态 |
 |---|---|
 | G1 项目与协议一致 | INCOMPLETE；仅版本契约已验证，同项目加入/操作映射尚在实施 |
-| G2 浏览器安全接入 | INCOMPLETE；正式密码已有证据，RH033启动或版本读取前段失败，尚未到达TLS验收 |
+| G2 浏览器安全接入 | INCOMPLETE；正式密码与实际证书负例已有证据，RH037配对阶段失败，正向网络待新补丁首次CI |
 | G3 本地可靠性 | INCOMPLETE；3A回归通过不替代3B |
 | G4 实际双向传输 | INCOMPLETE；B2网络测试失败，C尚未实现 |
 | G5 冲突与幂等 | NOT VERIFIED |

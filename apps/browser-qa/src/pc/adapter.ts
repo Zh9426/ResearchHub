@@ -1,6 +1,7 @@
 import type {WorkbenchAdapter} from '../Workbench';
 import type {LocalObject,LocalSnapshot,Run} from '../local/model';
 import {LocalConflictError} from '../local/commands';
+import {canonicalBytes} from '../../../../packages/sync-protocol/src/browser';
 export type PcRecord={object_id:string;object_type:string;work:{document:Record<string,unknown>;version:number;pending:boolean;base_heads:string[]}|null;trusted:{status:string;heads:string[];accepted:unknown;candidates:unknown[]};history:unknown[]};
 export type PcSnapshot={snapshot:LocalSnapshot;records:PcRecord[];outbox_count:number};
 let csrf='';let records:PcRecord[]=[];
@@ -9,7 +10,8 @@ const prepared=new Map<string,Record<string,unknown>>();
 export async function request<T>(path:string,body?:unknown):Promise<T>{
  if(!csrf){if(!sessionRequest)sessionRequest=(async()=>{const response=await fetch('/api/session',{credentials:'same-origin',redirect:'error',cache:'no-store'});if(!response.ok)throw Error('PC 会话不可用');csrf=(await response.json()).csrf;})().finally(()=>{sessionRequest=null;});await sessionRequest;}
  const requestCsrf=csrf;
- const response=await fetch(path,{method:body===undefined?'GET':'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:body===undefined?{}:{'content-type':'application/json','x-pc-csrf':csrf},body:body===undefined?undefined:JSON.stringify(body)});
+ const pairing=['/api/pairing/start','/api/pairing/confirm','/api/pairing/resume'].includes(path);
+ const response=await fetch(path,{method:body===undefined?'GET':'POST',credentials:'same-origin',redirect:'error',cache:'no-store',headers:body===undefined?{}:{'content-type':'application/json','x-pc-csrf':csrf},body:body===undefined?undefined:pairing?new TextDecoder().decode(canonicalBytes(body)):JSON.stringify(body)});
  const result=await response.json();if(!response.ok){if(['SESSION_REQUIRED','CSRF_REQUIRED'].includes(result.error)){if(csrf===requestCsrf)csrf='';throw Error('PC 会话已失效，输入与命令身份已保留；请再次点击保存以建立新会话');}if(['WORK_CAS','HEADS_CAS'].includes(result.error))throw new LocalConflictError();throw Error(result.error||'PC 操作失败');}return result as T;
 }
 export async function snapshot(){const value=await request<PcSnapshot>('/api/snapshot');for(const incoming of value.records){const old=records.find(r=>r.object_id===incoming.object_id);if(!old)records.push(incoming);else if((incoming.work?.version??0)>=(old.work?.version??0))Object.assign(old,incoming);}return value;}

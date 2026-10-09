@@ -52,6 +52,8 @@ jobs:
         run: |
           node --test apps/browser-qa/scripts/network-evidence-reporter.test.ts
           node --test apps/browser-qa/scripts/crashpad-path-probe.test.mjs
+          node --test apps/browser-qa/tests-owner/cleanup.test.ts
+          node --test apps/browser-qa/tests-owner/owned-start.test.ts
           python -m pytest tests/test_browser_network_ci_diagnostics.py -q
           npm --prefix packages/secure-sync run typecheck
           npm --prefix apps/browser-qa run typecheck
