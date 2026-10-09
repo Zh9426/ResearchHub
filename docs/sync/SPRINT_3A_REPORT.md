@@ -27,6 +27,9 @@
 | RH-023 精确提交CI | 4 jobs success | `e88519429b8ce98284e4b99539c6e658c1670ed6`，[37868749984 attempt 1](https://github.com/Zh9426/ResearchHub/actions/runs/37868749984)；TLS20轮诊断归档 `ci-37868749984-attempt1/` |
 | 救援与存储 | 完整7 tests PASS；adapter补丁后3 PASS /16.6s | `task3-full-attempt1.log`、`task3-transport-green.log`；实际下载→新profile文件预览/恢复、幂等、冲突、严格字段/摘要、原来源/新身份、未保存草稿、真实导入abort和升级阻塞/失败 |
 | 非空pending故障 | 1 PASS /10.4s | `task3-nonempty-pending.log`；先保存Note并断言pending非空，quota与TEST ONLY adapter拒绝后完整快照和dirty输入不变 |
+| RH-024 精确提交CI | 4 jobs success | `906a83fa8cbb66a36d75feb84a630a72a6b877ec`，[37869813951 attempt 1](https://github.com/Zh9426/ResearchHub/actions/runs/37869813951)；TLS20轮诊断归档 `ci-37869813951-attempt1/` |
+| 浏览器wire与安全探针 | 全部11 tests PASS /35.6s；追加2 PASS /4.5s | `task4-browser-final.log`、`task4-browser-interruption.log`；原26/59/3/10场景20step共237检查；AES-GCM key重载、双tab/刷新/重开、exact retry、耗号、损坏/缺失/旧导入拒绝及实际key救援排除 |
+| 关联安全回归 | Node48、Python191 PASS | `task4-node-security.log`、`task4-python-security.log`，Python21.91s；protocol Node7及两包typecheck通过；原fixtures及TLS调查文件哈希未变 |
 
 全部上述路径相对 ignored `storage/runtime/browser-local-qa/`。初始沙箱 ENOTCACHED/EPERM、构建扫描误匹配以及使用旧构建的中间测试均在 `task1-attempts.txt` 区分，未计入最终构建验收。所有浏览器测试 `retries=0`。
 
@@ -38,15 +41,15 @@
 | G2 对象/队列/审计原子性 | Task2实际IDB写后abort与snapshot全等通过，两阶段复审通过 |
 | G3 双标签页保护 | Task2一成一拒、保留输入、比较/另存及不同记录并发通过，两阶段复审通过 |
 | G4 星标、状态与救援恢复 | 真实新profile救援、幂等/冲突/未保存草稿通过；Task3规格PASS、质量APPROVED |
-| G5 浏览器协议、key/nonce边界 | 待适配与验证 |
+| G5 浏览器协议、key/nonce边界 | 237固定检查与受限AES-GCM/key/nonce探针通过；Task4规格PASS、质量APPROVED，网络仍BLOCKED |
 | G6 隔离与TLS证据 | 已核对基线，最终复核待完成 |
 
 ## 交付分类
 
-- **IMPLEMENTED IN BROWSER QA**：隔离静态应用壳、SW就绪检查、固定origin/专用profile CLI；三合成项目、Run/Note/星标、原子本地命令及CAS；明文救援预览/恢复、存储风险与故障提示。
-- **VERIFIED IN REAL DESKTOP BROWSER**：离线编辑、进程重开、直接详情导航、刷新、两标签页CAS、未知缓存保留、端口占用拒绝。
+- **IMPLEMENTED IN BROWSER QA**：隔离静态应用壳、SW就绪检查、固定origin/专用profile CLI；三合成项目、Run/Note/星标、原子本地命令及CAS；明文救援预览/恢复、存储风险与故障提示；纯wire browser入口及独立AES-GCM/key/nonce探针。
+- **VERIFIED IN REAL DESKTOP BROWSER**：离线编辑、进程重开、直接详情导航、刷新、两标签页CAS、未知缓存保留、端口占用拒绝；新profile文件救援、key持久重载/加解密、nonce跨tab和完整封装重试、固定wire向量。
 - **VERIFIED ON PHYSICAL MOBILE**：无；390px截图只是移动视口。
-- **FAULT-INJECTED ONLY**：首次SW静态资源503；实际IDB写后abort、导入中止与升级中止；通知/提交后读取故障；模拟QuotaExceededError、persist拒绝/不支持与TEST ONLY adapter拒绝。真实跨标签IDB升级阻塞也已触发并解除；不是物理磁盘满、断电或TLS证明。
+- **FAULT-INJECTED ONLY**：首次SW静态资源503；实际IDB写后abort、导入中止与升级中止；通知/提交后读取故障；模拟QuotaExceededError、persist拒绝/不支持与TEST ONLY adapter拒绝；加密拒绝/挂起和局部IDB损坏。真实升级阻塞已触发并解除；加密挂起后正常关闭全部浏览器进程，不是崩溃、物理磁盘满、断电或TLS证明。
 - **DESIGNED ONLY**：尚未实施的后续步骤见实施计划，不作为验收。
 - **NOT IMPLEMENTED**：真实Push/Pull、后台同步、完整DAG批准、配对/撤销/epoch恢复、相机/文件同步、生产Recovery Kit。
 - **BLOCKED FOR NETWORK / PRODUCTION**：TLS-001 OPEN；完整浏览器安全适配、站点一致回滚、平台驱逐/断电保证、生产vault及真实授权均未证明。

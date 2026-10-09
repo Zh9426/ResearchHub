@@ -2,6 +2,26 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-025 — 2026-10-09 — 验证浏览器协议与受限密钥 nonce 探针
+
+### 完成内容
+
+- 提取canonical/protocol纯core，保留Node同步API；新增WebCrypto异步browser入口，原wire exact schema及固定向量未改。
+- 独立TEST ONLY数据库保存随机non-extractable AES256-GCM CryptoKey；合成authority分配prefix，短事务提交counter/high/pending后才加密。
+- 完整QA封装exact retry核验身份/动作/摘要/AAD及认证解密，复用已存密文，不再预约或加密；missing/corrupt/pending/旧ledger/overflow拒绝。
+- 明确局部ledger镜像不是外部witness；一致回滚/断电/驱逐/恶意同源/完整HPKE/生产vault未证明，BLOCKED FOR NETWORK USE。
+
+### 验证结果
+
+- 实际Chromium全11 tests PASS /35.6s；追加中断/损坏key两项PASS /4.5s。原固定26/59/3/10场景20step共237检查，含decimal/Unicode/strict rejection/revision与highlight拒绝。
+- 双tab、刷新、PID全部退出重开、key解密、nonce不重复、耗号、sameaction并发、完整retry、真实key存在时救援排除及新profile无key clone通过。
+- 加密人为挂起后正常关闭所有浏览器进程，重开pending拒绝与counter不退；不是OS crash/断电证明。独立identity/action/AAD错绑定尚未单测，仅代码校验。
+- Node protocol7、secure-sync48及typecheck通过；Python sync17+secure174=191通过21.91s。原fixtures/TLS调查hash未变；规格PASS、质量APPROVED。
+
+### 后续工作
+
+- 最后执行完整A–L及截图/浏览器CI/交付报告；整理测试启动失败清理。保持TLS-001 OPEN，不启用真实发送、不进入Sprint3B。
+
 ## RH-024 — 2026-10-09 — 增加合成草稿救援与存储失败处理
 
 ### 完成内容

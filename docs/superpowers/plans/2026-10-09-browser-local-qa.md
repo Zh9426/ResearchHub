@@ -25,9 +25,9 @@
 - [x] 独立空profile恢复/重复/冲突、草稿恢复、无key克隆；规格→质量复审后提交。
 
 ## Task 4：浏览器协议与受限安全探针
-- [ ] packages/sync-protocol提取纯canonical/schema与Node digest包装，browser入口异步WebCrypto；原vector bytes/hash/error不变。BROWSER_ADAPTER_MATRIX列Node-only与星标差异。
-- [ ] src/probes：独立non-extractable QA CryptoKey持久化/重开，固定合成authority prefix+同事务counter预约及缺失/损坏fail-closed；exact retry保存完整封装，不导入ledger。
-- [ ] 实际Chromium执行固定向量、双tab nonce竞争与耗号/刷新/重开；遗留平台保障标BLOCKED FOR NETWORK USE。规格→质量复审后提交。
+- [x] packages/sync-protocol提取纯canonical/schema与Node digest包装，browser入口异步WebCrypto；原vector bytes/hash/error不变。BROWSER_ADAPTER_MATRIX列Node-only与星标差异。
+- [x] src/probes：独立non-extractable QA CryptoKey持久化/重开，固定合成authority prefix+同事务counter预约及缺失/损坏fail-closed；exact retry保存完整封装，不导入ledger。
+- [x] 实际Chromium执行固定向量、双tab nonce竞争与耗号/刷新/重开；遗留平台保障标BLOCKED FOR NETWORK USE。规格→质量复审后提交。
 
 ## Task 5：完整验收与停止
 - [ ] 真实browser A–L、进程终止/重开、静态server停止、桌面/移动截图并view_image检查；不得seed重灌模拟恢复。

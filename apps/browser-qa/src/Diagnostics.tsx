@@ -1,3 +1,4 @@
+import {SecurityProbe} from './probes/SecurityProbe';
 import {useEffect,useRef,useState} from 'react';
 import type {WorkbenchExtensionContext} from './Workbench';
 import {exportRescue,previewRescue,restoreRescue,MAX_RESCUE_BYTES,type RescuePackage} from './local/rescue';
@@ -16,7 +17,7 @@ export function Diagnostics({snapshot,draft,dirty,busy,refresh,openRescueDraft}:
  return <section className="panel"><details className="qa-content"><summary>诊断与合成草稿救援</summary>
  <p>明文 · 仅合成 QA。不是生产备份或加密 Recovery Kit；完整性摘要不证明来源。</p>
  <p className="muted">导出包含冻结项目、Run / Note、星标、未签名 pending 操作、审计和未保存草稿。排除设备密钥、nonce ledger、Cookie、Token、HumanGrant 和设备信任。请勿在文本中输入真实凭据或科研数据。</p>
- <h3>浏览器存储</h3><div data-testid="storage-status">{storage?<><p>{storage.testOnly?'TEST ONLY：模拟结果 · ':''}{storage.persistence}</p><p>{storage.estimate}</p><p>{storage.opfs}</p></>:<p>读取存储能力…</p>}</div>
+ <SecurityProbe/><h3>浏览器存储</h3><div data-testid="storage-status">{storage?<><p>{storage.testOnly?'TEST ONLY：模拟结果 · ':''}{storage.persistence}</p><p>{storage.estimate}</p><p>{storage.opfs}</p></>:<p>读取存储能力…</p>}</div>
  <button onClick={()=>void inspectStorage(true).then(setStorage)}>申请持久存储并刷新估计</button><p className="muted">获准或安装 PWA 都不保证永不丢失。清除站点数据后，只能从此前实际导出的材料恢复；不会自动清空数据库修复。</p>
  <h3>导出与恢复</h3><button disabled={!snapshot.identity||busy||working} onClick={()=>void exportPackage()}>导出合成救援包</button>{dirty&&<p>包含当前未保存输入；导出不会把它标记为已保存。</p>}
  <label>选择合成救援包<input type="file" accept="application/json,.json" disabled={working||busy} onChange={e=>void selectFile(e.target.files?.[0])}/></label>

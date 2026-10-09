@@ -1,17 +1,17 @@
 # Node → Browser 适配与字段边界
 
-2026-10-09基线核查。下表是实施契约；真实浏览器结果由SPRINT_3A_REPORT逐项记录，不能把计划写成已验收。
+2026-10-09基线核查及Task4实现核对。真实浏览器结果见SPRINT_3A_REPORT；下表的生产阻塞不因探针通过而解除。
 
 ## 平台依赖
 
 | 现有位置 | Node依赖/可复用部分 | Sprint3A适配边界 |
 |---|---|---|
-| sync-protocol/src/canonical.ts | node:crypto createHash；其余canonical、strictLoads、精确decimal/Unicode纯逻辑 | 原纯逻辑提取；Node同步digest保留，浏览器异步WebCrypto SHA256，原bytes/hash不变 |
-| sync-protocol/src/protocol.ts | 间接导入Node digest；exact schema/枚举/身份验证纯逻辑 | 验证层与平台revision/transactionDigest分离；不放宽payloadFields |
+| sync-protocol/src/canonical.ts | node:crypto createHash；纯逻辑已移至canonical-core.ts | Node同步digest保留；browser.ts异步WebCrypto SHA256，原bytes/hash不变 |
+| sync-protocol/src/protocol.ts | Node digest包装；exact schema已移至protocol-core.ts | Node/browser分别提供同步/异步revision与transactionDigest；payloadFields未放宽 |
 | secure-sync/src/crypto.ts | node:crypto、Buffer DER、@hpke/core | 不打入正式本地记录UI；独立WebCrypto能力探针，不宣称完整HPKE适配完成 |
 | secure-sync/src/envelope.ts | createHash、Buffer、NonceVault | 本轮不生成可向Relay发送的SecureEnvelope，不改变冻结schema |
 | secure-sync/src/nonce.ts | node:sqlite、fs、path、createHash、fsync witness | BrowserNonceStore独立QA原型；IDB事务预约prefixBE4+counterBE8，不能宣称等价fsync witness |
-| secure-sync/src/keys.ts | SQLite、fs/path/os/url、Node random与密钥材料 | non-extractable CryptoKey的浏览器IDB持久化探针；不克隆旧设备、不存明文seed于localStorage |
+| secure-sync/src/keys.ts | SQLite、fs/path/os/url、Node random与密钥材料 | 独立浏览器AES256-GCM non-extractable CryptoKey的IDB持久化探针已验证；不是现有完整keys.ts适配，不克隆旧设备、不存localStorage seed |
 | secure-sync/src/pairing.ts | Node random/hash及trusted store | 本轮NOT IMPLEMENTED；真实授权/配对/撤销/恢复不进入浏览器UI |
 | apps/api/researchhub/sync/kernel.py | SQLAlchemy/QA PG锁、DAG、grant、projection | 不搬入浏览器；本地工作内容和local version不是accepted projection/revision/server sequence |
 | apps/web/src/components/ui.tsx | 展示组件与API编辑器混合 | 提取纯展示组件兼容重导出；QA只复用展示/CSS，不调用原API编辑器 |
@@ -39,4 +39,6 @@
 
 草稿明文IDB仅用于合成QA。密钥探针与业务数据分开；救援排除keys、nonce ledger、认证、HumanGrant和设备信任状态。新profile建立新QA身份，保留导入历史来源，不自动改成已签名新设备交易。
 
-non-extractable不防同源恶意脚本调用；无硬件vault/真实解锁/生产Recovery Kit。nonce预约后失败允许耗号；旧key状态缺失、损坏或旧导入不得清零。整站一致回滚、平台驱逐、整机断电及实际移动设备持久性未证明，网络启用前仍BLOCKED FOR NETWORK / PRODUCTION。
+non-extractable不防同源恶意脚本调用；无硬件vault/真实解锁/生产Recovery Kit。本轮只实测AES-GCM，不将其写成Ed25519/X25519/HPKE完整浏览器适配。nonce预约后失败耗号；旧key状态缺失、损坏或旧导入拒绝清零。high-water镜像与ledger都在同一IDB，只检测局部ledger回退，不是外部可信witness；key/ledger一致回滚、整站一致回滚、驱逐、整机断电和实际移动设备持久性均未证明，网络启用前仍BLOCKED FOR NETWORK / PRODUCTION。
+
+`TESTONLY-AES-GCM-v1`封装仅供能力实验，包含绑定的identity/action/digest/AAD/nonce/ciphertext，不是冻结SecureEnvelope。exact retry在校验完整结构和认证解密后复用已存封装；不重新加密或预约。预约后挂起加密、正常关闭全部浏览器进程再重开仍保留耗号和pending拒绝；这不是OS崩溃或断电实验。业务救援包在实际CryptoKey存在时仍排除该独立数据库，新profile恢复不会克隆key。
