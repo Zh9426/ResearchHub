@@ -308,3 +308,30 @@ root另独立协议完整63项、PG conflict_proposal+pc_records共7项、Report
 - 普通构建 SHA256：3A `f1075cf2f37ec6ffd14a46cf714f9b21993999dbe88babab9c3b76b43034c0a5`；B `a38f3921f85806ff8593fffbf08022e4794814e7a7ec870bbfe1f20899973f6a`；PC `c641cf2474f6dcf3f0519517682defd60943e5a3d76019b63727e9a0c660a362`。
 
 新增网络验收尚未运行；后续须记录精确 SHA 的首次 CI 结果，不重跑到绿色。失败矩阵、最终页面清理和最终报告尚未完成。TLS-001 / PC013 保持 OPEN，整体 INCOMPLETE。
+
+
+### RH047 精确 SHA 首次 CI：FAIL，保留首败
+
+`0c6fcc8ea93b922e9ea5ee091ae3b260f2a47fff`，[run 37954374048](https://github.com/Zh9426/ResearchHub/actions/runs/37954374048)，attempt 1：7 个 job 成功，3 个失败。基础双向、冲突、浏览器本地/安全、前后端成功；原 TLS 固定 20/20 成功不关闭 TLS-001。新增两组导入来源准备成功，均在 `IMPORT_NORMAL_PAIRING` 的加入确认断言失败；cleanup PASS，没有进入原生消息发送，不能算导入双向通过。
+
+第三个失败为既有 PC CLI 单测替身仍只接收两个参数，新 CLI 传入可选来源描述导致 TypeError。root 在同用例复现 RED，最小调整替身签名并新增默认 module/source 断言，原调用次数和 node 断言不变；该用例 GREEN，CI 同范围本地真实 QA PG/内核 196 项 PASS。此本地验证不能覆盖两组网络失败。
+
+失败阶段与原始证据保留于忽略目录 `storage/runtime/browser-local-qa/ci-37954374048-attempt1/`；不得覆盖或重跑原 attempt：
+
+| 归档 | SHA256 |
+|---|---|
+| 原始失败日志 ZIP | `f9dc03abe9bd594d222860140355dab245b9cca02e375aaaba3482b5bfe5d17d` |
+| 原 TLS 阶段 ZIP | `62df3836a68b6895d0910cfc10126e17952f44fed93b27b8d7af580c57be6661` |
+| HDSP 导入 | `b5bb8157289d01dc872cc8f0bf971eda4d5bd7716304b2504a71363f99960d5c` |
+| ICE 导入 | `e7a9e6206a9058122ec83dd9477c7ee5d56029c56dc23c6753b79044bd8e5568` |
+
+加入失败的待验证线索为：来源使用原 3A JSON.stringify 顺序计算本地模块 hash，但 PC 配对响应 canonical 排序重解析改变了对象键顺序。需通过实际响应边界的因果 RED 确认并修补，不能放宽本地 hash、签名或模块冻结检查。当前导入验收 FAIL、整体 INCOMPLETE。
+
+
+### RH048 因果定位与最小响应修补（尚未网络结案）
+
+实际 QA PostgreSQL 中，对 HDSP、ICE 来源完整执行 OwnerPairing 和 HTTP 响应序列化，两个用例稳定 RED：签名验证通过，但配对返回的 module_snapshot 经 canonical 排序，其 JSON.stringify 摘要不再等于来源摘要。`import/pairing-order-red-001` 保留 stdout/exit/JUnit。
+
+修补只恢复 Node 自身冻结快照的键顺序：先验证规范化内容、规范 hash、原 stringify hash，再验证整份历史响应 canonical bytes 原样不变；不重签、不改 journal、原始救援包、密钥或 nonce。最初补丁还暴露 provisional Node 恢复时缺少快照的两个回归（`pairing-order-green-001`，实际 FAIL，保留），增加自身 snapshot_json 后恢复路径通过。
+
+实现者最终来源/配对 36 项通过（`pairing-order-final-001`），附加实际 FastAPI HTTP 响应两模块 2 项通过（`pairing-order-http-001`）；含确认、状态查询、重启恢复/重复确认、after_consume/before_pg_commit、历史 wrapper/签名不变、篡改拒绝和默认模块字节保持。root 独立内核/QA PG 全量 203 项通过，`rh048-root-pg-final.txt`。新 SHA 首次 Linux 导入网络结果仍待执行，原 RH047 导入 FAIL 不被本地测试覆盖。

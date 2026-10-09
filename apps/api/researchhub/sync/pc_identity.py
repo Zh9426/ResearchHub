@@ -144,7 +144,8 @@ def setup_node(engine,runtime,module_id='generic',*,pairing_transport=None,sourc
     if pending_session:
         historical=store.history(meta['opaque'],meta['grant']['context']['membership_epoch'])
         key=open_grant(meta['grant'],historical,owner)
-        provisional=Node({'opaque_project_id':meta['opaque'],'semantic_project_id':meta['semantic']},
+        provisional=Node({'opaque_project_id':meta['opaque'],'semantic_project_id':meta['semantic'],
+            'module_snapshot':json.loads(meta['snapshot_json'])},
             {},TrustedContext(meta['principal']),owner,key,runtime)
         owned_transport=pairing_transport is None
         if owned_transport:

@@ -4,6 +4,7 @@ Lock order: project advisory -> PG Kernel/Trust -> SQLite. Network failures are
 observable UNKNOWN states, never an implicit retry or a reason to mint a grant.
 """
 import hashlib
+import json
 import time
 from contextlib import contextmanager
 from uuid import uuid4
@@ -138,9 +139,23 @@ class OwnerPairing:
             raise ValueError('EMPTY_PROJECT_REQUIRED')
 
     def _view(self,row):
-        # JSONB key order is not the frozen JSON.stringify order. Reconstitute
-        # canonical insertion order without changing any signed canonical bytes.
-        if row.stage=='COMPLETE':return strict_loads(canonical_bytes(row.result))
+        if row.stage=='COMPLETE':
+            # JSONB and canonical decoding reorder keys. The source 3A hash is
+            # specifically JSON.stringify, so recover its already-frozen order
+            # while retaining the exact historical wrapper and signed bytes.
+            original=canonical_bytes(row.result)
+            result=strict_loads(original)
+            binding=result['signed_binding']['binding']
+            snapshot=self.node.binding['module_snapshot']
+            serialized=json.dumps(snapshot,ensure_ascii=False,separators=(',',':'))
+            if (canonical_bytes(binding['module_snapshot'])!=canonical_bytes(snapshot)
+                    or binding['module_snapshot_hash']!=digest(snapshot)
+                    or binding['local_module_hash']!={'algorithm':'sha256-json-stringify',
+                        'value':hashlib.sha256(serialized.encode()).hexdigest()}):
+                raise ValueError('BLOCKED_FROZEN_SNAPSHOT_MISMATCH')
+            binding['module_snapshot']=strict_loads(serialized)
+            if canonical_bytes(result)!=original:raise ValueError('BLOCKED_SIGNED_RESPONSE_CHANGED')
+            return result
         value={'session_id':row.session_id,'stage':row.stage,'expires_at':row.reserved['issued_at']+300}
         if row.challenge is not None:
             value.update(challenge=row.challenge,confirmation=pairing.confirmation(row.challenge))
