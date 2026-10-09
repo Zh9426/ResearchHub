@@ -30,7 +30,7 @@
 - [x] 实际Chromium执行固定向量、双tab nonce竞争与耗号/刷新/重开；遗留平台保障标BLOCKED FOR NETWORK USE。规格→质量复审后提交。
 
 ## Task 5：完整验收与停止
-- [ ] 真实browser A–L、进程终止/重开、静态server停止、桌面/移动截图并view_image检查；不得seed重灌模拟恢复。
-- [ ] 相关Node/Python协议/安全、前端回归；新增browser-local-qa CI，artifact仅截图/脱敏结果，不上传profile/key/HAR/dump。TLS失败独立归档，不重跑到绿。
-- [ ] SPRINT_3A_REPORT.md及演示说明/证据索引：G1–G6、七状态分类、浏览器/OS/命令/真实与注入边界。最终审查、聚焦中文四段RH递增提交、remote精确SHA/CI核对。
-- [ ] STOP；仅列3B候选，不启动同步/生产迁移/公网部署，不移动稳定标签。
+- [x] 真实browser A–L、进程终止/重开、静态server停止、桌面/移动截图并view_image检查；不得seed重灌模拟恢复。
+- [x] 相关Node/Python协议/安全、前端回归；新增browser-local-qa CI，artifact仅截图/脱敏结果，不上传profile/key/HAR/dump。TLS失败独立归档，不重跑到绿。
+- [x] SPRINT_3A_REPORT.md及演示说明/证据索引：G1–G6、七状态分类、浏览器/OS/命令/真实与注入边界。最终审查、聚焦中文四段RH递增提交、remote精确SHA/CI核对。
+- [x] STOP；仅列3B候选，不启动同步/生产迁移/公网部署，不移动稳定标签。

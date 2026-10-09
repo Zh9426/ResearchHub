@@ -1,6 +1,6 @@
 # Sprint 3A 浏览器离线工作台验收记录
 
-状态：核心本地工作流已完成阶段验收，正在收尾完整回归、截图与独立复审。以下仅记录已执行证据；最终报告在全部任务与复审后更新。
+状态：Sprint3A 完成，范围仅限隔离合成数据的浏览器离线工作台。Windows 与 Linux 实际浏览器验证通过，精确实现提交首次 CI 五个 job 全部通过；已按要求 STOP，不进入 Sprint3B。
 
 ## 基线与隔离
 
@@ -19,7 +19,7 @@
 | SW安装失败 | RED→GREEN | 真实服务器503注入；`review-red-install.log`；补丁改为有界失败提示及可重试，未吞错成功 |
 | 原前端兼容 | 46 tests PASS；typecheck PASS | `web-test-task1-elevated.log`；纯展示组件提取，未修改API行为 |
 | 协议基线 | Python17 / Node7 PASS | `python-vectors-baseline.log`、`node-vectors-baseline.log`；原向量哈希 `baseline-protected-hashes.json` |
-| 独立复审 | Task1规格PASS、质量补丁复审APPROVED | 浏览器启动失败清理为静态复核，尚无独立启动失败注入证明 |
+| 独立复审 | Task1规格PASS、质量补丁复审APPROVED | 当时仅静态复核清理；Task5后续补齐实际启动失败与close拒绝用例 |
 | RH-022 精确提交CI | 4 jobs success | `08aafe4a1c1ff8123b3cf9f53d5887cf00c72628`，[37867406210 attempt 1](https://github.com/Zh9426/ResearchHub/actions/runs/37867406210)；20轮TLS诊断保存于 `ci-37867406210-attempt1/`，不关闭TLS-001 |
 | 本地模型与工作台 | 4 tests PASS / 12.2s | `task2-delivery-verified.log`：服务停止后Run/Note/失败阴性星标；同profile进程退出重开后全snapshot相等；刷新不重灌；双tab CAS/另存/并行创建；写后abort全回滚 |
 | 保存边界故障 | RED→GREEN | `task2-red-notification.log`、`task2-red-refresh.log`：通知失败或提交后读取失败不能否定已经提交的事务 |
@@ -32,6 +32,7 @@
 | 关联安全回归 | Node48、Python191 PASS | `task4-node-security.log`、`task4-python-security.log`，Python21.91s；protocol Node7及两包typecheck通过；原fixtures及TLS调查文件哈希未变 |
 | RH-025 精确提交CI | 4 jobs success | `8a38e9a676119f415c844f955cc3af0fe8e93912`，[37870842565 attempt 1](https://github.com/Zh9426/ResearchHub/actions/runs/37870842565)；TLS20轮归档 `ci-37870842565-attempt1/`，zip SHA256 `fe489ab08a2c8d5539478a2b837aecae4ef7fbc30f9ea01ed7ebbf4473445a68` |
 | 最终本地完整验收 | 17 tests PASS /50.6s，0 retry/skip | `evidence/attempt-2/` 的完整log、JUnit与summary；构建JS+CSS SHA256 `7f7b3c0cc1a50b241924a9bc1df9a556b826a7807d6420e55db9c71656b594c0`；修改布局前首轮17 PASS /42.3s另存attempt-1 |
+| RH-026 Linux浏览器CI | 17 PASS /35.03s，0失败/跳过/重试 | 首次run37871775036；Linux6.17.0-1022-azure x64、Node24.21.0、Chromium156.0.8078.4；buildHash与Windows一致；白名单artifact SHA256 `f9ef4e9a2eceb55ce4231ef162b1b5654b073cdf0c0a213df96ff47a8b2d34fe` |
 | 补充失败边界 | 6 targeted PASS /6.6s | 四类缓存错绑定分别拒绝、counter不变、encrypt=0、恢复缓存exact retry；真实目标浏览器executable缺失释放来源浏览器和静态服务；close拒绝仍清理服务且传播错误 |
 
 全部上述路径相对 ignored `storage/runtime/browser-local-qa/`。初始沙箱 ENOTCACHED/EPERM、构建扫描误匹配以及使用旧构建的中间测试均在 `task1-attempts.txt` 区分，未计入最终构建验收。所有浏览器测试 `retries=0`。
@@ -47,7 +48,7 @@
 | G3 双标签页保护 | Task2一成一拒、保留输入、比较/另存及不同记录并发通过，两阶段复审通过 |
 | G4 星标、状态与救援恢复 | 真实新profile救援、幂等/冲突/未保存草稿通过；Task3规格PASS、质量APPROVED |
 | G5 浏览器协议、key/nonce边界 | 237固定检查与受限AES-GCM/key/nonce探针通过；Task4规格PASS、质量APPROVED，网络仍BLOCKED |
-| G6 隔离与TLS证据 | 固定origin/profile与合成数据；RH-025 CI四job成功、TLS20轮归档；最终提交复核待完成 |
+| G6 隔离与TLS证据 | 固定origin/profile/合成数据通过；RH-026首次CI五job成功、TLS20轮归档；原失败和诊断哈希不变，TLS-001 OPEN |
 
 ## 交付分类
 
@@ -88,6 +89,22 @@
 
 ## 停止边界
 
-本轮最终验收后STOP。Sprint3B仅候选：独立ADR审查字段/wire迁移、正式浏览器密钥授权及恢复威胁模型、受控传输失败语义。在TLS-001仍OPEN及上述安全缺口未解决前，不将本地探针结论扩大为生产或跨设备同步可用。
+本轮验收完成，已STOP。Sprint3B仅候选：独立ADR审查字段/wire迁移、正式浏览器密钥授权及恢复威胁模型、受控传输失败语义。在TLS-001仍OPEN及上述安全缺口未解决前，不将本地探针结论扩大为生产或跨设备同步可用。
 
-启动和停止命令见 [浏览器QA说明](../../apps/browser-qa/README.md)。最终截图、A–L矩阵、完整回归及精确SHA/CI结果将在本报告补全；此阶段不宣布Sprint3A完成。
+启动和停止命令见 [浏览器QA说明](../../apps/browser-qa/README.md)。六张截图与A–L矩阵已交付；精确实现提交 `8e6200d7318413c535bcafb59f8dee17fade69d3`，远端已一致。首次CI [37871775036 attempt 1](https://github.com/Zh9426/ResearchHub/actions/runs/37871775036) 五个job全部success：browser-local-qa、frontend、backend-mcp-migration、sync-kernel-qa、secure-relay-qa。该SHA是最终实现与截图提交；随后只提交报告收尾，不改实现。
+
+
+## 独立复审与保护项
+
+Task1–5均完成先规格、后质量审查，所有阻断项已处理；Task5最终规格PASS、质量APPROVED，全实现最终复审APPROVED。审查均为独立只读代码/证据核对，未冒称审查者重新执行全部测试。
+
+根协调者复核四份冻结wire fixture与原TLS调查记录SHA256全部保持基线值；API/Relay业务及原同步/安全测试未修改。`git ls-files storage/runtime`为空。稳定main和v0.2.0目标仍为 `4a4db4a4bd54a598f640d7de99281c15bd46e3b9`；仓库仍为用户指定public。QA静态端口3313在验收结束后未监听，没有遗留演示服务。
+
+## 最终 CI 证据归档
+
+精确实现SHA的首次完整CI已下载到 ignored `storage/runtime/browser-local-qa/ci-37871775036-attempt1/`；浏览器与TLS artifact均按原字节保留。TLS 20/20固定轮次通过仅说明本次未复现，不关闭TLS-001。
+
+- `tls-stages.zip` SHA256 `3bfa21a87c8ae535d3a4f68d72dac02f9e6690e4156dbaa716bbbe0ead8c5fc9`。
+- `browser-local-qa.zip` SHA256 `f9ef4e9a2eceb55ce4231ef162b1b5654b073cdf0c0a213df96ff47a8b2d34fe`。
+
+最终提交前原失败zip/日志/30次基线XML的SHA256再次核对一致。整个Sprint没有跳过TLS测试、放宽证书验证或按结果重跑CI；所有记录均为不同迭代提交的首次attempt。
