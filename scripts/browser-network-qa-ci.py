@@ -40,6 +40,23 @@ class StageFailure(RuntimeError):
         super().__init__('QA_STAGE_FAILED')
 
 
+def owned_process_metadata(uid):
+    """Fixed fields for this run's newly created UID; never collect argv/env."""
+    result = subprocess.run(['ps', '-u', str(uid), '-o', 'pid=,ppid=,stat=,comm='],
+                            capture_output=True, text=True, check=False)
+    rows = []
+    allowed = {'systemd', '(sd-pam)', 'dbus-daemon', 'chrome', 'chromium',
+               'chrome_crashpad', 'node', 'bash', 'sh', 'sudo', 'certutil'}
+    for line in result.stdout.splitlines():
+        fields = line.split(maxsplit=3)
+        if len(fields) != 4 or not fields[0].isdigit() or not fields[1].isdigit():
+            continue
+        rows.append({'pid': int(fields[0]), 'parentPid': int(fields[1]),
+                     'state': fields[2][0] if fields[2][0] in 'RSDTtZXIPW' else 'UNKNOWN',
+                     'kind': fields[3] if fields[3] in allowed else 'OTHER'})
+    return {'uid': uid, 'exitCode': result.returncode, 'processes': rows}
+
+
 def main():
     if sys.platform != 'linux' or os.environ.get('GITHUB_ACTIONS') != 'true':
         raise RuntimeError('EPHEMERAL_LINUX_CI_ONLY')
@@ -153,6 +170,8 @@ def main():
             run('nss-dir-' + case, as_user(user, ['mkdir', '-p', str(nss)], cwd=home))
             run('nss-new-' + case, as_user(user, ['certutil', '-N', '-d', 'sql:' + str(nss),
                                               '--empty-password'], cwd=home))
+            evidence.setdefault('userProcessBaselines', []).append(owned_process_metadata(account.pw_uid))
+            save()
         relay_attempted = True
         run('relay-init', [sys.executable, 'scripts/secure-relay-qa.py', '--init'], timeout=600)
         state = json.loads((RUNTIME / 'secure-relay-run.json').read_text())
@@ -243,6 +262,7 @@ def main():
         # A timed-out sudo child can leave Chromium descendants. These UIDs were
         # created by this run and cannot contain the user's personal processes.
         for uid in owned_user_ids:
+            evidence.setdefault('userProcessCleanupSnapshots', []).append(owned_process_metadata(uid))
             remaining = subprocess.run(['pgrep', '-u', str(uid)], stdout=subprocess.DEVNULL, check=False)
             if remaining.returncode == 0:
                 evidence['status'] = 'FAIL'

@@ -90,9 +90,13 @@ RH032 已推送 `e7eedb7b56eb417d5ae9bef26a4391fae349316f`，远端同 SHA，mai
 
 本机CORS单元3项、Node请求/安全规则56项通过；两包类型检查与普通构建通过。B构建完整hash `f283ee604f1e28041a5280cd529aff80814322c075ca9e204616dcd428a4b66d`；PC `96a5e71643977b5f0ff6ebaa753328071935ef237445719e9285ece71ea2092e`。早期CORS拒绝、缺请求函数、重复hex编码和缺加入按钮等RED保留在执行记录；早期UI曾复用固定输出目录，部分Playwright文件可能覆盖，不能声称这些原始产物完整。后续已改唯一attempt并拒绝覆盖。
 
-`NOT VERIFIED`：Linux严格浏览器TLS/真实Fetch/完整UI配对将由精确提交首次CI执行。其测试明确区分实际证书/CORS拒绝与 `FAULT_INJECTED_ONLY` 的pin+grant后hello网络中断；仅pin之后、grant之前中断尚未专测。Windows浏览器网络仍未验证。B2b规格与质量静态复审PASS，仍不计完整G2/G4通过；C业务双向传输尚未实现。
+`FAIL / INCOMPLETE`：Linux严格浏览器TLS/真实Fetch/完整UI配对首次CI在启动或版本读取前段失败，具体位置待诊断，见下方首败记录；实际TLS与配对尚未到达。其测试明确区分实际证书/CORS拒绝与 `FAULT_INJECTED_ONLY` 的pin+grant后hello网络中断；仅pin之后、grant之前中断尚未专测。Windows浏览器网络仍未验证。B2b规格与质量静态复审PASS，仍不计完整G2/G4通过；C业务双向传输尚未实现。
 
 ## 失败保留
+
+RH033 首次 [CI37907069953](https://github.com/Zh9426/ResearchHub/actions/runs/37907069953) attempt1、提交 `c6109d65654a5418c0626d52ac51bb2eac22d415`：六个既有 job 通过，新增 browser-network-qa 失败。`browser-untrusted` exit1，摘要停在 START、Chromium版本为空、证书诊断为空、OPTIONS/签名POST均0；尚不能确认浏览器是否成功启动，不能计错误CA拒绝通过。trusted用例未执行。两个新QA账户均有残留进程；PC与静态服务明确owned停止exit0。网络Gate为 FAIL / INCOMPLETE，根因调查中，不重跑该提交覆盖首败。
+
+原始归档 `storage/runtime/browser-local-qa/ci-37907069953-attempt1/` 保留：失败日志zip SHA-256 `f437d0abbdd3953f3ed3db7fb196d18d5a18634b6d19dae7d1feb4c4bd5505ae`；网络zip `dbdddcb3367e47430cbeded54017bb7c17e71577eafb8d45e83925102141ddc9`；TLS zip `e97ffa1eb18f9dd816bb786a797909c1fc065830c50b89f54ce5a86dabf8c681`。原TLS固定20轮通过不关闭TLS-001，也不豁免本次网络失败。后续诊断将区分启动、测试配置和新账户会话进程；不改变证书规则或失败判定。
 
 B2a收尾遇到环境中断：`pc/b2a-regression-03` 没有退出状态/JUnit，不能计通过。继续执行的 `b2a-regression-04` 期间35433/35434/38001均不可达，核验Docker Linux engine未运行；保存 `environment.txt` 后仅终止该轮明确owned等待进程，记录 `ENVIRONMENT_BLOCKED/CANCELLED`、exit -1。后台启动Docker Desktop、核对既有QA scope并只start原容器，原Relay `--start` guard成功；没有init/destroy/清库、重建身份或调整超时/证书。恢复记录在该轮 `restore.txt`，后续新attempt结果单列。
 
@@ -118,7 +122,7 @@ A2a独立复审修复了nil UUID、null principal与模块额外字段错误接�
 | J 保存和接收失败 | 本地IDB/CAS及安全持久化负例已验证；接收整页事务待C |
 | K 星标字段隔离 | A2/B1本地即时保存、dirty隔离及协议映射已验证；跨端待C |
 | L 版本与身份 | v1/v2/Python/Chromium密码与身份负例已验证；完整网络路径待验收 |
-| M 浏览器网络边界 | NOT VERIFIED；严格Linux TLS/CORS待B2，Windows明确未验证 |
+| M 浏览器网络边界 | FAIL / INCOMPLETE；RH033首次Linux网络测试启动或版本读取前段失败，具体位置待诊断，TLS/CORS未到达；Windows未验证 |
 | N 撤销与旧epoch | B1 vault撤销/history负例已验证；PC真实撤销与网络待验收 |
 | O 旧3A记录适配 | NOT IMPLEMENTED；不能按名字合并或克隆发送身份 |
 | P 状态真实性 | 本地工作与可信PC投影已分列；peer receipt与双端状态尚未实现 |
@@ -130,9 +134,9 @@ A2a独立复审修复了nil UUID、null principal与模块额外字段错误接�
 | Gate | 当前状态 |
 |---|---|
 | G1 项目与协议一致 | INCOMPLETE；仅版本契约已验证，同项目加入/操作映射尚在实施 |
-| G2 浏览器安全接入 | NOT VERIFIED |
+| G2 浏览器安全接入 | INCOMPLETE；正式密码已有证据，RH033启动或版本读取前段失败，尚未到达TLS验收 |
 | G3 本地可靠性 | INCOMPLETE；3A回归通过不替代3B |
-| G4 实际双向传输 | NOT VERIFIED |
+| G4 实际双向传输 | INCOMPLETE；B2网络测试失败，C尚未实现 |
 | G5 冲突与幂等 | NOT VERIFIED |
 | G6 人类体验与状态 | INCOMPLETE |
 | G7 隔离与回归 | INCOMPLETE；A1回归已通过，后续改动待验收 |

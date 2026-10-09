@@ -1,15 +1,18 @@
 import {test,expect,chromium,type BrowserContext} from '@playwright/test';
 import {writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {summarizeError} from '../scripts/network-evidence-reporter';
 const root=process.env.RH_B2_RESULTS!;
 let phase='START',preflights=0,signedPosts=0,version='',lastDiagnostic:string|null=null;
 function mark(next:string,diagnostic:string|null=null){phase=next;lastDiagnostic=diagnostic;writeFileSync(resolve(root,'phase.json'),JSON.stringify({phase,diagnostic,preflights,signedPosts,chromium:version}),{mode:0o600});}
-async function launch(name:string){const c=await chromium.launchPersistentContext(resolve(root,name),{headless:true,channel:'chromium',args:['--host-resolver-rules=MAP localhost 127.0.0.1'],viewport:{width:1440,height:1000}});version=c.browser()!.version();return c;}
-async function close(context:BrowserContext){const browser=context.browser()!,cdp=await browser.newBrowserCDPSession();const {processInfo}=await cdp.send('SystemInfo.getProcessInfo');const pids=processInfo.map(p=>p.id);expect(pids.length).toBeGreaterThan(0);await context.close();expect(browser.isConnected()).toBe(false);await expect.poll(()=>pids.filter(pid=>{try{process.kill(pid,0);return true;}catch(e){if((e as NodeJS.ErrnoException).code==='ESRCH')return false;throw e;}})).toEqual([]);}
+async function launch(name:string){return chromium.launchPersistentContext(resolve(root,name),{headless:true,channel:'chromium',args:['--host-resolver-rules=MAP localhost 127.0.0.1'],viewport:{width:1440,height:1000}});}
+async function close(context:BrowserContext){const browser=context.browser();let pids:number[]=[];try{if(!browser)throw Error('BROWSER_HANDLE_MISSING');const cdp=await browser.newBrowserCDPSession();const {processInfo}=await cdp.send('SystemInfo.getProcessInfo');pids=processInfo.map(p=>p.id);expect(pids.length).toBeGreaterThan(0);}finally{await context.close();}expect(browser!.isConnected()).toBe(false);await expect.poll(()=>pids.filter(pid=>{try{process.kill(pid,0);return true;}catch(e){if((e as NodeJS.ErrnoException).code==='ESRCH')return false;throw e;}})).toEqual([]);}
 async function certificate(context:BrowserContext,url:string,expected:string){const p=await context.newPage();let code='NO_CERTIFICATE_FAILURE';try{await p.goto(url);}catch(e){code=String(e).includes(expected)?expected:String(e).includes('ERR_CONNECTION_REFUSED')?'ERR_CONNECTION_REFUSED':'OTHER_NETWORK_FAILURE';}finally{await p.close();}mark(phase,code);expect(code).toBe(expected);}
 test('B2 actual browser pairing, strict TLS and narrow CORS',async()=>{
- const context=await launch('profile');
+ let context:BrowserContext|undefined,primaryFailure=false;
  try{
+  mark('BROWSER_LAUNCH');context=await launch('profile');
+  mark('BROWSER_VERSION');version=context.browser()!.version();
   if(process.env.RH_B2_TLS_CASE==='untrusted'){mark('UNTRUSTED_CA');await certificate(context,'https://127.0.0.1:38001/v1/hello','ERR_CERT_AUTHORITY_INVALID');return;}
   mark('HOSTNAME_NEGATIVE');await certificate(context,'https://localhost:38001/v1/hello','ERR_CERT_COMMON_NAME_INVALID');
   const b=await context.newPage(),pc=await context.newPage();
@@ -58,5 +61,14 @@ test('B2 actual browser pairing, strict TLS and narrow CORS',async()=>{
   const denied=await opaque.evaluate(async()=>{try{await fetch('https://127.0.0.1:38001/v1/hello',{method:'POST',credentials:'omit',headers:{'content-type':'application/json','x-rh-proof':'AAAA'},body:'{}'});return 'UNEXPECTED_ALLOWED';}catch(e){return e instanceof TypeError?'CORS_FETCH_TYPEERROR':'OTHER';}});expect(denied).toBe('CORS_FETCH_TYPEERROR');expect(nullOrigin).toBe(true);expect(preflight403).toBe(true);await opaque.close();
   mark('SCREENSHOTS');await b.screenshot({path:resolve(root,'desktop.png'),mask:[b.locator('textarea'),b.locator('input')]});await b.setViewportSize({width:390,height:844});await b.screenshot({path:resolve(root,'mobile.png'),mask:[b.locator('textarea'),b.locator('input')]});
   mark('COMPLETE');
- }catch(e){mark(phase,lastDiagnostic??'ASSERTION_OR_OPERATION_FAILED');throw e;}finally{await close(context);}
+ }catch(e){primaryFailure=true;try{mark(phase,lastDiagnostic??'ASSERTION_OR_OPERATION_FAILED');}catch{/* Preserve the original failure if its evidence write also fails. */}throw e;}finally{
+  if(context){
+   const saveCleanup=(value:unknown)=>writeFileSync(resolve(root,'cleanup.json'),JSON.stringify(value),{mode:0o600});
+   let cleanupError:unknown;
+   try{saveCleanup({state:'START'});}catch(error){cleanupError=error;}
+   try{await close(context);}catch(error){cleanupError??=error;}
+   try{saveCleanup(cleanupError?{state:'FAILED',error:summarizeError(cleanupError instanceof Error?cleanupError:{message:String(cleanupError)})}:{state:'PASS'});}catch(error){cleanupError??=error;}
+   if(cleanupError&&!primaryFailure)throw cleanupError;
+  }
+ }
 });

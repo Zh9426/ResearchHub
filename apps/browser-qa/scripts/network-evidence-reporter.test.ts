@@ -10,3 +10,15 @@ test('diagnostics export only six fixed enums and never private error fragments'
  assert.equal(JSON.stringify(output).includes(secret),false);
  assert.deepEqual(reporter.safeDiagnostics(secret+' Permission denied Permission denied'),['ACCESS_DENIED']);
 });
+
+test('error summaries retain category and full error hash without private text',()=>{
+ assert.equal(typeof reporter.summarizeError,'function');
+ const raw={message:'PRIVATE_SECRET_SENTINEL launchPersistentContext: Timeout 30000ms exceeded.',stack:'PRIVATE_STACK',name:'TimeoutError'};
+ const summary=reporter.summarizeError(raw);
+ assert.equal(summary.errorType,'TimeoutError');assert.match(summary.sha256,/^[a-f0-9]{64}$/);
+ assert.equal(JSON.stringify(summary).includes('PRIVATE'),false);
+ assert.deepEqual(summary.diagnostics,['BROWSER_LAUNCH_TIMEOUT']);
+ assert.notEqual(reporter.summarizeError({...raw,stack:'different'}).sha256,summary.sha256);
+ assert.equal(reporter.summarizeError({name:'PRIVATE_TYPE',message:'arbitrary private error'}).errorType,'UNKNOWN');
+ assert.deepEqual(reporter.summarizeError({message:'arbitrary private error'}).diagnostics,[]);
+});
