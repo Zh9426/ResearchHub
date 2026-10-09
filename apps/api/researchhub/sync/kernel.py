@@ -173,7 +173,7 @@ def _materialize(change, parents):
                      else 'archived' if any(p.lifecycle == 'archived' for p in parents) else 'active')
     document.update(patch)
     # A legal partial patch can become invalid after inheriting its type/fields.
-    _payload(change['object_type'], document)
+    _payload(change['object_type'], document, change['schema_version'])
     operation = change['operation']
     if operation in {'trash', 'archive', 'restore'}:
         lifecycle = {'trash': 'trashed', 'archive': 'archived', 'restore': 'active'}[operation]

@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from .canonical import SAFE_INTEGER, canonical_bytes, strict_loads
 
 SUITE = "RH-v1/AES256GCM/Ed25519/HPKE-X25519-HKDFSHA256-AES256GCM"
+TRANSACTION_VERSION_PAIRS = ((1, 1), (2, 2))
 MAX_ENVELOPE = 256 * 1024
 HEADER_FIELDS = frozenset(
     [
@@ -76,8 +77,12 @@ def b64decode(value, size=None):
 def validate_header(header):
     if type(header) is not dict or set(header) != HEADER_FIELDS:
         raise ValueError("INVALID_ENVELOPE")
-    for f in ("envelope_version", "protocol_version", "schema_version"):
-        safe_int(header[f], 1, 1)
+    safe_int(header["envelope_version"], 1, 1)
+    for f in ("protocol_version", "schema_version"):
+        safe_int(header[f], 1, 2)
+    versions = TRANSACTION_VERSION_PAIRS if header["record_type"] == "transaction" else ((1, 1),)
+    if (header["protocol_version"], header["schema_version"]) not in versions:
+        raise ValueError("UPGRADE_REQUIRED")
     if header["crypto_suite"] != SUITE or header["record_type"] not in (
         "transaction",
         "snapshot",

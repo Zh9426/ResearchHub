@@ -35,6 +35,9 @@ PAYLOAD_FIELDS = {
     "ModuleUpgrade": "module_id from_version to_version module_version module_snapshot module_snapshot_hash expected_version expected_target_digest",
 }
 PAYLOAD_FIELDS = {key: set(value.split()) for key, value in PAYLOAD_FIELDS.items()}
+SUPPORTED_VERSION_PAIRS = ((1, 1), (2, 2))
+V2_PAYLOAD_FIELDS = {"ResearchRun": PAYLOAD_FIELDS["ResearchRun"] | {"is_highlighted", "highlight_type", "highlight_note"}, "Note": PAYLOAD_FIELDS["Note"]}
+
 EVIDENCE_STATES = {"proposed", "unknown", "hypothesis", "assumed", "synthetic", "simulated", "measured", "calibrated", "validated", "reproduced", "rejected"}
 ENUMS = {
     "source_kind": {"unknown", "synthetic", "assumed", "literature", "manufacturer", "measured", "calibrated", "derived"},
@@ -89,8 +92,13 @@ def _stamp(value):
 
 
 def _version(value):
-    if type(value) is not int or value != 1:
+    if type(value) is not int or value not in (1, 2):
         _reject("unsupported protocol/schema version", "UPGRADE_REQUIRED")
+
+
+def require_version_pair(protocol, schema, supported=SUPPORTED_VERSION_PAIRS):
+    if type(protocol) is not int or type(schema) is not int or (protocol, schema) not in supported:
+        _reject("unsupported protocol/schema pair", "UPGRADE_REQUIRED")
 
 
 def _enum(value, allowed):
@@ -107,8 +115,10 @@ def _set_list(value, validator):
         _reject("set must be sorted and unique")
 
 
-def _payload(kind, payload):
-    if type(payload) is not dict or not set(payload) <= PAYLOAD_FIELDS[kind]:
+def _payload(kind, payload, schema_version=1):
+    _version(schema_version)
+    fields = PAYLOAD_FIELDS if schema_version == 1 else V2_PAYLOAD_FIELDS
+    if kind not in fields or type(payload) is not dict or not set(payload) <= fields[kind]:
         _reject("unknown business payload fields")
     for key, value in payload.items():
         if key == "value":
@@ -133,7 +143,7 @@ def _payload(kind, payload):
             elif key == "criteria":
                 for item in value:
                     _payload("GateCriterion", item)
-        elif key == "is_confirmed":
+        elif key in {"is_confirmed", "is_highlighted"}:
             if type(value) is not bool:
                 _reject("confirmation must be boolean")
         elif key in {"size", "key_epoch"}:
@@ -175,7 +185,7 @@ def validate_change(change):
     _version(change["schema_version"])
     _enum(change["actor_type"], ACTORS)
     _enum(change["operation"], OPERATIONS)
-    _enum(change["object_type"], PAYLOAD_FIELDS)
+    _enum(change["object_type"], PAYLOAD_FIELDS if change["schema_version"] == 1 else V2_PAYLOAD_FIELDS)
     _hash(change["module_snapshot_hash"])
     _stamp(change["created_at"])
     _set_list(change["parents"], _hash)
@@ -183,7 +193,7 @@ def validate_change(change):
     operation = change["operation"]
     if (operation == "create" and count != 0) or (operation == "resolve" and count < 1) or (operation not in {"create", "resolve"} and count != 1):
         _reject("invalid parent count for operation")
-    _payload(change["object_type"], change["payload"])
+    _payload(change["object_type"], change["payload"], change["schema_version"])
     return change
 
 
@@ -197,8 +207,7 @@ def validate_transaction(tx, context=None):
         _uuid(tx[key])
     if tx["transaction_id"] != tx["idempotency_key"]:
         _reject("idempotency key must equal transaction id")
-    _version(tx["protocol_version"])
-    _version(tx["schema_version"])
+    require_version_pair(tx["protocol_version"], tx["schema_version"])
     _enum(tx["actor_type"], ACTORS)
     _stamp(tx["created_at"])
     _set_list(tx["dependencies"], _uuid)

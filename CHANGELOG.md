@@ -2,6 +2,26 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-028 — 2026-10-09 — 建立 Sprint3B 显式 Run/Note v2 契约
+
+### 完成内容
+
+- 新增 (2,2) Run/Note 版本分派及 Run 三项星标精确类型；原 v1 白名单、固定向量与 revision 保持不变。
+- Python/TS、Kernel 物化与公共 Envelope/Relay 能力一致；内外版本受签名/AAD 保护且严格绑定，密码套件不变。
+- 新增独立 v2 固定向量与负例、ADR-029、Sprint3B 设计增量和连续实施计划。
+
+### 验证结果
+
+- Python sync_vectors + secure_sync 221 项通过；追加负例后 v2 定向 28 项、临时目录修正后安全 8 项通过。
+- Node 原协议与初始 v2 共 26 项、扩展 v2 定向 25 项、安全 51 项及两包 typecheck 通过。
+- 真实隔离 PostgreSQL 内核/Domain/Outbox 回归 132 项通过（23.88s）；冻结 v1/secure-v1 八文件与 TLS 调查记录 hash 不变。
+- 初次 QA Relay 初始化因 Anaconda 缺 psycopg 失败；保留证据，项目 .venv 单次受 guard 连接与启动通过，未改变源码或证书校验。
+- 独立规格与质量审查通过；本阶段未验证实际浏览器加密或双向网络同步，TLS-001 仍 OPEN。
+
+### 后续工作
+
+- 继续 A2 同项目工作区/因果适配、B 浏览器安全接入、C 双向与故障验收；不进入3C、不发布生产。
+
 ## RH-027 — 2026-10-09 — 归档 Sprint3A 最终验收并停止迭代
 
 ### 完成内容

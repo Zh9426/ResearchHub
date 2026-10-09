@@ -294,3 +294,15 @@
 **Consequences**：不通过放宽key模式、共享宿主目录或打印Docker完整诊断解决。Windows本地通过不足以证明Linux初始化成功；最终验收须由实际Linux完整CI确认。实现与独立复审状态见最终安全报告。
 
 **Open Questions**：该helper只服务合成QA临时TLS材料，不是生产secret provisioning方案。
+
+## ADR-029 — 显式 Run/Note v2 事务与 v1 Envelope 外壳（AMENDED）
+
+**Context / old decision**：既有 wire、transaction 与 SecureEnvelope 的业务版本范围为 `(1,1)`，Run 没有正式星标字段。Sprint 3B 的合成双端记录需要保留星标，不能丢字段后冒充 v1。
+
+**Decision (AMENDED version range only)**：保留 `(1,1)` 的精确字段、规范化、revision 身份与原固定向量；新增且仅新增 `(protocol_version=2,schema_version=2)`。v2 只允许 ResearchRun/Note：ResearchRun 沿用其 v1 字段并新增 `is_highlighted:boolean`、`highlight_type:string`、`highlight_note:string`；Note 仍为 `title/content/run_id/tag_ids`。新增字段允许缺省，不接受 null 或隐式类型转换。单 ChangeSet 按 schema_version 独立校验；事务版本、成员 schema 必须一致。混合 `(2,1)/(1,2)`、未知字段、其它 v2 实体仍拒绝。module context 的内容约束继续由冻结模块验证，版本分派不授予权限。
+
+外壳 envelope_version=1、既有 suite、AAD 与 signature domains 不变。仅 transaction 的公共 header 接受 `(2,2)`；snapshot/artifact_manifest 仍仅 `(1,1)`。seal_transaction 从已验证事务派生声明，open_transaction 验证内外 protocol/schema 两者相同；header 的版本同时受到签名和 AEAD AAD 保护。Relay 使用同一公共 validator，hello 返回明确 transaction_version_pairs；能力声明不替代成员授权或科研批准。旧端只支持 `(1,1)` 时明确 UPGRADE_REQUIRED，不重新编号、丢字段或降级。
+
+**Consequences**：Kernel 按当前 change schema 校验完整 materialized document；v1 后继不能继承星标后静默丢字段。现有 principal、protected Human consent、整批接受与回滚边界不变。固定 v2 oracle 独立保存于 fixtures/sync/v2，由 Python/Node 各自读取。这里只完成版本契约与离线密码互通；浏览器实测、PG 整批验收与网络同步仍由后续 Gate 独立给出，不由这些单元测试推定。
+
+**Open Questions**：更多实体的 v2 schema、非空历史 bootstrap、生产兼容协商与跨 epoch 操作不在本次契约范围。

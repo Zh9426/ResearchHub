@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from packages.secure_wire.canonical import canonical_bytes, digest, strict_loads
 from packages.secure_wire.checkpoint import extend_chain, verify_checkpoint
-from packages.secure_wire.envelope import b64decode, hex_bytes, safe_int, uuid
+from packages.secure_wire.envelope import TRANSACTION_VERSION_PAIRS, b64decode, hex_bytes, safe_int, uuid
 from packages.secure_wire.membership import (
     fields,
     member_of,
@@ -702,6 +702,7 @@ def dispatch(db, project, manifest, proof, method, path, query, body, now):
         fields(body, frozenset())
         return {
             "audience": "ResearchHub/SecureRelay/QA/v1",
+            "transaction_version_pairs": [list(pair) for pair in TRANSACTION_VERSION_PAIRS],
             "manifest_digest": digest(manifest),
             "sequence": project.sequence,
         }

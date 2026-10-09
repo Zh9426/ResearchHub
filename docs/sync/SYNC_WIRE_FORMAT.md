@@ -31,3 +31,10 @@ UUID为lowercase canonical36字符，nil禁止；datetime为真实日历UTC固�
 ## Fixed vectors 与兼容
 
 fixtures/sync/v1保存input、expected canonical UTF-8（文本及hex）、SHA256，以及valid/invalid protocol案例。包含ASCII/中文/emoji/combining/UTF16排序差异、所有空值/布尔/整数/large整数/精度decimal/嵌套/数组/UUID/datetime、多changes/parents/modulehash。Python与TS独立测试同一预期，不互相调用encoder。遇到未知protocol/schema返回UPGRADE_REQUIRED/QUARANTINED，原始已接收内容可保留，但不能显示fully synced。
+
+
+## Sprint 3B 显式版本增量（ADR-029）
+
+本节追加修订既有版本范围，历史 v1 向量和字节定义不变。事务只接受 `(1,1)` 与 `(2,2)`，不做独立版本号的笛卡尔积；v2 只允许 ResearchRun（原字段加 boolean is_highlighted、string highlight_type/highlight_note）和 Note（原字段）。星标字段仅 Run，缺省可用、null 不可用。ChangeSet.schema_version=2 采用同一 v2 白名单；事务全部成员 schema 必须匹配。严禁降级过滤未知字段。
+
+SecureEnvelope 仍为 envelope_version=1、原 suite 与原签名/AAD domain；transaction 的 header protocol/schema 从内部事务派生并在 open 时逐项比对，snapshot/artifact_manifest 只 `(1,1)`。Relay hello.transaction_version_pairs 明示传输支持，调用端仍需验证可信成员与本端语义能力。固定新向量见 fixtures/sync/v2；可复用能力常量为 Python SUPPORTED_VERSION_PAIRS/公共 TRANSACTION_VERSION_PAIRS 与 TS SUPPORTED_VERSION_PAIRS。

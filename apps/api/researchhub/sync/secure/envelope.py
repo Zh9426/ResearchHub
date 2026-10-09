@@ -39,6 +39,8 @@ def seal_record(
     dependencies=None,
     checkpoint_sequence=0,
     record_type="snapshot",
+    protocol_version=1,
+    schema_version=1,
 ):
     plaintext = canonical_bytes(record)
     if len(plaintext) > 180 * 1024:
@@ -46,8 +48,8 @@ def seal_record(
     header = {
         "envelope_version": 1,
         "crypto_suite": SUITE,
-        "protocol_version": 1,
-        "schema_version": 1,
+        "protocol_version": protocol_version,
+        "schema_version": schema_version,
         "record_type": record_type,
         "opaque_project_id": opaque_project_id,
         "sender_device_id": sender_device_id,
@@ -128,6 +130,8 @@ def seal_transaction(tx, key, seed, vault, nonce_prefix, **bindings):
         nonce_prefix,
         dependencies=tx["dependencies"],
         record_type="transaction",
+        protocol_version=tx["protocol_version"],
+        schema_version=tx["schema_version"],
         **bindings,
     )
 
@@ -136,7 +140,9 @@ def open_transaction(envelope, key, public_key, *, project_id, **bindings):
     tx = open_record(envelope, key, public_key, record_type="transaction", **bindings)
     validate_transaction(tx)
     if (
-        tx["project_id"] != project_id
+        tx["protocol_version"] != envelope["protocol_version"]
+        or tx["schema_version"] != envelope["schema_version"]
+        or tx["project_id"] != project_id
         or tx["device_id"] != envelope["sender_device_id"]
         or tx["dependencies"] != envelope["dependencies"]
     ):

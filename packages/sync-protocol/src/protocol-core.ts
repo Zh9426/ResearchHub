@@ -34,6 +34,8 @@ const payloadFields: Record<string, string[]> = Object.fromEntries(Object.entrie
   HumanConclusion: 'run_id content conclusion status evidence_ids',
   ModuleUpgrade: 'module_id from_version to_version module_version module_snapshot module_snapshot_hash expected_version expected_target_digest',
 }).map(([key, value]) => [key, value.split(' ')]));
+export const SUPPORTED_VERSION_PAIRS: readonly (readonly [number, number])[] = Object.freeze([Object.freeze([1, 1] as const), Object.freeze([2, 2] as const)]);
+const v2PayloadFields: Record<string, string[]> = { ResearchRun: [...payloadFields.ResearchRun, 'is_highlighted', 'highlight_type', 'highlight_note'], Note: [...payloadFields.Note] };
 const evidenceStates = 'proposed unknown hypothesis assumed synthetic simulated measured calibrated validated reproduced rejected'.split(' ');
 const enums: Record<string, string[]> = {
   source_kind: 'unknown synthetic assumed literature manufacturer measured calibrated derived'.split(' '),
@@ -69,15 +71,19 @@ function stamp(value: unknown): void {
   const parsed = new Date(value);
   if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value) reject('invalid calendar datetime');
 }
-function version(value: unknown): void { if (value !== 1) reject('unsupported protocol/schema version', 'UPGRADE_REQUIRED'); }
+function version(value: unknown): void { if (value !== 1 && value !== 2) reject('unsupported protocol/schema version', 'UPGRADE_REQUIRED'); }
+export function requireVersionPair(protocol: unknown, schema: unknown, supported = SUPPORTED_VERSION_PAIRS): void {
+  if (!supported.some(([p, s]) => p === protocol && s === schema)) reject('unsupported protocol/schema pair', 'UPGRADE_REQUIRED');
+}
 function enumValue(value: unknown, allowed: string[]): void { if (typeof value !== 'string' || !allowed.includes(value)) reject('unknown enum value'); }
 function setList(value: unknown, validate: (value: unknown) => void): asserts value is string[] {
   if (!Array.isArray(value)) reject('set must be an array');
   value.forEach(validate);
   if (value.some((entry, i) => i > 0 && value[i - 1] >= entry)) reject('set must be sorted and unique');
 }
-function payload(kind: string, value: unknown): void {
-  if (!object(value) || Object.keys(value).some(key => !payloadFields[kind].includes(key))) reject('unknown business payload fields');
+function payload(kind: string, value: unknown, schemaVersion = 1): void {
+  const fields = schemaVersion === 1 ? payloadFields : v2PayloadFields;
+  if (!Object.hasOwn(fields, kind) || !object(value) || Object.keys(value).some(key => !fields[kind].includes(key))) reject('unknown business payload fields');
   for (const [key, item] of Object.entries(value)) {
     if (key === 'value' || (item === null && nullable.has(key))) continue;
     if (Object.hasOwn(enums, key)) enumValue(item, enums[key]);
@@ -88,7 +94,7 @@ function payload(kind: string, value: unknown): void {
       if (key.endsWith('_ids')) item.forEach(uuid);
       else if (key === 'enabled_capabilities' && item.some(v => typeof v !== 'string')) reject('capability must be string');
       else if (key === 'criteria') item.forEach(v => payload('GateCriterion', v));
-    } else if (key === 'is_confirmed') { if (typeof item !== 'boolean') reject('confirmation must be boolean'); }
+    } else if ((key === 'is_confirmed' || key === 'is_highlighted')) { if (typeof item !== 'boolean') reject('confirmation must be boolean'); }
     else if (['size', 'key_epoch'].includes(key)) { if (typeof item !== 'number' || !Number.isSafeInteger(item) || item < 0) reject('count must be nonnegative integer'); }
     else if (['checksum', 'sha256', 'module_snapshot_hash', 'expected_target_digest'].includes(key)) hash(item);
     else if (['started_at', 'completed_at', 'due_date'].includes(key)) stamp(item);
@@ -114,13 +120,13 @@ export function validateChange(input: unknown): ChangeSet {
   version(input.schema_version);
   enumValue(input.actor_type, ['human', 'codex', 'chatgpt', 'system']);
   enumValue(input.operation, ['create', 'update', 'archive', 'trash', 'restore', 'resolve']);
-  enumValue(input.object_type, Object.keys(payloadFields));
+  enumValue(input.object_type, Object.keys(input.schema_version === 1 ? payloadFields : v2PayloadFields));
   hash(input.module_snapshot_hash);
   stamp(input.created_at);
   setList(input.parents, hash);
   const count = input.parents.length;
   if ((input.operation === 'create' && count !== 0) || (input.operation === 'resolve' && count < 1) || (!['create','resolve'].includes(input.operation as string) && count !== 1)) reject('invalid parent count');
-  payload(input.object_type as string, input.payload);
+  payload(input.object_type as string, input.payload, input.schema_version as number);
   return input as ChangeSet;
 }
 
@@ -128,7 +134,7 @@ export function validateTransaction(input: unknown, context?: ActorContext): Syn
   fields(input, transactionFields);
   for (const key of ['transaction_id', 'idempotency_key', 'project_id', 'device_id', 'actor_id']) uuid(input[key]);
   if (input.transaction_id !== input.idempotency_key) reject('idempotency key must equal transaction id');
-  version(input.protocol_version); version(input.schema_version);
+  requireVersionPair(input.protocol_version, input.schema_version);
   enumValue(input.actor_type, ['human', 'codex', 'chatgpt', 'system']);
   stamp(input.created_at); setList(input.dependencies, uuid);
   if (input.dependencies.includes(input.transaction_id as string)) reject('self dependency');

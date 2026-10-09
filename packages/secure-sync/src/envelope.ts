@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { canonicalBytes, strictLoads, digest } from '../../sync-protocol/src/canonical.ts';
-import { validateTransaction } from '../../sync-protocol/src/protocol.ts';
+import { validateTransaction, requireVersionPair } from '../../sync-protocol/src/protocol.ts';
 import { aesEncrypt, aesDecrypt, sign, verify } from './crypto.ts';
 import { NonceVault } from './nonce.ts';
 export const SUITE = 'RH-v1/AES256GCM/Ed25519/HPKE-X25519-HKDFSHA256-AES256GCM';
@@ -36,8 +36,8 @@ function fields(value: Envelope, expected: string[]): void {
 export const headerOf = (env: Envelope): Envelope => Object.fromEntries(HEADER_FIELDS.map(key => [key, env[key]]));
 export function validateHeader(header: Envelope): void {
     fields(header, HEADER_FIELDS);
-    for (const f of ['envelope_version', 'protocol_version', 'schema_version'])
-        integer(header[f], 1, 1);
+    integer(header.envelope_version, 1, 1);
+    requireVersionPair(header.protocol_version, header.schema_version, header.record_type === 'transaction' ? undefined : [[1, 1]]);
     if (header.crypto_suite !== SUITE || !['transaction', 'snapshot', 'artifact_manifest'].includes(header.record_type))
         throw new Error('UNSUPPORTED_SUITE');
     for (const f of ['opaque_project_id', 'sender_device_id', 'message_id'])
@@ -90,11 +90,13 @@ export async function sealRecord(record: unknown, key: Uint8Array, seed: Uint8Ar
     dependencies?: string[];
     checkpoint_sequence?: number;
     record_type?: string;
+    protocol_version?: number;
+    schema_version?: number;
 }): Promise<Envelope> {
     const plain = canonicalBytes(record);
     if (plain.length > 180 * 1024)
         throw new Error('MESSAGE_TOO_LARGE');
-    const header = { envelope_version: 1, crypto_suite: SUITE, protocol_version: 1, schema_version: 1, record_type: options.record_type ?? 'snapshot', opaque_project_id: options.opaque_project_id, sender_device_id: options.sender_device_id, membership_epoch: options.membership_epoch, key_epoch: options.key_epoch, message_id: options.message_id, semantic_transaction_digest: digest(record), dependencies: options.dependencies ?? [], nonce: '00'.repeat(12), checkpoint_sequence: options.checkpoint_sequence ?? 0 };
+    const header = { envelope_version: 1, crypto_suite: SUITE, protocol_version: options.protocol_version ?? 1, schema_version: options.schema_version ?? 1, record_type: options.record_type ?? 'snapshot', opaque_project_id: options.opaque_project_id, sender_device_id: options.sender_device_id, membership_epoch: options.membership_epoch, key_epoch: options.key_epoch, message_id: options.message_id, semantic_transaction_digest: digest(record), dependencies: options.dependencies ?? [], nonce: '00'.repeat(12), checkpoint_sequence: options.checkpoint_sequence ?? 0 };
     validateHeader(header);
     header.nonce = Buffer.from(vault.reserve(key, prefix)).toString('hex');
     const ct = await aesEncrypt(key, new Uint8Array(Buffer.from(header.nonce, 'hex')), plain, aad(header));
@@ -134,14 +136,14 @@ export async function sealTransaction(tx: unknown, key: Uint8Array, seed: Uint8A
     const value = validateTransaction(tx);
     if (value.device_id !== options.sender_device_id)
         throw new Error('DEVICE_MISMATCH');
-    return sealRecord(value, key, seed, vault, prefix, { ...options, dependencies: value.dependencies, record_type: 'transaction' });
+    return sealRecord(value, key, seed, vault, prefix, { ...options, dependencies: value.dependencies, record_type: 'transaction', protocol_version: value.protocol_version, schema_version: value.schema_version });
 }
 export async function openTransaction(env: Envelope, key: Uint8Array, pub: Uint8Array, bindings: Bindings & {
     nonce_prefix: number;
     project_id: string;
 }): Promise<unknown> {
     const tx = validateTransaction(await openRecord(env, key, pub, { ...bindings, record_type: 'transaction' }));
-    if (tx.project_id !== bindings.project_id || tx.device_id !== env.sender_device_id || JSON.stringify(tx.dependencies) !== JSON.stringify(env.dependencies))
+    if (tx.protocol_version !== env.protocol_version || tx.schema_version !== env.schema_version || tx.project_id !== bindings.project_id || tx.device_id !== env.sender_device_id || JSON.stringify(tx.dependencies) !== JSON.stringify(env.dependencies))
         throw new Error('TRANSACTION_BINDING_MISMATCH');
     return tx;
 }
