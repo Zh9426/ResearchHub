@@ -74,3 +74,17 @@ test('conflict title is a fixed mapping and arbitrary titles never escape',()=>{
  assert.equal(reporter.safeTitle('C conflict actual browser pairing and candidate convergence'),'C conflict actual browser pairing and candidate convergence');
  assert.equal(reporter.safeTitle('PRIVATE_SECRET_SENTINEL'),'B2 actual browser pairing, strict TLS and narrow CORS');
 });
+
+test('import diagnostics expose only fixed stages title and paired basename',()=>{
+ for(const phase of ['IMPORT_SOURCE_UI','IMPORT_SOURCE_PREPARED','IMPORT_NORMAL_PAIRING','IMPORT_PREVIEW','IMPORT_CONFIRM','IMPORT_NATIVE_SEND','IMPORT_PC_RETURN','IMPORT_COMPLETE'])assert.equal(reporter.safePhase(phase),phase);
+ assert.equal(reporter.safePhase('IMPORT_CONFIRM PRIVATE_SECRET'),'START');
+ const title='O explicit 3A source archive and same-identity native replay';assert.equal(reporter.safeTitle(title),title);assert.notEqual(reporter.safeTitle(title+' PRIVATE_SECRET'),title+' PRIVATE_SECRET');
+ const result=reporter.summarizeError({stack:'at /PRIVATE/tests-network-matrix/import.spec.ts:22:4\nat /PRIVATE/tests-network/import.spec.ts:22:4\nat /PRIVATE/tests-network-matrix/import-secret.ts:22:4\nat /PRIVATE/tests-network-matrix/import.spec.ts:999999:4'});
+ assert.deepEqual(result.locations,[{file:'import.spec.ts',line:22,column:4}]);assert.equal(JSON.stringify(result).includes('PRIVATE'),false);
+});
+
+test('cleanup summaries keep both classified failures and drop arbitrary fields',()=>{
+ const safe=(reporter as any).safeCleanup;assert.equal(typeof safe,'function');const error=reporter.summarizeError({message:'PRIVATE EPERM'});
+ const value=safe({state:'FAILED',primaryError:error,errors:[error,{message:'PRIVATE',errorType:'PRIVATE',sha256:'PRIVATE',diagnostics:['PRIVATE']}],private:'PRIVATE'});
+ assert.equal(value.primaryError.sha256,error.sha256);assert.equal(value.errors.length,2);assert.deepEqual(value.errors[1],{errorType:'UNKNOWN',sha256:null,diagnostics:[]});assert.equal(JSON.stringify(value).includes('PRIVATE'),false);
+});

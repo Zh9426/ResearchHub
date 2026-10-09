@@ -69,7 +69,8 @@ def browser_env_command(args, values=None):
     """Reset only inherited directory overrides for the QA child process."""
     values = values or {}
     if not set(values) <= {'RH_B2_RESULTS', 'RH_B2_BUILD_HASH', 'RH_B2_TLS_CASE',
-                          'PLAYWRIGHT_BROWSERS_PATH', 'GITHUB_SHA'}:
+                          'PLAYWRIGHT_BROWSERS_PATH', 'GITHUB_SHA',
+                          'RH_IMPORT_PHASE', 'RH_IMPORT_MODULE', 'RH_IMPORT_SOURCE_DIR'}:
         raise ValueError('UNEXPECTED_QA_ENV_KEY')
     removed = ('CHROME_CONFIG_HOME', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME',
                'XDG_DATA_HOME', 'XDG_STATE_HOME')
@@ -129,6 +130,10 @@ def network_scenario(scenario):
         'conflict': {'directory': 'conflict-ci', 'config': 'playwright.conflict.config.ts',
                      'node': 'ci-browser-conflict'},
     }
+    for module in ('hdsp', 'ice-sonocuring'):
+        choices['import-' + module] = {
+            'directory': 'import-' + module + '-ci', 'config': 'playwright.import.config.ts',
+            'node': 'ci-browser-import-' + module, 'module': module}
     if not isinstance(scenario, str) or scenario not in choices:
         raise ValueError('UNKNOWN_NETWORK_SCENARIO')
     return choices[scenario]
@@ -136,6 +141,7 @@ def network_scenario(scenario):
 
 def main(scenario='baseline'):
     selected = network_scenario(scenario)
+    importing = 'module' in selected
     OUT = RUNTIME / 'browser-sync-qa' / selected['directory']
     if sys.platform != 'linux' or os.environ.get('GITHUB_ACTIONS') != 'true':
         raise RuntimeError('EPHEMERAL_LINUX_CI_ONLY')
@@ -194,6 +200,7 @@ def main(scenario='baseline'):
         current_stage = name + '-start'
         port = int(origin.rsplit(':', 1)[1])
         owner_path = RUNTIME / ('browser-sync-qa/pc/server-owner.json' if name == 'pc'
+                                else 'browser-local-qa/server-owner.json' if name == 'source-static'
                                 else 'browser-sync-qa/server-owner.json')
         if owner_path.exists():
             raise RuntimeError('EXISTING_QA_OWNER_REQUIRED_REVIEW')
@@ -232,7 +239,8 @@ def main(scenario='baseline'):
         if not node or not PUBLIC_BROWSER.is_dir():
             raise RuntimeError('PUBLIC_NODE_BROWSER_REQUIRED')
         users = {}
-        for case, user in [('untrusted', 'rhqatlsbad'), ('trusted', 'rhqatlsgood')]:
+        browser_users = [('trusted', 'rhqatlsgood')] if importing else [('untrusted', 'rhqatlsbad'), ('trusted', 'rhqatlsgood')]
+        for case, user in browser_users:
             run('user-' + case, ['sudo', 'useradd', '--create-home', '--shell', '/bin/bash', user])
             account = pwd.getpwnam(user)
             owned_user_ids.append(account.pw_uid)
@@ -268,9 +276,13 @@ def main(scenario='baseline'):
                                            '-i', str(home / 'qa-ca.crt')], cwd=home))
         evidence['caSha256'] = hashlib.sha256(public_ca.read_bytes()).hexdigest()
         env = {**os.environ, 'PYTHONPATH': str(ROOT / 'apps/api') + os.pathsep + str(ROOT)}
-        run('pc-setup', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'setup', '--node', selected['node']], env=env)
-        start_service('pc', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'start', '--node', selected['node']],
-                      'http://127.0.0.1:3315', env)
+        if not importing:
+            run('pc-setup', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'setup', '--node', selected['node']], env=env)
+            start_service('pc', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'start', '--node', selected['node']],
+                          'http://127.0.0.1:3315', env)
+        else:
+            start_service('source-static', [node, 'apps/browser-qa/scripts/server.mjs'],
+                          'http://127.0.0.1:3313', {**env, 'RH_QA_PROFILE': 'local'})
         start_service('browser-static', [node, 'apps/browser-qa/scripts/server.mjs'],
                       'http://127.0.0.1:3314', {**env, 'RH_QA_PROFILE': 'sync'})
         build = RUNTIME / 'browser-sync-qa/dist'
@@ -278,11 +290,20 @@ def main(scenario='baseline'):
         pc_build = RUNTIME / 'browser-sync-qa/pc/dist'
         evidence['buildHashes'] = {'browser': build_hash, 'pc': hashlib.sha256(
             (pc_build / 'app.js').read_bytes() + (pc_build / 'app.css').read_bytes()).hexdigest()}
-        for case, (user, home) in users.items():
-            results = home / 'network-results'
+        if importing:
+            source_build = RUNTIME / 'browser-local-qa/dist'
+            evidence['buildHashes']['source3A'] = hashlib.sha256(
+                (source_build / 'app.js').read_bytes() + (source_build / 'app.css').read_bytes()).hexdigest()
+        cases = [('prepare', users['trusted']), ('trusted', users['trusted'])] if importing else list(users.items())
+        for case, (user, home) in cases:
+            results = home / ('source-results' if case == 'prepare' else 'network-results')
             values = {'RH_B2_RESULTS': str(results), 'RH_B2_BUILD_HASH': build_hash,
-                      'RH_B2_TLS_CASE': case, 'PLAYWRIGHT_BROWSERS_PATH': str(PUBLIC_BROWSER),
+                      'RH_B2_TLS_CASE': 'trusted' if importing else case, 'PLAYWRIGHT_BROWSERS_PATH': str(PUBLIC_BROWSER),
                       'GITHUB_SHA': os.environ['GITHUB_SHA']}
+            if importing:
+                values.update({'RH_IMPORT_PHASE': 'prepare' if case == 'prepare' else 'apply',
+                               'RH_IMPORT_MODULE': selected['module'],
+                               'RH_IMPORT_SOURCE_DIR': str(home / 'import-source')})
             run('actual-home-' + case, as_user(user, [node, '-e',
                 'const os=require("os");if(process.env.HOME!==os.userInfo().homedir)process.exit(2)'], cwd=home))
             # Observe the same login environment/cwd as Playwright, before any
@@ -330,10 +351,24 @@ def main(scenario='baseline'):
                         screenshots = ('desktop.png', 'mobile.png')
                         if scenario == 'conflict':
                             screenshots += ('conflict-comparison.png', 'conflict-candidate.png')
+                        if importing:
+                            screenshots = ('import-desktop.png', 'import-mobile.png')
                         for filename in screenshots:
                             run('collect-' + filename.split('.')[0], ['sudo', 'install', '-m', '0600',
                                 '-o', str(os.getuid()), '-g', str(os.getgid()), str(results / filename),
                                 str(OUT / ('trusted-' + filename))])
+            if importing and case == 'prepare':
+                # Read as the browser UID with size/owner/no-symlink checks.
+                # Only the validated descriptor crosses to the PC owner; the
+                # rescue package and profiles remain in the browser's home.
+                run('source-descriptor', as_user(user, [sys.executable,
+                    str(ROOT / 'scripts/qa-source-descriptor.py'),
+                    str(home / 'import-source/source-project.json')], cwd=home))
+                descriptor = OUT / 'source-descriptor.private.log'
+                source_args = ['--node', selected['node'], '--source-project', str(descriptor)]
+                run('pc-setup', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'setup', *source_args], env=env)
+                start_service('pc', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'start', *source_args],
+                              'http://127.0.0.1:3315', env)
         evidence['status'] = 'PASS'
     except Exception as exc:
         evidence['status'] = 'FAIL'
@@ -349,7 +384,8 @@ def main(scenario='baseline'):
                     if name == 'pc':
                         run('pc-stop', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'stop'], env=env)
                     else:
-                        run('browser-static-stop', [node, 'apps/browser-qa/scripts/stop.mjs'], env={**env, 'RH_QA_PROFILE': 'sync'})
+                        run(name + '-stop', [node, 'apps/browser-qa/scripts/stop.mjs'],
+                            env={**env, 'RH_QA_PROFILE': 'local' if name == 'source-static' else 'sync'})
                     process.wait(timeout=15)
             except Exception as exc:
                 evidence['status'] = 'FAIL'
@@ -418,5 +454,5 @@ def main(scenario='baseline'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--scenario', choices=('baseline', 'conflict'), default='baseline')
+    parser.add_argument('--scenario', choices=('baseline', 'conflict', 'import-hdsp', 'import-ice-sonocuring'), default='baseline')
     sys.exit(main(parser.parse_args().scenario))

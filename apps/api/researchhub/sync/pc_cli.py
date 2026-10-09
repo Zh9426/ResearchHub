@@ -19,13 +19,13 @@ def node_path(runtime,name):
     return result
 
 
-def setup_selected_node(path,module):
+def setup_selected_node(path,module,source_project=None):
     from .secure.transport_pg import client_engine
     from .pc_identity import setup_node
     from .pc_pairing import pin_node_bootstrap,make_transport
     engine=client_engine()
     try:
-        node=setup_node(engine,path,module)
+        node=setup_node(engine,path,module,source_project=source_project)
         pin_node_bootstrap(node)
         transport=make_transport(engine,node)
         try:
@@ -41,11 +41,23 @@ def main():
     parser.add_argument('action',choices=('start','stop','setup'))
     parser.add_argument('--module',choices=('generic','hdsp','ice-sonocuring'),default='generic')
     parser.add_argument('--node',help='Optional isolated synthetic node slug, within owned PC runtime only')
+    parser.add_argument('--source-project',help='Explicit frozen SYNTHETIC 3A source project descriptor JSON')
     args=parser.parse_args()
     runtime=ROOT/'storage/runtime/browser-sync-qa/pc'
     selected_node=node_path(runtime,args.node)
+    source_project=None
+    if args.source_project:
+        from pathlib import Path
+        from packages.secure_wire.canonical import strict_loads
+        from .pc_identity import validate_source_project
+        raw=Path(args.source_project).read_bytes()
+        if len(raw)>1024*1024:raise ValueError('SOURCE_PROJECT_TOO_LARGE')
+        source_project=strict_loads(raw)
+        source=validate_source_project(source_project)
+        args.module=source['module_id']
+        if args.node is None:raise ValueError('SOURCE_PROJECT_EXPLICIT_NODE_REQUIRED')
     if args.action=='setup':
-        setup_selected_node(selected_node,args.module);return
+        setup_selected_node(selected_node,args.module,source_project);return
     owner_file=runtime/'server-owner.json'
     if args.action=='stop':
         owner=json.loads(owner_file.read_text())
@@ -64,7 +76,7 @@ def main():
     token=secrets.token_urlsafe(32);runtime.mkdir(parents=True,exist_ok=True)
     try:
         with owner_file.open('x') as f:json.dump({'pid':os.getpid(),'token':token,'origin':ORIGIN},f)
-        app=create_app(module_id=args.module,runtime=selected_node)
+        app=create_app(module_id=args.module,runtime=selected_node,source_project=source_project)
         app.state.stop_token=token
         server=uvicorn.Server(uvicorn.Config(app,host='127.0.0.1',port=3315,access_log=False,log_level='info'))
         @app.post('/_qa_stop')

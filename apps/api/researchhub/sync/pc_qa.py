@@ -28,10 +28,10 @@ def local_object(kind,oid,pid,document,version):
         'status':document.get('status','planned'),'scientific_outcome':document.get('scientific_outcome','unknown'),
         'context_data':document.get('context_data',{}),'is_highlighted':document.get('is_highlighted',False)}
 
-def create_app(*,engine=None,runtime=None,module_id='generic',pairing_transport=None):
+def create_app(*,engine=None,runtime=None,module_id='generic',pairing_transport=None,source_project=None):
     if os.environ.get('HUB_SYNC_QA')!='1':raise RuntimeError('Explicit HUB_SYNC_QA=1 required')
     engine=engine or client_engine();guard(engine)
-    node=setup_node(engine,runtime or ROOT/'storage/runtime/browser-sync-qa/pc/node',module_id,pairing_transport=pairing_transport)
+    node=setup_node(engine,runtime or ROOT/'storage/runtime/browser-sync-qa/pc/node',module_id,pairing_transport=pairing_transport,source_project=source_project)
     app=FastAPI(docs_url=None,redoc_url=None,openapi_url=None)
     app.state.node=node
     sessions={}

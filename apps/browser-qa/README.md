@@ -190,3 +190,22 @@ RH036 的实际诊断发现：登录后继承的 `XDG_CONFIG_HOME` 指向该 QA 
 Harness 保留 `crashpadPathProbes` 的清理前观察，再仅对 QA 浏览器子进程用固定 `env -u` 名单移除 `CHROME_CONFIG_HOME`、`XDG_CONFIG_HOME`、`XDG_CACHE_HOME`、`XDG_DATA_HOME`、`XDG_STATE_HOME`，使目录选择回退到该 OS 用户真实 home，包括现代 NSS 默认 data 位置。`crashpadCleanPathProbes` 必须确认 HOME_FALLBACK、真实 home 内、可写以及临时目录创建后清理成功；浏览器使用同一清理后的环境。任一检查失败即保留首败并停止，不重试同一 attempt。
 
 路径探针不输出环境值或路径、不写 home 外目录、不创建默认配置/Crash Reports 目录；只有 home 内最近实际父目录中的唯一空临时探针目录会被创建并删除。Crashpad、证书校验和网络断言均保持启用。每次修补后的完整浏览器结果仍须由新 SHA 的首次 Linux CI 验证。
+
+
+## 显式导入 3A 合成救援包（RH047）
+
+在 3313 专用 QA profile 导出完整合成救援包。3314 的“显式导入 3A 救援包”面板可先读取文件、选择单个来源项目，并下载新 PC 初始化来源描述。只支持冻结的共同记录字段；不支持字段逐项列出阻塞，不丢弃正文。不要初始化另一个同名项目来替代来源 UUID。
+
+在既有受控 QA Relay 环境中，用来源描述初始化全新 PC 节点（以实际下载路径替换示例）：
+
+```powershell
+$env:HUB_SYNC_QA='1'
+$env:HUB_RELAY_QA='1'
+$env:PYTHONPATH='H:\ResearchHub\apps\api;H:\ResearchHub'
+.venv/Scripts/python.exe -m researchhub.sync.pc_cli setup --node import-hdsp-manual --source-project storage/runtime/source-project.json
+.venv/Scripts/python.exe -m researchhub.sync.pc_cli start --node import-hdsp-manual --source-project storage/runtime/source-project.json
+```
+
+使用独立 B profile 完成正常设备配对，再在同项目面板只读预览并明确确认。已保存的每次来源版本转换为当前设备的新操作；混合正文与星标编辑保留完整字段，其他项目及未保存草稿只归档。重复确认不增加操作。归档成功尚未发送，使用两端“立即同步”完成传输。可下载原始归档与来源到新操作及 wire 身份的映射，不含密钥/nonce，也不是当前 accepted 状态备份。
+
+来源包、描述、映射均只存于忽略的合成 QA 目录。Linux CI 为 HDSP、ICE 分别使用独立 VM、OS 用户、profile 和数据库；原生导入单测不是 HTTPS 网络验收。TLS-001 仍 OPEN，Windows HTTPS 尚未验收。

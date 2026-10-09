@@ -162,9 +162,9 @@ RH038规格复审另发现测试清理串行调用可能因证据写入或浏览
 | B 离线创建与星标 | A2独立浏览器工作区已验证；同一已加入项目的端到端重开待验收 |
 | C 连续离线修改 | 稳定mapping与父链、实际浏览器正式密封已验证；真实发送待C |
 | D Browser→PC | RH045实际Linux UI/原HTTPS/独立PG-IDB基础路径通过；完整失败矩阵待验收 |
-| E PC→Browser | RH045实际PC界面编辑回传B通过，同ID/内容及dirty保留；冲突流程待验收 |
+| E PC→Browser | RH045实际PC界面编辑回传B通过；RH046原用例回归与独立冲突网络通过，同ID/内容及dirty保留 |
 | F PC节点暂离线 | NOT VERIFIED；本机进程停止不等于宿主断电 |
-| G 双向冲突 | DESIGNED ONLY；三方比较与解决尚未实现 |
+| G 双向冲突 | RH046首次真实HTTPS通过：同BASE双分支、字段比较、离线提案、PC过期比较拒绝及双端CANDIDATE收敛；第三分支由原生/独立内核向量验证 |
 | H 不同对象与回显 | NOT VERIFIED |
 | I ACK丢失/重复 | vault密文exact retry已验证；真实网络ACK丢失尚未验收 |
 | J 保存和接收失败 | 本地IDB/CAS及安全持久化负例、真实整页IDB接收已验证；完整网络失败路径待验收 |
@@ -173,7 +173,7 @@ RH038规格复审另发现测试清理串行调用可能因证据写入或浏览
 | M 浏览器网络边界 | RH038实际Linux严格TLS、直接Fetch、CORS正负例通过；Windows未验证，C业务路径仍待验收 |
 | N 撤销与旧epoch | B1 vault撤销/history负例已验证；PC真实撤销与网络待验收 |
 | O 旧3A记录适配 | NOT IMPLEMENTED；不能按名字合并或克隆发送身份 |
-| P 状态真实性 | RH045逐记录Relay与特定设备签名回执实际通过；当前DAG/历史应用分列，冲突UI待验收 |
+| P 状态真实性 | RH045签名回执实际通过；RH046冲突提案实际收敛仍CANDIDATE，历史应用与当前科研候选分列 |
 
 上述局部测试不等于对应完整场景PASS。正常关闭重开、故障注入与真正进程终止分别记录；尚无操作系统断电、实体手机或真实磁盘满证据。
 
@@ -217,13 +217,13 @@ RH038质量复审发现READY前停滞无法取得清理句柄的旧helper缺口�
 
 | Gate | 当前状态 |
 |---|---|
-| G1 项目与协议一致 | 局部已验证：同项目加入、版本契约、稳定操作与父链；完整往返集成待验收 |
-| G2 浏览器安全接入 | B检查点PASS；B1正式密码与RH038实际Linux配对/严格TLS/Fetch通过，后续C变更仍需回归 |
+| G1 项目与协议一致 | RH046当前空项目基线、版本/父链及实际往返已验证；显式3A导入仍待实施验收 |
+| G2 浏览器安全接入 | 当前切点PASS；RH046 Linux正式密码、实际配对/严格TLS/Fetch回归通过；Windows HTTPS NOT VERIFIED |
 | G3 本地可靠性 | INCOMPLETE；3A回归通过不替代3B |
-| G4 实际双向传输 | FAIL / INCOMPLETE；RH041首次CI停在C_B_NATIVE_EDIT_UI，已保留证据，尚未定位具体失败操作 |
-| G5 冲突与幂等 | NOT VERIFIED |
+| G4 实际双向传输 | 当前切点PASS；RH045基础往返通过，RH046基础及冲突HTTPS场景首次通过；RH041–RH044失败证据与标签因果修复均保留 |
+| G5 冲突与幂等 | INCOMPLETE；RH046实际冲突通过，ACK丢失/已加入profile重启及失败矩阵尚待验收 |
 | G6 人类体验与状态 | INCOMPLETE |
-| G7 隔离与回归 | INCOMPLETE；A1回归已通过，后续改动待验收 |
+| G7 隔离与回归 | INCOMPLETE；RH046首次CI八job通过，原TLS20轮通过但仍OPEN；实际往返正文/密钥隐私矩阵尚待补齐 |
 
 仍在按A→B→C实施。最终A–P矩阵、实际截图、启动停止命令和最小往返步骤将在真实验收后补充；未进入Sprint3C，也未发布生产版本。
 
@@ -286,3 +286,25 @@ TS与PC接收策略沿用既有Python历史完整冲突集合规则，第三分�
 此前原生a1为子进程EPERM预启动失败；a2为首次38项，a3新增字段UI后39项，a4修正投影消失后的历史版本来源，a5新增精确handoff后重提版本单调断言，均在独立目录保留。最后Audit DTO修正另由root原生39项确认；之后P2补丁上述41项再次独立确认，不把这些阶段绿结果当作原缺陷自行消失。TS历史集合/PG接收/PC命令/Reporter早期RED仅保留在会话工具chunk 9f1f52/26c4e6/be20cd/cea2dc，未落盘原stdout；不虚报文件归档。测试编写错误1f1a05/19fcb2不计产品因果RED。
 
 root另独立协议完整63项、PG conflict_proposal+pc_records共7项、Reporter8项、harness8项、typecheck通过，原始输出在忽略目录 `rh046-root-*.txt` 与 `rh046-harness-*.txt`。Reporter首次沙箱spawn EPERM保留，授权启动子进程后才运行8项；不是断言失败重跑。新scenario选择测试先因缺函数RED，再八项通过。新增冲突用例在独立CI VM中使用全新PC node/profile/项目，复用原HTTPS入口与信任隔离；原baseline配置、180秒用例/420秒harness限制和TLS固定测试不改。可读截图只截比较区域；实际生成、图像审查和网络结论待首次CI。
+
+### RH046首次实际冲突网络通过
+
+`de29d35efa7b25d62a6f2fd9b2e912f79398543a` 已同步；首次 [CI37950023332](https://github.com/Zh9426/ResearchHub/actions/runs/37950023332) attempt1八job全部通过。独立冲突job从新PC/B合成项目和真实UI配对开始，同BASE Note分别编辑，显示BASE/本地/远端，B提交离线提案并经原HTTPS Relay实际传输；PC旧比较保存CAS拒绝且原输入保留，双方同head/同正文/无accepted projection/状态CANDIDATE。此为正常UI、B原生密码与独立PC PG路径，不是测试fixture替身。B build SHA256 `73fafd161e04abc225fabc313ec97c5632b83dc621e02b39e0866d4a261ccefe`；Linux Chromium156.0.8078.4、Node24.21.0、retries0、COMPLETE、cleanup PASS。
+
+已检查实际局部截图：[共同基线与双分支](evidence/sprint3b/c-conflict-comparison.png)、[同步后的候选提案](evidence/sprint3b/c-conflict-candidate.png)。仅合成正文与公共身份，无配对字段；截图SHA256分别 `da22c1b1d2c04352aa3fc048716383dc40410477d4f58b79b92c1f47c874eda7`、`8c46ad373bbae6a2715e81f56f979c5932653310c4fa86a7a35e9c8859443fe5`。最终界面仍需将长机器标识收纳到诊断区并检查移动视口，不宣称已完成全部体验验收。
+
+完整归档 `storage/runtime/browser-local-qa/ci-37950023332-attempt1/`；冲突zip SHA256 `cda9f485c64fecabd1568fc17eef5cc60d2797a72425b8ec07c912235ef5a655`，原基础网络zip `4ae6e6186a9b7d5e57cc53e0942be143db721f04d84afd5d881523f435f0b157`，TLSzip `3ff2c05eecd5814530e260e0da154c60a035e853b00d143e395408f8cfb40c97`。原TLS固定20轮通过不关闭TLS-001；Windows HTTPS/实体移动未验证。整体仍INCOMPLETE，下一片继续显式3A导入与失败/隐私矩阵。
+
+
+## RH047 显式导入实现与首次网络验收前证据
+
+本阶段未将导入网络 Gate 标记 PASS。实现支持来源描述初始化新 PC、保持同一项目 UUID/冻结模块、只读完整历史预览、原子归档与重放、重复确认复用身份以及可下载来源映射。HDSP/ICE 独立 CI 将通过正常 UI 配对和原 HTTPS Relay 往返；原 TLS、baseline、conflict 用例保留。
+
+- root 原生 Chromium：`import/root-native-001`，1 个综合用例 PASS，原输出仅会话工具 `8c8b44`；不虚称已保存完整 stdout。
+- root 独立验证：`import/root-verification-001`，PG 6、Node 23、类型检查和 3A/B/PC 构建均通过，完整日志及 PG JUnit 留在忽略目录。
+- 桥接首次失败：`rh047-harness-green.txt` 虽名称含 green，实际为 FAILED；WinError5 临时目录访问/清理失败。
+- 第二次：`rh047-harness-attempt002.txt`，13 PASS + setup/teardown 2 ERROR；1 MiB 参数默认用作 pytest ID，导致 PYTEST_CURRENT_TEST 超过 Windows 32767 限制。仅添加短固定 ids 后，第三次 `rh047-harness-attempt003.txt` 14 PASS；原输入、大小限制和断言不变，未覆盖失败日志。
+- 实现者的原生 RED/修复与 Node 证据目录见私有 `import/IMPLEMENTER_HANDOFF.md`；SPEC/QUALITY 两阶段审查 PASS。
+- 普通构建 SHA256：3A `f1075cf2f37ec6ffd14a46cf714f9b21993999dbe88babab9c3b76b43034c0a5`；B `a38f3921f85806ff8593fffbf08022e4794814e7a7ec870bbfe1f20899973f6a`；PC `c641cf2474f6dcf3f0519517682defd60943e5a3d76019b63727e9a0c660a362`。
+
+新增网络验收尚未运行；后续须记录精确 SHA 的首次 CI 结果，不重跑到绿色。失败矩阵、最终页面清理和最终报告尚未完成。TLS-001 / PC013 保持 OPEN，整体 INCOMPLETE。

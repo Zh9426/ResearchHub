@@ -24,6 +24,21 @@ def test_network_scenarios_keep_baseline_and_conflict_isolated():
             harness.network_scenario(invalid)
 
 
+def test_import_scenarios_are_fixed_and_cannot_select_arbitrary_config():
+    for module in ('hdsp', 'ice-sonocuring'):
+        assert harness.network_scenario('import-' + module) == {
+            'directory': 'import-' + module + '-ci', 'config': 'playwright.import.config.ts',
+            'node': 'ci-browser-import-' + module, 'module': module}
+    import pytest
+    with pytest.raises(ValueError, match='UNKNOWN_NETWORK_SCENARIO'):
+        harness.network_scenario('import-../../private')
+    values = {'RH_IMPORT_PHASE': 'prepare', 'RH_IMPORT_MODULE': 'hdsp',
+              'RH_IMPORT_SOURCE_DIR': '/home/synthetic/source'}
+    assert harness.browser_env_command(['node'], values)[-4:] == [
+        'RH_IMPORT_PHASE=prepare', 'RH_IMPORT_MODULE=hdsp',
+        'RH_IMPORT_SOURCE_DIR=/home/synthetic/source', 'node']
+
+
 def test_owned_process_metadata_restricts_fields():
     result = SimpleNamespace(returncode=0, stdout='12 1 Ss systemd\n13 12 S (sd-pam)\n'
                              '14 1 Z secret-credential\nmalformed\n')

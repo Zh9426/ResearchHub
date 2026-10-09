@@ -6,7 +6,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from contextlib import closing
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import String, select, text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -37,9 +37,37 @@ class Node:
     project_key: bytes=field(repr=False)
     runtime: Path
 
-def setup_node(engine,runtime,module_id='generic',*,pairing_transport=None):
+def validate_source_project(value):
+    """Validate the complete frozen 3A description without rewriting JSON key order."""
+    try:
+        if set(value) != {'format', 'project'} or value['format'] != 'RESEARCHHUB_3A_SOURCE_PROJECT_V1':
+            raise ValueError()
+        p = value['project']
+        if set(p) != {'id','route_alias','title','scope','module_id','module_version','module_snapshot','module_hash','local_format_version'}:
+            raise ValueError()
+        if str(UUID(p['id'], version=4)) != p['id'] or p['scope'] != 'SYNTHETIC' or type(p['local_format_version']) is not int or p['local_format_version'] != 1:
+            raise ValueError()
+        if not isinstance(p['title'], str) or len(p['title']) > 200:
+            raise ValueError()
+        module = p['module_id']
+        if module not in ('generic','hdsp','ice-sonocuring') or p['route_alias'] != ('ice' if module == 'ice-sonocuring' else module):
+            raise ValueError()
+        frozen = json.loads((Path(__file__).resolve().parents[4] / 'packages/project-modules' / module / 'manifest.json').read_text(encoding='utf-8'))
+        if canonical_bytes(p['module_snapshot']) != canonical_bytes(frozen) or p['module_version'] != frozen['version']:
+            raise ValueError()
+        serialized = json.dumps(p['module_snapshot'], ensure_ascii=False, separators=(',', ':'))
+        if hashlib.sha256(serialized.encode()).hexdigest() != p['module_hash']:
+            raise ValueError()
+        return p
+    except (ValueError, TypeError, KeyError, AttributeError):
+        raise ValueError('SOURCE_PROJECT_INVALID') from None
+
+
+def setup_node(engine,runtime,module_id='generic',*,pairing_transport=None,source_project=None):
     if os.environ.get('HUB_SYNC_QA')!='1':raise RuntimeError('Explicit HUB_SYNC_QA=1 required')
     transport_pg.guard(engine)
+    source = validate_source_project(source_project) if source_project is not None else None
+    if source is not None and source['module_id'] != module_id:raise ValueError('SOURCE_PROJECT_MODULE_MISMATCH')
     # Register pairing metadata before create_all, without changing the product schema.
     from .pc_pairing import OwnerPairing, active_journal
     runtime=Path(runtime).resolve()
@@ -57,6 +85,16 @@ def setup_node(engine,runtime,module_id='generic',*,pairing_transport=None):
         db.execute(text('SELECT pg_advisory_xact_lock(:key)'),{'key':int(node_id[:15],16)})
         row=db.get(PcNode,node_id)
         existing=row is not None
+        if source is not None:
+            semantic = source['id']
+            db.execute(text('SELECT pg_advisory_xact_lock(:key)'), {'key':int(hashlib.sha256(semantic.encode()).hexdigest()[:15],16)})
+            if existing:
+                if row.metadata_public.get('source_project') != source:raise ValueError('SOURCE_PROJECT_CHANGED')
+            elif (db.scalar(select(PcNode).where(PcNode.metadata_public['semantic'].astext == semantic)) is not None
+                    or db.get(domain.Project,semantic) is not None
+                    or db.scalar(select(transport_pg.Trust).where(transport_pg.Trust.semantic_project == semantic)) is not None):
+                raise ValueError('SOURCE_PROJECT_OCCUPIED')
+            elif any(runtime.iterdir()):raise ValueError('SOURCE_PROJECT_FRESH_RUNTIME_REQUIRED')
         for name in ('owner.sqlite','recovery.sqlite'):
             if existing and not (runtime/name).is_file():raise ValueError('BLOCKED_MISSING_DEVICE')
             if existing:
@@ -74,18 +112,19 @@ def setup_node(engine,runtime,module_id='generic',*,pairing_transport=None):
             if not all(p.is_file() for p in (nonce.path,nonce.witness_path,nonce.anchor_path)):
                 raise ValueError('BLOCKED_NONCE_STATE_MISSING')
         else:
-            semantic=str(uuid4()); opaque=str(uuid4()); principal=str(uuid4()); user=str(uuid4())
+            semantic=source['id'] if source else str(uuid4()); opaque=str(uuid4()); principal=str(uuid4()); user=str(uuid4())
             manifest=bootstrap(opaque,owner,recovery)
             key=os.urandom(32)
             grant=make_grant(manifest,owner,owner.device_id,str(uuid4()),key)
             nonce.register_new(key,0)
-            snapshot=strict_loads(canonical_bytes(load_modules()[module_id]))
+            snapshot=source['module_snapshot'] if source else strict_loads(canonical_bytes(load_modules()[module_id]))
             # Freeze JS-compatible key order explicitly; PostgreSQL JSONB otherwise reorders it.
             snapshot_json=json.dumps(snapshot,ensure_ascii=False,separators=(',',':'))
             meta={'semantic':semantic,'opaque':opaque,'principal':principal,'user':user,
                   'actor':str(uuid4()),'session':str(uuid4()),'module_id':module_id,
                   'snapshot_json':snapshot_json,'manifest':manifest,'grant':grant,
                   'owner_root':owner.signing_public,'recovery_root':recovery.signing_public}
+            if source is not None:meta['source_project']=source
             row=PcNode(node_id=node_id,stage='PREPARED',metadata_public=meta)
             db.add(row);db.flush()
         stage=row.stage
@@ -150,7 +189,7 @@ def setup_node(engine,runtime,module_id='generic',*,pairing_transport=None):
             if db.get(domain.User,meta['user']) is None:
                 db.add(domain.User(id=meta['user'],email=meta['user']+'@example.invalid',
                     display_name='SYNTHETIC PC QA',password_hash='SYNTHETIC-NO-LOGIN'));db.flush()
-                db.add(domain.Project(id=meta['semantic'],owner_id=meta['user'],name='SYNTHETIC PC '+module_id,
+                db.add(domain.Project(id=meta['semantic'],owner_id=meta['user'],name=meta.get('source_project',{}).get('title','SYNTHETIC PC '+module_id),
                     module_id=module_id,module_version=snapshot['version'],module_snapshot=snapshot));db.flush()
                 register_project(db,meta['semantic'],digest(snapshot))
                 register_principal(db,principal_id=meta['principal'],user_id=meta['user'],device_id=owner.device_id,
