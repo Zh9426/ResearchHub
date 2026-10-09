@@ -1,6 +1,6 @@
 import { test, expect, type BrowserContext } from '@playwright/test';
 import { resolve } from 'node:path';
-import { runtime, origin, startServer, stopServer, launch, closeBrowser } from './lifecycle';
+import { runtime, origin, startServer, stopServer, cleanup, launch, closeBrowser } from './lifecycle';
 test('独立 QA key、nonce 并发、完整重试及进程重开', async () => {
     const server = await startServer();
     let context: BrowserContext | undefined;
@@ -45,14 +45,14 @@ test('独立 QA key、nonce 并发、完整重试及进程重开', async () => {
         expect(await p.evaluate(({ id }) => (window as any).__SECURITY_QA__.status(id), { id })).toMatchObject({ counter: 5, extractable: false, network: 'BLOCKED FOR NETWORK USE' });
     }
     finally {
-        await context?.close();
-        await stopServer(server);
+        await cleanup(server,[context]);
     }
 });
 test('局部损坏与旧ledger拒绝，失败耗号且同action并发只生成一次', async () => {
     const server = await startServer();
-    const context = await launch(resolve(runtime, 'profiles', `crypto-failure-${Date.now()}`));
+    let context:BrowserContext|undefined;
     try {
+        context = await launch(resolve(runtime, 'profiles', `crypto-failure-${Date.now()}`));
         const p = await context.newPage();
         await p.goto(origin);
         const result = await p.evaluate(async () => {
@@ -109,15 +109,15 @@ test('局部损坏与旧ledger拒绝，失败耗号且同action并发只生成�
         console.log(JSON.stringify(result));
     }
     finally {
-        await context.close();
-        await stopServer(server);
+        await cleanup(server,[context]);
     }
 });
 test('真实 key DB 存在时救援包排除 key 与 nonce，fresh profile 不克隆身份', async () => {
     const server = await startServer();
-    const source = await launch(resolve(runtime, 'profiles', `key-rescue-source-${Date.now()}`));
-    const target = await launch(resolve(runtime, 'profiles', `key-rescue-target-${Date.now()}`));
+    let source:BrowserContext|undefined,target:BrowserContext|undefined;
     try {
+        source=await launch(resolve(runtime,'profiles',`key-rescue-source-${Date.now()}`));
+        target=await launch(resolve(runtime,'profiles',`key-rescue-target-${Date.now()}`));
         const p = await source.newPage();
         await p.goto(origin);
         await p.getByRole('button', { name: '初始化合成工作区', exact: true }).click();
@@ -157,8 +157,6 @@ test('真实 key DB 存在时救援包排除 key 与 nonce，fresh profile 不�
         expect(await p.evaluate(id => (window as any).__SECURITY_QA__.open(id, 'TESTONLY-rescue'), id)).toBe('TESTONLY-payload');
     }
     finally {
-        await source.close();
-        await target.close();
-        await stopServer(server);
+        await cleanup(server,[source,target]);
     }
 });

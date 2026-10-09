@@ -1,6 +1,6 @@
 # Sprint 3A 浏览器离线工作台验收记录
 
-状态：实施中，尚未完成核心本地工作流验收。以下仅记录已执行证据；最终报告在全部任务与复审后更新。
+状态：核心本地工作流已完成阶段验收，正在收尾完整回归、截图与独立复审。以下仅记录已执行证据；最终报告在全部任务与复审后更新。
 
 ## 基线与隔离
 
@@ -30,19 +30,24 @@
 | RH-024 精确提交CI | 4 jobs success | `906a83fa8cbb66a36d75feb84a630a72a6b877ec`，[37869813951 attempt 1](https://github.com/Zh9426/ResearchHub/actions/runs/37869813951)；TLS20轮诊断归档 `ci-37869813951-attempt1/` |
 | 浏览器wire与安全探针 | 全部11 tests PASS /35.6s；追加2 PASS /4.5s | `task4-browser-final.log`、`task4-browser-interruption.log`；原26/59/3/10场景20step共237检查；AES-GCM key重载、双tab/刷新/重开、exact retry、耗号、损坏/缺失/旧导入拒绝及实际key救援排除 |
 | 关联安全回归 | Node48、Python191 PASS | `task4-node-security.log`、`task4-python-security.log`，Python21.91s；protocol Node7及两包typecheck通过；原fixtures及TLS调查文件哈希未变 |
+| RH-025 精确提交CI | 4 jobs success | `8a38e9a676119f415c844f955cc3af0fe8e93912`，[37870842565 attempt 1](https://github.com/Zh9426/ResearchHub/actions/runs/37870842565)；TLS20轮归档 `ci-37870842565-attempt1/`，zip SHA256 `fe489ab08a2c8d5539478a2b837aecae4ef7fbc30f9ea01ed7ebbf4473445a68` |
+| 最终本地完整验收 | 17 tests PASS /50.6s，0 retry/skip | `evidence/attempt-2/` 的完整log、JUnit与summary；构建JS+CSS SHA256 `7f7b3c0cc1a50b241924a9bc1df9a556b826a7807d6420e55db9c71656b594c0`；修改布局前首轮17 PASS /42.3s另存attempt-1 |
+| 补充失败边界 | 6 targeted PASS /6.6s | 四类缓存错绑定分别拒绝、counter不变、encrypt=0、恢复缓存exact retry；真实目标浏览器executable缺失释放来源浏览器和静态服务；close拒绝仍清理服务且传播错误 |
 
 全部上述路径相对 ignored `storage/runtime/browser-local-qa/`。初始沙箱 ENOTCACHED/EPERM、构建扫描误匹配以及使用旧构建的中间测试均在 `task1-attempts.txt` 区分，未计入最终构建验收。所有浏览器测试 `retries=0`。
+
+最终六张实际页面、逐文件SHA256、测试命令和可版本管理的脱敏JSON见[截图与证据索引](../screenshots/sprint3a/README.md)。Windows本地浏览器版本如上，Node24.15.0；移动截图仅390px视口。CI的Linux结果单独列出，不由本机通过推断。
 
 ## 验收状态
 
 | Gate | 当前状态 |
 |---|---|
-| G1 离线启动与进程重开 | 本地记录闭环已实测；最终完整验收待完成 |
+| G1 离线启动与进程重开 | 最终本地17项通过；停服、所有PID退出、同profile离线重开、直接详情/刷新通过 |
 | G2 对象/队列/审计原子性 | Task2实际IDB写后abort与snapshot全等通过，两阶段复审通过 |
 | G3 双标签页保护 | Task2一成一拒、保留输入、比较/另存及不同记录并发通过，两阶段复审通过 |
 | G4 星标、状态与救援恢复 | 真实新profile救援、幂等/冲突/未保存草稿通过；Task3规格PASS、质量APPROVED |
 | G5 浏览器协议、key/nonce边界 | 237固定检查与受限AES-GCM/key/nonce探针通过；Task4规格PASS、质量APPROVED，网络仍BLOCKED |
-| G6 隔离与TLS证据 | 已核对基线，最终复核待完成 |
+| G6 隔离与TLS证据 | 固定origin/profile与合成数据；RH-025 CI四job成功、TLS20轮归档；最终提交复核待完成 |
 
 ## 交付分类
 
@@ -50,8 +55,39 @@
 - **VERIFIED IN REAL DESKTOP BROWSER**：离线编辑、进程重开、直接详情导航、刷新、两标签页CAS、未知缓存保留、端口占用拒绝；新profile文件救援、key持久重载/加解密、nonce跨tab和完整封装重试、固定wire向量。
 - **VERIFIED ON PHYSICAL MOBILE**：无；390px截图只是移动视口。
 - **FAULT-INJECTED ONLY**：首次SW静态资源503；实际IDB写后abort、导入中止与升级中止；通知/提交后读取故障；模拟QuotaExceededError、persist拒绝/不支持与TEST ONLY adapter拒绝；加密拒绝/挂起和局部IDB损坏。真实升级阻塞已触发并解除；加密挂起后正常关闭全部浏览器进程，不是崩溃、物理磁盘满、断电或TLS证明。
-- **DESIGNED ONLY**：尚未实施的后续步骤见实施计划，不作为验收。
+- **DESIGNED ONLY**：未来正式字段/wire迁移、浏览器授权与恢复威胁模型仅记录候选方向，不作为本轮已实现能力。
 - **NOT IMPLEMENTED**：真实Push/Pull、后台同步、完整DAG批准、配对/撤销/epoch恢复、相机/文件同步、生产Recovery Kit。
 - **BLOCKED FOR NETWORK / PRODUCTION**：TLS-001 OPEN；完整浏览器安全适配、站点一致回滚、平台驱逐/断电保证、生产vault及真实授权均未证明。
+
+## A–L 场景与证据边界
+
+| 场景 | 已实施的实际验证 | 主要测试 |
+|---|---|---|
+| A 离线创建/观察/星标 | 初始化静态缓存和空合成工作区后停止QA静态服务，浏览器设为offline，继续创建和保存；该入口从未启动或依赖QA API | local.spec.ts |
+| B 关闭重开 | CDP枚举PID，关闭后OS确认全部退出；同profile新浏览器读取完整snapshot相等（对象/Note/星标/pending/audit/身份），没有再seed | local.spec.ts、lifecycle.ts |
+| C 详情直访/刷新 | 停服离线的新进程直接导航已保存详情并继续编辑；刷新前后快照相等 | local.spec.ts、shell.spec.ts |
+| D 模块与未知值 | Generic/HDSP/ICE类型来自冻结manifest；unknown科研结果、空语境保持未知；HDSP/ICE高级字段救援往返 | local.spec.ts、rescue.spec.ts |
+| E 原子性 | 最后写请求成功后、commit前真实abort；对象/版本/队列/审计全部不变，dirty保留；恢复事务也做写后abort | local.spec.ts、rescue.spec.ts |
+| F 多标签 | 不同ID并发均保留；同版本先提交成功，后提交冲突且保输入，可比较或另存；BC仅通知 | local.spec.ts |
+| G wire | 原固定向量237检查；decimal字符串精度和Unicode保持；highlight额外字段拒绝，LocalOperation完整保存而未声称wire兼容 | wire.spec.ts |
+| H key/nonce | 独立AES256 CryptoKey持久重载；双tab/刷新/重开、exact retry不加密/不耗号、预约失败耗号；加密挂起后正常关闭全部进程，重开pending拒绝 | security.spec.ts |
+| I 存储失败 | 实际persist/estimate调用；拒绝/不支持/QuotaExceededError是TEST ONLY模拟；升级阻塞由真实tab连接产生，升级失败由真实升级事务abort产生，均可恢复 | rescue.spec.ts |
+| J 救援 | 实际下载文件→全新独立profile预览/恢复；幂等、冲突及错误摘要/额外字段拒绝；新身份和原来源；未保存草稿另存，真实key DB不克隆 | rescue.spec.ts、security.spec.ts |
+| K 无假同步 | 实际transport始终not_configured；无receipt/ScientificAccepted；无网络TEST ONLY adapter拒绝，非空pending与完整快照不变 | local.spec.ts、rescue.spec.ts |
+| L 页面 | 六张实际桌面1280px与390px移动视口截图均已view_image检查，没有实体手机/平板验收 | docs/screenshots/sprint3a |
+
+测试源码位于 [apps/browser-qa/tests](../../apps/browser-qa/tests)。独立错绑定负例见 binding.spec.ts，真实启动失败与清理故障见 lifecycle-failure.spec.ts。浏览器关闭层级明确为正常关闭context后核验进程全部退出；加密停滞是故障注入，不是强制杀进程、OS崩溃或断电。
+
+## 失败保留与未覆盖范围
+
+- 壳缺失、静态资源503、通知/提交后读取异常、救援入口缺失、ICE语境白名单差异、adapter缺失和损坏封装等RED及修复日志均保留在ignored runtime。初期救援RED只有日志/上下文，没有截图；后续加入逐attempt截图。
+- 重开初次定位失败保留 `task2-green-attempt1.log` 和 `task2-diagnostic-label.log`：implicit label包含已加载textarea内容，改用语义textbox/name定位；仍断言恢复值和全snapshot相等。
+- 非extractable仅限制WebCrypto导出，不阻止同源脚本使用key，也不证明硬件或磁盘加密。当前业务草稿仍是明文合成数据。
+- high-water镜像与ledger同属IDB，仅检测局部ledger回退；两者一致回滚没有外部可信锚。全站一致回滚、浏览器驱逐、整机断电、实际移动平台、生产解锁/授权/密钥生命周期和HPKE适配均未证明。
+- `TESTONLY-AES-GCM-v1`不是SecureEnvelope。本地module_hash是冻结JSON快照的本地哈希，Note.body和全部highlight字段仍需显式wire adapter；不得直接发送当前队列。
+
+## 停止边界
+
+本轮最终验收后STOP。Sprint3B仅候选：独立ADR审查字段/wire迁移、正式浏览器密钥授权及恢复威胁模型、受控传输失败语义。在TLS-001仍OPEN及上述安全缺口未解决前，不将本地探针结论扩大为生产或跨设备同步可用。
 
 启动和停止命令见 [浏览器QA说明](../../apps/browser-qa/README.md)。最终截图、A–L矩阵、完整回归及精确SHA/CI结果将在本报告补全；此阶段不宣布Sprint3A完成。

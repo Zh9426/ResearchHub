@@ -1,12 +1,13 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type BrowserContext } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { runtime, origin, startServer, stopServer, launch } from './lifecycle';
+import { runtime, origin, startServer, stopServer, cleanup, launch } from './lifecycle';
 const vectors = Object.fromEntries(['canonical', 'protocol', 'nesting', 'kernel_cases'].map(name => [name, JSON.parse(readFileSync(resolve('../../fixtures/sync/v1', name + '.json'), 'utf8'))]));
 test('冻结 wire 向量在真实浏览器保持 bytes precision digest revisions', async () => {
     const server = await startServer();
-    const context = await launch(resolve(runtime, 'profiles', `wire-${Date.now()}`));
+    let context:BrowserContext|undefined;
     try {
+        context = await launch(resolve(runtime, 'profiles', `wire-${Date.now()}`));
         const p = await context.newPage();
         await p.goto(origin);
         expect(await p.evaluate(() => typeof (window as any).__WIRE_QA__)).toBe('object');
@@ -90,7 +91,6 @@ test('冻结 wire 向量在真实浏览器保持 bytes precision digest revision
         console.log(JSON.stringify(result));
     }
     finally {
-        await context.close();
-        await stopServer(server);
+        await cleanup(server,[context]);
     }
 });

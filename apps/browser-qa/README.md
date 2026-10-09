@@ -5,6 +5,7 @@
 从仓库根运行：
 
 ```powershell
+npm ci --prefix apps/web
 npm ci --prefix apps/browser-qa
 npm run install:browser --prefix apps/browser-qa
 npm run build --prefix apps/browser-qa

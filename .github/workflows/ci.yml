@@ -5,6 +5,48 @@ on:
 permissions:
   contents: read
 jobs:
+  browser-local-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/storage/runtime/browser-local-qa/browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            apps/browser-qa/package-lock.json
+      - name: 安装固定 QA 与共享组件类型依赖
+        run: |
+          npm ci --prefix apps/web
+          npm ci --prefix apps/browser-qa
+      - name: 安装隔离 Chromium 及 Linux 系统依赖
+        working-directory: apps/browser-qa
+        run: npx playwright install --with-deps chromium
+      - run: npm --prefix apps/browser-qa run typecheck
+      - run: npm --prefix apps/browser-qa run build
+      - name: 真实 Chromium 本地离线与安全能力验收
+        run: npm --prefix apps/browser-qa test
+      - name: 上传白名单合成 UI 与脱敏结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-local-qa-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            storage/runtime/browser-local-qa/evidence/junit.xml
+            storage/runtime/browser-local-qa/evidence/summary.json
+            storage/runtime/browser-local-qa/hdsp-failed-negative-desktop.png
+            storage/runtime/browser-local-qa/hdsp-failed-negative-mobile.png
+            storage/runtime/browser-local-qa/note-saved-desktop.png
+            storage/runtime/browser-local-qa/note-saved-mobile.png
+            storage/runtime/browser-local-qa/rescue-desktop.png
+            storage/runtime/browser-local-qa/rescue-mobile.png
+            storage/runtime/browser-local-qa/task3-attempt-*.png
+          if-no-files-found: warn
+          retention-days: 14
   backend-mcp-migration:
     runs-on: ubuntu-latest
     steps:

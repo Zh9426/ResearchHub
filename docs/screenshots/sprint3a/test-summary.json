@@ -1,0 +1,123 @@
+{
+  "scope": "SYNTHETIC local browser QA; viewport is not a physical mobile device",
+  "timestamp": "2026-10-09T01:45:58.944Z",
+  "status": "passed",
+  "node": "v24.15.0",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.22631",
+    "arch": "x64"
+  },
+  "browser": "156.0.8078.4",
+  "buildHash": "7f7b3c0cc1a50b241924a9bc1df9a556b826a7807d6420e55db9c71656b594c0",
+  "command": [
+    "H:\\ResearchHub\\apps\\browser-qa\\node_modules\\@playwright\\test\\cli.js",
+    "test"
+  ],
+  "retries": 0,
+  "tests": 17,
+  "results": [
+    {
+      "title": "cached envelope rejects independent identity misbinding without encryption or counter change",
+      "status": "passed",
+      "durationMs": 1251,
+      "retry": 0
+    },
+    {
+      "title": "cached envelope rejects independent action misbinding without encryption or counter change",
+      "status": "passed",
+      "durationMs": 1198,
+      "retry": 0
+    },
+    {
+      "title": "cached envelope rejects independent aad misbinding without encryption or counter change",
+      "status": "passed",
+      "durationMs": 1037,
+      "retry": 0
+    },
+    {
+      "title": "cached envelope rejects independent digest misbinding without encryption or counter change",
+      "status": "passed",
+      "durationMs": 1969,
+      "retry": 0
+    },
+    {
+      "title": "首次SW静态资源503明确失败并恢复按钮，修复资源后可重试",
+      "status": "passed",
+      "durationMs": 7850,
+      "retry": 0
+    },
+    {
+      "title": "close rejection still releases owned QA server",
+      "status": "passed",
+      "durationMs": 132,
+      "retry": 0
+    },
+    {
+      "title": "real target launch failure cleans source and owned server",
+      "status": "passed",
+      "durationMs": 1245,
+      "retry": 0
+    },
+    {
+      "title": "离线本地闭环、进程重开、CAS、原子回滚与三模块",
+      "status": "passed",
+      "durationMs": 4828,
+      "retry": 0
+    },
+    {
+      "title": "校验失败不写入、未保存切页保护、通知失败不改变提交结果",
+      "status": "passed",
+      "durationMs": 1769,
+      "retry": 0
+    },
+    {
+      "title": "明文救援：新 profile、预览、原子恢复、幂等、冲突与严格拒绝",
+      "status": "passed",
+      "durationMs": 3950,
+      "retry": 0
+    },
+    {
+      "title": "TEST ONLY 配额与持久化拒绝保留输入，真实升级阻塞可解除",
+      "status": "passed",
+      "durationMs": 10442,
+      "retry": 0
+    },
+    {
+      "title": "HDSP 与 ICE 高级语境以及无标题草稿可导出恢复",
+      "status": "passed",
+      "durationMs": 3405,
+      "retry": 0
+    },
+    {
+      "title": "独立 QA key、nonce 并发、完整重试及进程重开",
+      "status": "passed",
+      "durationMs": 2795,
+      "retry": 0
+    },
+    {
+      "title": "局部损坏与旧ledger拒绝，失败耗号且同action并发只生成一次",
+      "status": "passed",
+      "durationMs": 1297,
+      "retry": 0
+    },
+    {
+      "title": "真实 key DB 存在时救援包排除 key 与 nonce，fresh profile 不克隆身份",
+      "status": "passed",
+      "durationMs": 2581,
+      "retry": 0
+    },
+    {
+      "title": "壳初始化后停止服务器、关闭浏览器进程、同profile离线直访详情",
+      "status": "passed",
+      "durationMs": 2873,
+      "retry": 0
+    },
+    {
+      "title": "冻结 wire 向量在真实浏览器保持 bytes precision digest revisions",
+      "status": "passed",
+      "durationMs": 1195,
+      "retry": 0
+    }
+  ]
+}

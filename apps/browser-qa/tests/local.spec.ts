@@ -1,7 +1,8 @@
 import {test,expect,type BrowserContext,type Page} from '@playwright/test';
 import {resolve} from 'node:path';
-import {runtime,origin,startServer,stopServer,launch,closeBrowser} from './lifecycle';
+import {runtime,origin,startServer,stopServer,cleanup,launch,closeBrowser} from './lifecycle';
 const snapshot=(p:Page)=>p.evaluate(()=> (window as any).__LOCAL_QA__.snapshot());
+async function evidence(p:Page,name:string){for(const [label,width,height] of [['desktop',1280,900],['mobile',390,844]] as const){await p.setViewportSize({width,height});await p.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();scrollTo(0,0);});await p.screenshot({path:resolve(runtime,`${name}-${label}.png`),fullPage:true});}await p.setViewportSize({width:1280,height:900});}
 async function create(p:Page,title:string,kind='Run'){await p.getByRole('button',{name:`新建 ${kind}`,exact:true}).click();await p.getByLabel('标题',{exact:true}).fill(title);await p.getByRole('button',{name:'保存到本机',exact:true}).click();await expect(p.getByTestId('local-save')).toHaveText('已保存到本机');}
 test('离线本地闭环、进程重开、CAS、原子回滚与三模块',async()=>{
  const server=await startServer();let context:BrowserContext|undefined;const profile=resolve(runtime,'profiles',`local-${Date.now()}`);
@@ -12,8 +13,10 @@ test('离线本地闭环、进程重开、CAS、原子回滚与三模块',async(
  await stopServer(server);await context.setOffline(true);
  await p.getByLabel('项目选择').selectOption('hdsp');await create(p,'SYNTHETIC 失败也保留');
  await expect(p.getByLabel('科研结果')).toHaveValue('unknown');await p.getByRole('textbox',{name:'观察',exact:true}).fill('离线观察：未固化');await p.getByLabel('运行状态').selectOption('failed');await p.getByLabel('科研结果').selectOption('negative_result');await p.getByRole('button',{name:'设为星标',exact:true}).click();await p.getByRole('button',{name:'保存到本机',exact:true}).click();await expect(p.getByTestId('local-save')).toHaveText('已保存到本机');
+ await evidence(p,'hdsp-failed-negative');
  const route=new URL(p.url()).pathname;await create(p,'SYNTHETIC 笔记','Note');await p.getByLabel('笔记正文').fill('重复观察留待复核');await p.getByRole('button',{name:'保存到本机',exact:true}).click();await expect(p.getByTestId('local-save')).toHaveText('已保存到本机');
  await p.getByLabel('仅看星标').check();await expect(p.getByRole('button',{name:/★ SYNTHETIC 失败也保留/})).toBeVisible();await expect(p.getByRole('button',{name:/SYNTHETIC 笔记 Note/})).toHaveCount(0);await p.getByLabel('仅看星标').uncheck();
+ await evidence(p,'note-saved');
  const before=await snapshot(p);expect(before.objects).toHaveLength(2);expect(before.operations.length).toBeGreaterThanOrEqual(4);expect(before.audit.length).toBe(before.operations.length);for(const op of before.operations){expect(op.state).toBe('pending');expect(op.wire_adapter).toBe('NEEDS_WIRE_ADAPTER');expect(op.known_base_revision).toBe(null);}
  await p.reload();await expect(p.getByLabel('项目选择')).toBeVisible();expect(await snapshot(p)).toEqual(before);await expect(p.getByRole('button',{name:'初始化合成工作区',exact:true})).toHaveCount(0);
  await closeBrowser(context);context=await launch(profile);await context.setOffline(true);const reopened=await context.newPage();await reopened.goto(origin+route);await expect(reopened.getByTestId('local-save')).toHaveText('已保存到本机');await expect(reopened.getByRole('textbox',{name:'观察',exact:true})).toHaveValue('离线观察：未固化');await expect(reopened.getByRole('button',{name:'取消星标',exact:true})).toBeVisible();expect(await snapshot(reopened)).toEqual(before);
@@ -22,12 +25,12 @@ test('离线本地闭环、进程重开、CAS、原子回滚与三模块',async(
  const atomicBefore=await snapshot(tab);await tab.getByRole('textbox',{name:'观察',exact:true}).fill('故障后保留');await tab.evaluate(()=> (window as any).__LOCAL_QA__.injectNextAbort());await tab.getByRole('button',{name:'保存到本机',exact:true}).click();await expect(tab.getByRole('alert')).toContainText('尚未保存');await expect(tab.getByRole('textbox',{name:'观察',exact:true})).toHaveValue('故障后保留');expect(await snapshot(tab)).toEqual(atomicBefore);
  await tab.getByRole('button',{name:'保存到本机',exact:true}).click();await expect(tab.getByTestId('local-save')).toHaveText('已保存到本机');
  for(const alias of ['generic','ice']){await tab.getByLabel('项目选择').selectOption(alias);await create(tab,`SYNTHETIC ${alias}`);await expect(tab.getByLabel('科研结果')).toHaveValue('unknown');const data=await snapshot(tab);const project=data.projects.find((x:any)=>x.route_alias===alias);const object=data.objects.find((x:any)=>x.title===`SYNTHETIC ${alias}`);expect(project.module_snapshot.run_types.map((x:any)=>x.id)).toContain(object.run_type);expect(object.context_data).toEqual({});}
- await expect(tab.getByTestId('transport')).toContainText('not_configured');await tab.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();scrollTo(0,0);});await tab.screenshot({path:resolve(runtime,'local-desktop.png'),fullPage:true});await tab.setViewportSize({width:390,height:844});await tab.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();scrollTo(0,0);});await tab.screenshot({path:resolve(runtime,'local-mobile.png'),fullPage:true});console.log(JSON.stringify({profile,objects:(await snapshot(tab)).objects.length,abortInjection:'after IDB write requests before commit',transport:'not_configured'}));
- }finally{await context?.close();await stopServer(server);}
+ await expect(tab.getByTestId('transport')).toContainText('not_configured');await tab.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();scrollTo(0,0);});await tab.screenshot({path:resolve(runtime,'local-desktop.png'),fullPage:true});await tab.setViewportSize({width:390,height:844});await tab.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();scrollTo(0,0);});await tab.screenshot({path:resolve(runtime,'local-mobile.png'),fullPage:true});console.log(JSON.stringify({objects:(await snapshot(tab)).objects.length,abortInjection:'after IDB write requests before commit',transport:'not_configured'}));
+ }finally{await cleanup(server,[context]);}
 });
 test('校验失败不写入、未保存切页保护、通知失败不改变提交结果',async()=>{
- const server=await startServer();const context=await launch(resolve(runtime,'profiles',`validation-${Date.now()}`));
- try{const p=await context.newPage();await p.goto(origin);await p.getByRole('button',{name:'初始化合成工作区',exact:true}).click();await expect(p.getByLabel('项目选择')).toBeVisible();
+ const server=await startServer();let context:BrowserContext|undefined;
+ try{context=await launch(resolve(runtime,'profiles',`validation-${Date.now()}`));const p=await context.newPage();await p.goto(origin);await p.getByRole('button',{name:'初始化合成工作区',exact:true}).click();await expect(p.getByLabel('项目选择')).toBeVisible();
  await p.getByRole('button',{name:'新建 Run',exact:true}).click();const before=await snapshot(p);await p.getByRole('button',{name:'保存到本机',exact:true}).click();await expect(p.getByRole('alert')).toContainText('请填写标题');expect(await snapshot(p)).toEqual(before);
  await p.getByLabel('标题',{exact:true}).fill('保留输入');p.once('dialog',d=>d.dismiss());await p.getByLabel('项目选择').selectOption('ice');await expect(p.getByLabel('项目选择')).toHaveValue('generic');await expect(p.getByLabel('标题',{exact:true})).toHaveValue('保留输入');
  await p.evaluate(()=>{BroadcastChannel.prototype.postMessage=function(){throw new DOMException('TEST ONLY unavailable channel','InvalidStateError');};});await p.getByRole('button',{name:'保存到本机',exact:true}).click();await expect(p.getByTestId('local-save')).toHaveText('已保存到本机');const after=await snapshot(p);expect(after.objects).toHaveLength(1);expect(after.operations).toHaveLength(1);expect(after.audit).toHaveLength(1);
@@ -35,5 +38,5 @@ test('校验失败不写入、未保存切页保护、通知失败不改变提�
  await p.evaluate(()=>{const original=IDBDatabase.prototype.transaction;let inject=true;IDBDatabase.prototype.transaction=function(...args:any[]){if(inject&&args[1]==='readonly'){inject=false;throw Error('TEST ONLY snapshot read failure after commit');}return original.apply(this,args as any);};});
  await p.getByRole('button',{name:'保存到本机',exact:true}).click();await expect(p.getByTestId('local-save')).toHaveText('已保存到本机');await expect(p.getByRole('alert')).toContainText('已提交');expect((await snapshot(p)).objects[0].observation).toBe('已提交但刷新失败');
  const historyLength=await p.evaluate(()=>history.length);await p.getByLabel('项目选择').selectOption('ice');await p.getByLabel('项目选择').selectOption('hdsp');expect(await p.evaluate(()=>history.length)).toBe(historyLength);
- }finally{await context.close();await stopServer(server);}
+ }finally{await cleanup(server,[context]);}
 });

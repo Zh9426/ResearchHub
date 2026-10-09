@@ -13,7 +13,7 @@ test('壳初始化后停止服务器、关闭浏览器进程、同profile离线�
  server=await startServer();
  const profile=resolve(runtime,'profiles',`shell-${Date.now()}`);
  context=await launch(profile);
- console.log(JSON.stringify({browser:context.browser()?.version(),os:`${os.platform()} ${os.release()} ${os.arch()}`,origin,profile}));
+ console.log(JSON.stringify({browser:context.browser()?.version(),os:`${os.platform()} ${os.release()} ${os.arch()}`,origin}));
  const page=await context.newPage();await page.goto(origin);
  await expect(page.getByText('浏览器离线实验版 · 仅合成数据 · 未接入跨端同步')).toBeVisible();
  await page.getByRole('button',{name:'初始化离线资源'}).click();
