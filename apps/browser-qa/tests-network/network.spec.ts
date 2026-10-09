@@ -4,8 +4,8 @@ import {writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {summarizeError} from '../scripts/network-evidence-reporter';
 const root=process.env.RH_B2_RESULTS!;
-let phase='START',preflights=0,signedPosts=0,version='',lastDiagnostic:string|null=null;
-function mark(next:string,diagnostic:string|null=null){phase=next;lastDiagnostic=diagnostic;writeFileSync(resolve(root,'phase.json'),JSON.stringify({phase,diagnostic,preflights,signedPosts,chromium:version}),{mode:0o600});}
+let phase='START',preflights=0,signedPosts=0,version='',lastDiagnostic:string|null=null,baselineDiagnostic:unknown=null;
+function mark(next:string,diagnostic:string|null=null,baseline?:unknown){phase=next;lastDiagnostic=diagnostic;if(baseline!==undefined)baselineDiagnostic=baseline;writeFileSync(resolve(root,'phase.json'),JSON.stringify({phase,diagnostic,baselineDiagnostic,preflights,signedPosts,chromium:version}),{mode:0o600});}
 async function launch(name:string){return chromium.launchPersistentContext(resolve(root,name),{headless:true,channel:'chromium',args:['--host-resolver-rules=MAP localhost 127.0.0.1'],viewport:{width:1440,height:1000}});}
 async function close(context:BrowserContext){const browser=context.browser();let pids:number[]=[];try{if(!browser)throw Error('BROWSER_HANDLE_MISSING');const cdp=await browser.newBrowserCDPSession();const {processInfo}=await cdp.send('SystemInfo.getProcessInfo');pids=processInfo.map(p=>p.id);expect(pids.length).toBeGreaterThan(0);}finally{await context.close();}expect(browser!.isConnected()).toBe(false);await expect.poll(()=>pids.filter(pid=>{try{process.kill(pid,0);return true;}catch(e){if((e as NodeJS.ErrnoException).code==='ESRCH')return false;throw e;}})).toEqual([]);}
 async function certificate(context:BrowserContext,url:string,expected:string){const p=await context.newPage();let code='NO_CERTIFICATE_FAILURE';try{await p.goto(url);}catch(e){code=String(e).includes(expected)?expected:String(e).includes('ERR_CONNECTION_REFUSED')?'ERR_CONNECTION_REFUSED':'OTHER_NETWORK_FAILURE';}finally{await p.close();}mark(phase,code);expect(code).toBe(expected);}

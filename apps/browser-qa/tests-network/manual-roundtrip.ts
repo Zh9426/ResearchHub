@@ -1,6 +1,7 @@
+import {baselineDiagnostic} from './baseline-diagnostic';
 import {safeManualDiagnostic} from '../scripts/network-evidence-reporter';
 import {expect,type Page} from '@playwright/test';
-export async function manualRoundTrip(b:Page,pc:Page,mark:(stage:string,diagnostic?:string|null)=>void){
+export async function manualRoundTrip(b:Page,pc:Page,mark:(stage:string,diagnostic?:string|null,baseline?:unknown)=>void){
  let phase='C_PC_BASELINE_UI';const step=(value:string)=>{phase=value;mark(value);};
  const sync=async(page:Page)=>{try{await page.getByRole('button',{name:'立即同步',exact:true}).click();await expect(page.getByTestId('manual-sync-status')).toContainText('本轮发送',{timeout:60000});}catch(error){try{const diagnostic=page.getByTestId('manual-sync-diagnostic');if(await diagnostic.count())mark(phase,safeManualDiagnostic(await diagnostic.textContent()));}catch{/* Diagnostics must not replace the original failing assertion. */}throw error;}};
  const save=async(page:Page)=>{await page.getByRole('button',{name:'保存到本机',exact:true}).click();await expect(page.getByTestId('local-save')).toHaveText('已保存到本机');};
@@ -10,7 +11,7 @@ export async function manualRoundTrip(b:Page,pc:Page,mark:(stage:string,diagnost
  await pc.getByRole('button',{name:'新建 Note',exact:true}).click();await pc.getByLabel('标题',{exact:true}).fill('SYNTHETIC C manual Note');await pc.getByLabel('笔记正文',{exact:true}).fill('SYNTHETIC PC note');await save(pc);
  await sync(pc);await sync(b);await sync(pc);
  await expect(pc.getByTestId('manual-sync-status')).toContainText('已验证对端应用回执 3 条');
- step('C_B_NATIVE_EDIT_UI');await choose(b,'SYNTHETIC C manual Run');step('C_B_READ_BASELINE_RUN');await expect(b.getByLabel('观察',{exact:true})).toHaveValue('SYNTHETIC PC baseline second save');
+ step('C_B_NATIVE_EDIT_UI');await choose(b,'SYNTHETIC C manual Run');step('C_B_READ_BASELINE_RUN');try{await expect(b.getByLabel('观察',{exact:true})).toHaveValue('SYNTHETIC PC baseline second save');}catch(error){try{mark(phase,null,await baselineDiagnostic(b,'SYNTHETIC PC baseline second save'));}catch{/* Keep the original assertion failure. */}throw error;}
  const runId=new URL(b.url()).pathname.split('/').at(-1)!;
  step('C_B_SAVE_RUN');await b.getByLabel('观察',{exact:true}).fill('SYNTHETIC B observation');await save(b);step('C_B_STAR_RUN');await b.getByRole('button',{name:'设为星标',exact:true}).click();await expect(b.getByRole('button',{name:'取消星标',exact:true})).toBeVisible();
  step('C_B_SELECT_NOTE');await choose(b,'SYNTHETIC C manual Note');const noteId=new URL(b.url()).pathname.split('/').at(-1)!;

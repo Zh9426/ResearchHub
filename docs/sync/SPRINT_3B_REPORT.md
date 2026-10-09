@@ -226,3 +226,15 @@ RH038质量复审发现READY前停滞无法取得清理句柄的旧helper缺口�
 | G7 隔离与回归 | INCOMPLETE；A1回归已通过，后续改动待验收 |
 
 仍在按A→B→C实施。最终A–P矩阵、实际截图、启动停止命令和最小往返步骤将在真实验收后补充；未进入Sprint3C，也未发布生产版本。
+
+### RH042 — 首次诊断定位（未结案）
+
+RH042 `86083ba304ec50733e3812330e789dff6eccfef2` 已同步；首次 [CI37930528881](https://github.com/Zh9426/ResearchHub/actions/runs/37930528881) attempt1 的网络测试再次失败，固定阶段为 `C_B_READ_BASELINE_RUN`，源码位置 `manual-roundtrip.ts:13:146`：浏览器选中 Run 后，观察字段未满足 PC 第二次保存内容的断言。此前 PC 三笔 baseline 发送、B 接收及 PC 验证三条应用回执断言已越过；B 本地修改与发送尚未执行。此证据缩小本次失败范围，尚不能判定 PC 保存、接收投影或表单读取中的具体根因，也不能反推 RH041 必然同因。
+
+原 artifact 保存在 `storage/runtime/browser-sync-qa/rh042-network-diagnostic/network.zip`，SHA256 `914fb795c375d283ab3a004bbf0d28116317c3923d108953bf1bdaa3b68eafa1`；安全错误摘要 SHA256 `93e93ec8d26f74ef083459e73890b4e25b369401a3d84579b8a009d64c07b5b4`。Linux Chromium156.0.8078.4、Node24.21.0，B 构建 SHA256 `db6fb41960633d2b67329030dbb593eb863332e060ddefa5c503c0f1e1f85f4c`；retries=0、cleanup PASS、错误CA拒绝通过。保留 RH041 首败与 RH042 独立证据；G4 仍 FAIL/INCOMPLETE，TLS-001 与 PC013 仍 OPEN。下一步以实际 RED 定位后作最小补丁，不更改该内容断言或安全边界。
+
+同次 CI 最终为五 job 成功、两个 job 失败。除上述浏览器基线读取外，`secure-relay-qa` 在 `test_expired_revoked_epoch_requests_rejected_before_cache` 的未来时间 `issued_at=1791549286+6` 负例（test_security.py:90）收到 200 而预期 401；尚未越过该断言进入后续撤销检查。先保留并单独调查，不能据用例名称断言撤销绕过，也不能未经诊断称为时钟边界抖动。原 TLS 固定20轮全部通过，仍不关闭 TLS-001。完整归档 `storage/runtime/browser-local-qa/ci-37930528881-attempt1/`，失败日志zip SHA256 `172f47c8f647151821f7aeb2cffce4d534002da6eb0aeca408609edae3870458`，TLSzip `2063ff95be76b3a30731c3fe3dc23b5e6c58908ddce6ec4780858c6c6e92e97b`。G7 本次也不能记为 PASS。
+
+RH043 候选只增加定位覆盖，尚未修复串联失败：PC 的实际 Chromium/独立QA PG三次连续保存验证（`pc/baseline-6d9990df-ff5a-4c89-be56-dad48d303469/test.txt`）1项PASS，第二次请求与工作副本/可信投影观察一致；新fixture早期超长node名称导致启动失败另存，不计产品RED。B原生同页 Run创建、更新及Note接收后读取普通工作台，通过31项组件检查（`c-receive/baseline-receive-d169c962-f4ed-421f-a817-8ce624689359/summary.json`），Chromium156.0.8078.4、retries=0、cleanup PASS、bundle SHA256 `591908563d4bae5f227b2a413f7569dabdc1065c4c8bbc7079468a05e737e62f`，测试时sourceCommit为RH042、dirty=true。两者没有复现网络首败，不能冒充根因修复。
+
+原观察断言失败时新增仅含DOM/local/kernel三键的枚举诊断，分别判别缺失、预期/非预期等状态；不输出正文、UUID、proof。IDB只读，数据库缺失时abort，诊断异常后仍抛原断言。原网络超时、断言、retries与TLS设置不变。缺少诊断函数的单测RED单独保留（`transport-attempts/94be7c97-fd3c-45c3-a310-107c3af21188/`）；新增实现后六项通过，根协调者独立六项及类型检查亦通过。精确SHA网络结果仍待后续首次CI。

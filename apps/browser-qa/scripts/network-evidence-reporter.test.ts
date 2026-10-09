@@ -54,3 +54,10 @@ test('manual diagnostic locations and codes are fixed and bounded',()=>{
  for(const raw of ['Error: PRIVATE_SECRET','Error: MAPPING_NOT_CONVERTED PRIVATE_SECRET','prefix MAPPING_NOT_CONVERTED','TypeError: Failed to fetch PRIVATE_SECRET'])assert.equal(safe(raw),'MANUAL_FAILURE_UNCLASSIFIED');
  for(const phase of ['C_B_READ_BASELINE_RUN','C_B_SAVE_RUN','C_B_STAR_RUN','C_B_SELECT_NOTE','C_B_SAVE_NOTE_FIRST','C_B_SAVE_NOTE_SECOND','C_B_UNCONFIRMED_BEFORE_SEND','C_B_SEND_PENDING','C_B_RELAY_ONLY_ASSERT','C_PC_APPLY_B_PENDING','C_B_COLLECT_PEER_RECEIPTS','C_B_PEER_ASSERT','C_B_CONFIRMATION_COUNT'])assert.equal(reporter.safePhase(phase),phase);
 });
+
+
+test('baseline mismatch exposes only reviewed DOM local and kernel enums',()=>{
+ const safe=(reporter as any).safeBaselineDiagnostic;assert.equal(typeof safe,'function');
+ for(const value of [{dom:'expected',local:'expected',kernel:'expected'},{dom:'missing',local:'missing',kernel:'missing'},{dom:'ambiguous',local:'other',kernel:'conflicted'},{dom:'hidden',local:'read_failed',kernel:'read_failed'},{dom:'other',local:'expected',kernel:'other'}])assert.deepEqual(safe(value),value);
+ for(const value of [null,'PRIVATE_SECRET',{dom:'PRIVATE_SECRET',local:'expected',kernel:'expected'},{dom:'expected',local:'expected',kernel:'expected',raw:'PRIVATE_SECRET'},{dom:'expected',local:'expected'}])assert.equal(safe(value),null);
+});
