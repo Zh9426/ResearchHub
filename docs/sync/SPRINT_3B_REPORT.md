@@ -238,3 +238,21 @@ RH042 `86083ba304ec50733e3812330e789dff6eccfef2` 已同步；首次 [CI379305288
 RH043 候选只增加定位覆盖，尚未修复串联失败：PC 的实际 Chromium/独立QA PG三次连续保存验证（`pc/baseline-6d9990df-ff5a-4c89-be56-dad48d303469/test.txt`）1项PASS，第二次请求与工作副本/可信投影观察一致；新fixture早期超长node名称导致启动失败另存，不计产品RED。B原生同页 Run创建、更新及Note接收后读取普通工作台，通过31项组件检查（`c-receive/baseline-receive-d169c962-f4ed-421f-a817-8ce624689359/summary.json`），Chromium156.0.8078.4、retries=0、cleanup PASS、bundle SHA256 `591908563d4bae5f227b2a413f7569dabdc1065c4c8bbc7079468a05e737e62f`，测试时sourceCommit为RH042、dirty=true。两者没有复现网络首败，不能冒充根因修复。
 
 原观察断言失败时新增仅含DOM/local/kernel三键的枚举诊断，分别判别缺失、预期/非预期等状态；不输出正文、UUID、proof。IDB只读，数据库缺失时abort，诊断异常后仍抛原断言。原网络超时、断言、retries与TLS设置不变。缺少诊断函数的单测RED单独保留（`transport-attempts/94be7c97-fd3c-45c3-a310-107c3af21188/`）；新增实现后六项通过，根协调者独立六项及类型检查亦通过。精确SHA网络结果仍待后续首次CI。
+
+RH043已提交并同步 `6448d3e38af294aa4f097223501f345e73a5ebd6`，首次 [CI37940691305](https://github.com/Zh9426/ResearchHub/actions/runs/37940691305) attempt1六job通过，browser-network job在新增原生接收/普通界面读取回归失败，未进入后续HTTPS往返。错误为读取未找到的按钮时 `TypeError: Cannot read properties of undefined (reading 'click')`，真实Chromium156.0.8078.4、cleanup PASS、同bundle `591908563d4bae5f227b2a413f7569dabdc1065c4c8bbc7079468a05e737e62f`。初步排查发现多个独立fixture项目使用同route_alias，尚待确定性隔离复现；不以本机通过覆盖CI失败，也不跳该回归。原TLS20轮通过，future负例本次通过不关闭RH042调查。
+
+完整归档 `storage/runtime/browser-local-qa/ci-37940691305-attempt1/`，失败日志zip SHA256 `49776e31013e08fd3e98c239e726ab47d0aa8333194b565974242c8f829adff5`，网络zip `545a4426743fc365c5859a8141aebbcf32c2b77045a955341aa20b5a539189c7`，TLSzip `5f4cbdb57a294ffe63681f42ed5ed495316f6ebcb25fe4251be2c907d280f9a2`；单job私有日志另存 `rh043-network-diagnostic/job-private.log`，SHA256 `aabcdf481bef7a6359f87681b472922dedb257bbd373d64aa221c9e8cf9d35b3`。本次无新的HTTP业务根因证据或最终截图，整体仍INCOMPLETE。
+
+### 请求时间边界的确定性验证（RH044候选）
+
+仅修改测试：使用真实合成Ed25519签名与固定now覆盖 `-61` 拒绝、`-60/+5` 允许、`+6` 拒绝；另在真实隔离QA PostgreSQL调用既有 `service.execute(now=...)`，同一签名在T拒绝且不生成receipt，T+1合法并建立缓存，缓存后再次以非法时间调用仍拒绝。错误假设“到T+1仍必须拒绝”的确定性RED为1 failed，独立保留。它证明跨秒机制能够解释RH042现象，但原CI缺鉴权now，原首败原因仍未实证。
+
+真实网络用例保留原函数及所有安全断言，明确将唯一未来偏移参数由 `+6` 改为 `+3600`，用于验证明显超出允许窗口的请求；精确+6边界由固定时刻测试承担，不再将客户端取时当作服务端鉴权时刻。生产规则、鉴权先于缓存的顺序、原TLS pooled/fresh用例与参数均未修改。没有新增HTTP时钟控制接口或修改系统时间。
+
+证据 `storage/runtime/browser-sync-qa/request-time/e4213146-1e72-4744-a721-5d3fe0dcdf21/` 包含RED、GREEN、JUnit、命令失败和SHA256清单。单元4项、真实PG服务加完整安全文件34项通过，零skip；privacy hits=0、ruff通过，owned Relay/ingress已正常停止。首次命令参数错误exit4未收集测试，原日志单独保留。根协调者独立四边界4项通过；pytest缓存目录权限警告保留，不涉及断言。以上PG固定时刻验证不是HTTP时序实测，RH043的未修改未来负例再次通过也不是RH042结案依据。五项保护文件hash复核不变，TLS-001继续OPEN。
+
+### RH043夹具隔离失败的最小修正（RH044候选）
+
+新增组件测试复用同一TEST_ONLY数据库，多个随机UUID项目共享generic别名；Workbench按别名选择首个项目。确定性把真实旧项目排在新项目前，持久观察断言通过后目标按钮缺失，保存RED `c-receive/fixture-order-red-3168ca8b-81b7-4758-92cf-24cca9beb012/`。更早的RED前置条件误要求旧项目仍有accepted对象，另存500e3132…，不计因果复现。
+
+最小补丁只按目标project ID过滤该测试组件snapshot中的projects/objects，未修改产品alias、真实接收数据或网络断言。两种输入项目顺序分别实际挂载、选择、读取，原31case保留并新增第二种顺序，合计32项。worker `fixture-order-green-e7e6b960-3fc6-4a7f-9e98-d8549815be11` 与根协调者 `root-fixture-order-20261009-02` 均32 PASS、cleanup PASS、retries=0，Chromium156.0.8078.4，bundle SHA256 `fad7429d668b572fbe3f7eaa4f02319f405e963bec51bc3700aa50ba01f7d76f`。root首次01未指定项目browser路径，启动前Executable missing失败另存；纠正环境后02运行，未安装或放宽浏览器安全。类型检查通过。此修正针对RH043新增测试隔离，不声称RH042网络基线读取已修复；新增固定枚举诊断仍待实际HTTPS用例运行。

@@ -87,8 +87,11 @@ def test_expired_revoked_epoch_requests_rejected_before_cache(project):
     assert (
         project.pull(signer=reader, issued_at=int(time.time()) - 61).status_code == 401
     )
+    # Real TLS checks an unambiguously future request. Exact +5/+6 boundaries
+    # use a fixed verifier/service clock in the dedicated request-time tests:
+    # a network request signed at client T+6 may reach the server at T+1.
     assert (
-        project.pull(signer=reader, issued_at=int(time.time()) + 6).status_code == 401
+        project.pull(signer=reader, issued_at=int(time.time()) + 3600).status_code == 401
     )
     previous = project.manifest
     candidate = keys.transition(previous, project.owner, revoke=reader.device_id)

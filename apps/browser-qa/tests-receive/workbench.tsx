@@ -35,13 +35,26 @@ export async function receivedRunWorkbench(q:any){
  const note=f.transaction('SYNTHETIC C manual Note');await (await q.sealer.receiver()).receive(f.project.id,await f.page([first,second,note]));
  const snapshot=await q.commands.snapshot(),object=snapshot.objects.find((o:any)=>o.id===first.changes[0].object_id);
  if(object?.observation!=='SYNTHETIC PC baseline second save')throw Error('RECEIVED_RUN_DURABLE_OBSERVATION_MISMATCH');
- const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
- history.replaceState(null,'',`/projects/${f.project.route_alias}`);
- const adapter:any={sync:true,initialize:async()=>{},commands:q.commands};
- try{root.render(<Workbench adapter={adapter}/>);for(let i=0;i<100&&!host.querySelector('.qa-record');i++)await new Promise(ok=>setTimeout(ok,10));
-  const button=[...host.querySelectorAll('button.qa-record')].find(x=>x.textContent?.includes('SYNTHETIC C manual Run')) as HTMLButtonElement;button.click();await new Promise(ok=>setTimeout(ok,25));
-  const field=[...host.querySelectorAll('label')].find(x=>x.textContent?.startsWith('观察'))?.querySelector('textarea');
-  if(field?.value!=='SYNTHETIC PC baseline second save')throw Error('RECEIVED_RUN_EDITOR_OBSERVATION_MISMATCH');
-  return ['native-same-page-run-create-update-ordinary-editor'];
- }finally{root.unmount();host.remove();history.replaceState(null,'','/');}
+ const older=snapshot.projects.find((p:any)=>p.id!==f.project.id&&p.route_alias===f.project.route_alias);
+ if(!older)throw Error('OLDER_SAME_ALIAS_FIXTURE_REQUIRED');
+ const cases:string[]=[];
+ for(const olderFirst of [true,false]){
+  const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+  history.replaceState(null,'',`/projects/${f.project.route_alias}`);
+  // Real fixture rows, deterministically permuted before this component's scope filter.
+  const commands=Object.create(q.commands);commands.snapshot=async()=>{
+   const current=await q.commands.snapshot(),pair=olderFirst?[older,f.project]:[f.project,older];
+   const ordered=[...pair,...current.projects.filter((p:any)=>p.id!==older.id&&p.id!==f.project.id)];
+   return {...current,projects:ordered.filter((p:any)=>p.id===f.project.id),objects:current.objects.filter((o:any)=>o.project_id===f.project.id)};
+  };
+  const adapter:any={sync:true,initialize:async()=>{},commands};
+  try{root.render(<Workbench adapter={adapter}/>);for(let i=0;i<100&&!host.querySelector('.qa-record');i++)await new Promise(ok=>setTimeout(ok,10));
+   const button=[...host.querySelectorAll('button.qa-record')].find(x=>x.textContent?.includes('SYNTHETIC C manual Run')) as HTMLButtonElement|undefined;
+   if(!button)throw Error('RECEIVED_RUN_BUTTON_MISSING');button.click();await new Promise(ok=>setTimeout(ok,25));
+   const field=[...host.querySelectorAll('label')].find(x=>x.textContent?.startsWith('观察'))?.querySelector('textarea');
+   if(field?.value!=='SYNTHETIC PC baseline second save')throw Error('RECEIVED_RUN_EDITOR_OBSERVATION_MISMATCH');
+   cases.push(olderFirst?'native-same-page-run-create-update-ordinary-editor':'native-same-page-run-editor-new-project-first');
+  }finally{root.unmount();host.remove();history.replaceState(null,'','/');}
+ }
+ return cases;
 }
