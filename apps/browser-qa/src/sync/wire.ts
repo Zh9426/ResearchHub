@@ -11,6 +11,8 @@ export function payloadFor(operation:LocalOperation,project:Project):Record<stri
  const o=operation.payload;const common=['id','project_id','kind','local_format_version','local_edit_version','title'];
  const fields=o.kind==='Note'?['body']:['run_type','objective','observation','status','scientific_outcome','is_highlighted','highlight_type','highlight_note','context_data'];
  const reasons=Object.keys(o).filter(k=>![...common,...fields].includes(k)).map(k=>`payload.${k}: unknown field`);
+ if(typeof o.title!=='string'||!o.title.trim()||Array.from(o.title).length>200)reasons.push('payload.title: nonblank, at most 200 Unicode code points required by PC Domain');
+ if(o.kind==='Run')for(const [key,max] of [['highlight_type',100],['highlight_note',10000]] as const){if(typeof o[key]!=='string'||Array.from(o[key]).length>max)reasons.push(`payload.${key}: at most ${max} Unicode code points required by PC Domain`);}
  if(operation.object_id!==o.id)reasons.push('payload.id: operation object identity mismatch');
  if(operation.project_id!==o.project_id||o.project_id!==project.id)reasons.push('payload.project_id: operation/project identity mismatch');
  if(operation.object_type!==o.kind)reasons.push('payload.kind: operation object type mismatch');

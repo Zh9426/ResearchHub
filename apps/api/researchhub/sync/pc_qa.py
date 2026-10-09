@@ -1,0 +1,125 @@
+"""3315-only SYNTHETIC PC app factory. Does not import product main/settings."""
+import os
+import re
+import secrets
+from pathlib import Path
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from .models import ObjectRevision, Outbox
+from .pc_identity import setup_node
+from .pc_records import RecordWork, execute_command, read_record
+from .projection import project_status
+from .protocol import ProtocolError
+from .secure.transport_pg import client_engine, guard
+
+ORIGIN='http://127.0.0.1:3315'
+ROOT=Path(__file__).resolve().parents[4]
+
+def local_object(kind,oid,pid,document,version):
+    common={'id':oid,'project_id':pid,'kind':'Run' if kind=='ResearchRun' else 'Note',
+        'title':document.get('title',''),'local_format_version':1,'local_edit_version':version}
+    if kind=='Note':return {**common,'body':document.get('content','')}
+    return {**common,'run_type':document.get('run_type','simulation'),
+        **{k:document.get(k,'') for k in ('objective','observation','highlight_type','highlight_note')},
+        'status':document.get('status','planned'),'scientific_outcome':document.get('scientific_outcome','unknown'),
+        'context_data':document.get('context_data',{}),'is_highlighted':document.get('is_highlighted',False)}
+
+def create_app(*,engine=None,runtime=None,module_id='generic'):
+    if os.environ.get('HUB_SYNC_QA')!='1':raise RuntimeError('Explicit HUB_SYNC_QA=1 required')
+    engine=engine or client_engine();guard(engine)
+    node=setup_node(engine,runtime or ROOT/'storage/runtime/browser-sync-qa/pc/node',module_id)
+    app=FastAPI(docs_url=None,redoc_url=None,openapi_url=None)
+    app.state.node=node
+    sessions={}
+
+    @app.middleware('http')
+    async def boundary(request:Request,call_next):
+        if request.headers.get('host')!='127.0.0.1:3315' or not request.client or request.client.host!='127.0.0.1':
+            return JSONResponse({'error':'LOOPBACK_HOST_REQUIRED'},403)
+        if request.headers.get('origin') not in (None,ORIGIN) or request.headers.get('sec-fetch-site')=='cross-site':
+            return JSONResponse({'error':'ORIGIN_DENIED'},403)
+        if request.method not in ('GET','POST'):
+            return JSONResponse({'error':'METHOD_DENIED'},405)
+        session=request.cookies.get('rh_pc_qa_session'); csrf=sessions.get(session)
+        if request.url.path.startswith('/api/') and request.url.path!='/api/session' and csrf is None:
+            return JSONResponse({'error':'SESSION_REQUIRED'},401)
+        if request.method=='POST':
+            owned_stop=(request.url.path=='/_qa_stop' and getattr(app.state,'stop_token',None)
+                and secrets.compare_digest(request.headers.get('x-qa-owner',''),app.state.stop_token))
+            if request.headers.get('origin')!=ORIGIN or (not owned_stop and (not csrf or not secrets.compare_digest(request.headers.get('x-pc-csrf',''),csrf))):
+                return JSONResponse({'error':'CSRF_REQUIRED'},403)
+            if request.headers.get('content-type','').split(';')[0].strip()!='application/json':
+                return JSONResponse({'error':'JSON_REQUIRED'},415)
+            body=await request.body()
+            if len(body)>1024*1024:return JSONResponse({'error':'COMMAND_TOO_LARGE'},413)
+        response=await call_next(request)
+        response.headers['Cache-Control']='no-store'
+        response.headers['X-Content-Type-Options']='nosniff'
+        response.headers['Referrer-Policy']='no-referrer'
+        response.headers['Content-Security-Policy']="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        return response
+
+    @app.exception_handler(ProtocolError)
+    async def protocol_error(request,exc):
+        return JSONResponse({'error':exc.code,'detail':str(exc)},409)
+
+    @app.get('/api/session')
+    def session(request:Request):
+        sid=request.cookies.get('rh_pc_qa_session')
+        if sid not in sessions:
+            sid=secrets.token_urlsafe(32);sessions[sid]=secrets.token_urlsafe(32)
+        result=JSONResponse({'csrf':sessions[sid]})
+        result.set_cookie('rh_pc_qa_session',sid,httponly=True,samesite='strict',path='/')
+        return result
+
+    @app.get('/api/binding')
+    def binding():return {'binding':node.binding,'signed_binding':node.signed_binding,'pairing':'NOT_IMPLEMENTED'}
+
+    @app.get('/api/snapshot')
+    def snapshot():
+        pid=node.binding['semantic_project_id'];module=node.binding['module_snapshot']
+        with Session(engine) as db,db.begin():
+            # Project lock gives one consistent projection/work/history snapshot under READ COMMITTED.
+            from .kernel import lock_project
+            lock_project(db,pid)
+            keys=set(db.execute(select(RecordWork.object_type,RecordWork.object_id).where(RecordWork.project_id==pid)).all())
+            keys.update(db.execute(select(ObjectRevision.object_type,ObjectRevision.object_id).where(ObjectRevision.project_id==pid)).all())
+            records=[];objects=[]
+            for kind,oid in sorted(keys):
+                if kind not in ('ResearchRun','Note'):continue
+                view=read_record(db,pid,kind,oid);records.append({'object_id':oid,'object_type':kind,**view})
+                work=view['work'];doc=work['document'] if work else view['trusted']['accepted']
+                if doc is not None:objects.append(local_object(kind,oid,pid,doc,work['version'] if work else 0))
+            outboxes=list(db.scalars(select(Outbox).where(Outbox.project_id==pid)))
+            status=project_status(db,pid)
+        local={'identity':{'id':'identity','workspace_id':pid,'device_id':node.owner.device_id,
+                          'scope':'SYNTHETIC_QA','authorization':'none'},
+            'projects':[{'id':pid,'route_alias':{'ice-sonocuring':'ice'}.get(module['id'],module['id']),
+                'title':'SYNTHETIC PC '+module['name'],'scope':'SYNTHETIC','module_id':module['id'],
+                'module_version':module['version'],'module_snapshot':module,
+                'module_hash':node.binding['local_module_hash']['value'],'local_format_version':1}],
+            'objects':objects,'operations':[],'audit':[],'drafts':[]}
+        return {'snapshot':local,'records':records,'project_status':status,
+                'outbox_count':len(outboxes),'transport':'NOT_IMPLEMENTED','pairing':'NOT_IMPLEMENTED'}
+
+    @app.post('/api/command')
+    async def command(request:Request):
+        from packages.secure_wire.canonical import strict_loads
+        try:data=strict_loads(await request.body())
+        except ValueError:return JSONResponse({'error':'INVALID_JSON'},422)
+        with Session(engine) as db,db.begin():
+            result=execute_command(db,node.context,node.binding['semantic_project_id'],data)
+            work=db.get(RecordWork,(node.binding['semantic_project_id'],data['object_type'],data['object_id']))
+            return {**result,'object':local_object(data['object_type'],data['object_id'],node.binding['semantic_project_id'],work.document,work.version)}
+
+    @app.get('/{path:path}')
+    def static(path:str):
+        dist=ROOT/'storage/runtime/browser-sync-qa/pc/dist'
+        if path in ('app.js','app.css','icon.svg'):target=dist/path
+        elif path=='' or re.fullmatch(r'projects/(generic|hdsp|ice)(/(runs|notes)/[a-zA-Z0-9-]+)?',path):target=dist/'index.html'
+        else:return JSONResponse({'error':'NOT_FOUND'},404)
+        if not target.is_file():return JSONResponse({'error':'PC_BUILD_REQUIRED'},503)
+        return FileResponse(target)
+    return app

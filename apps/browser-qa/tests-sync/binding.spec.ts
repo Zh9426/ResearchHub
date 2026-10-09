@@ -3,6 +3,18 @@ import {readFileSync} from 'node:fs';
 import {previewBinding,jsonHash,type PublicProjectBinding} from '../src/sync/binding';
 import {digest} from '../../../packages/sync-protocol/src/browser';
 import {payloadFor} from '../src/sync/wire';
+
+test('PC Domain字段长度按Unicode码点精确阻断且保留原操作',()=>{
+ const snapshot=JSON.parse(readFileSync('../../packages/project-modules/generic/manifest.json','utf8'));
+ const pid=crypto.randomUUID(),id=crypto.randomUUID();
+ const project={id:pid,module_snapshot:snapshot} as any;
+ const payload={kind:'Run',id,project_id:pid,title:'🧪'.repeat(200),local_format_version:1,local_edit_version:1,run_type:'simulation',objective:'',observation:'',status:'planned',scientific_outcome:'unknown',context_data:{},is_highlighted:true,highlight_type:'🧪'.repeat(100),highlight_note:'🧪'.repeat(10000)};
+ const op={object_id:id,project_id:pid,object_type:'Run',operation_type:'create',payload} as any;
+ expect(()=>payloadFor(op,project)).not.toThrow();
+ for(const [field,max] of [['title',200],['highlight_type',100],['highlight_note',10000]] as const){const bad={...op,payload:{...payload,[field]:'🧪'.repeat(max+1)}};const before=JSON.stringify(bad);expect(()=>payloadFor(bad,project)).toThrow(`payload.${field}`);expect(JSON.stringify(bad)).toBe(before);}
+ const note={...op,object_type:'Note',payload:{kind:'Note',id,project_id:pid,title:'🧪'.repeat(200),body:'  \n ',local_format_version:1,local_edit_version:1}};
+ expect(()=>payloadFor(note,project)).not.toThrow();expect(()=>payloadFor({...note,payload:{...note.payload,title:'🧪'.repeat(201)}},project)).toThrow('payload.title');
+});
 test('绑定预览：实际内容digest、严格字段与未授权边界',async()=>{
  expect((await previewBinding({semantic_project_id:'same-name'})).state).toBe('BLOCKED');
  const snapshot=JSON.parse(readFileSync('../../packages/project-modules/generic/manifest.json','utf8'));

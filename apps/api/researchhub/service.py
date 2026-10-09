@@ -330,9 +330,9 @@ def validate_links(db, obj, data, modules):
             raise HTTPException(422, "Blocked gate requires a reason")
 
 
-def parsed(kind, payload):
+def parsed(kind, payload, *, schema=None):
     try:
-        return SCHEMAS[kind].model_validate(payload).model_dump(mode="json")
+        return (schema or SCHEMAS[kind]).model_validate(payload).model_dump(mode="json")
     except ValidationError as e:
         raise HTTPException(
             422, jsonable_encoder(e.errors(), custom_encoder={ValueError: str})
@@ -501,14 +501,22 @@ def create_record(db, actor, request, kind, pid, payload, modules, run_id=None):
     cls = m.COLLECTIONS.get(
         kind, {"parameters": m.Parameter, "metrics": m.Metric}.get(kind)
     )
+    obj = cls(id=m.uid(), **({"run_id": run_id} if run_id else {"project_id": pid}))
+    return create_record_instance(db, actor, request, kind, pid, payload, modules, obj, run_id)
+
+
+def create_record_instance(db, actor, request, kind, pid, payload, modules, obj, run_id=None, *, schema=None):
+    """Internal creation rules shared with the isolated stable-ID QA adapter."""
+    cls = m.COLLECTIONS.get(kind, {"parameters": m.Parameter, "metrics": m.Metric}.get(kind))
+    if type(obj) is not cls or obj in db or (obj.run_id if run_id else obj.project_id) != (run_id or pid):
+        raise ValueError("Unpersisted correctly scoped record instance required")
     if actor.token and kind in {"evidence", "decisions"}:
         payload = {"status": "proposed", **payload}
-    data = parsed(kind, payload)
+    data = parsed(kind, payload, schema=schema)
     project_for(db, actor, pid, write=True)
     if run_id:
         resource(db, actor, m.ResearchRun, run_id, write=True)
     scientific_authority(actor, kind, data, creating=True)
-    obj = cls(id=m.uid(), **({"run_id": run_id} if run_id else {"project_id": pid}))
     if isinstance(obj, m.ResearchRun):
         obj.created_by = actor.user.id
     validate_links(db, obj, data, modules)

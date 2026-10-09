@@ -16,12 +16,13 @@ A1规格与质量独立审查PASS；真实QA PG回归132PASS。提交RH028。
 
 ## 2. A2独立节点及因果工作区
 
-A2a已完成并两阶段复审PASS（RH029）：3314/storage adapter/专门星标/稳定转换/字段绑定预览。A2b仍需PC独立服务、真实项目加入与显式3A导入，不能将A2a计为G1完成。
-- [ ] 创建受限PC QA API/ResearchReadService/Domain命令与Outbox，复用展示UI；独立3B origin/build/profile/IDB。
+A2a已完成并两阶段复审PASS（RH029）：3314/storage adapter/专门星标/稳定转换/字段绑定预览。A2b PC独立节点已完成实现及两阶段复审，生命周期attempt013仍OPEN；真实项目加入和显式3A导入仍待B/C，不能将本切点计为G1/G4完成。
+- [x] 创建受限PC QA API/ResearchReadService/Domain命令与Outbox，复用展示UI；独立3B origin/build/profile/IDB。
 - [ ] 项目绑定/公开能力与pin材料，稳定adapter mapping、连续父链、单击星标与dirty隔离，显式3A导入。
 - [ ] 真实UI+IDB/QA PG验证，保护3A测试，两阶段审查提交。
 
 ## 3. B浏览器正式安全与加入
+为降低跨平台安全改动的审查范围，按B1（共享安全核心、真实浏览器密码、独立vault及固定向量）→B2（真实owner加入、UI与严格TLS/CORS）连续实施；每个子任务先规格再质量复审，B整体通过后再进入C网络业务。
 - [ ] 实际浏览器Ed/X/HPKE/AES/SHA、Python双向vectors、独立key IDB、nonce预约/缓存状态机负例。
 - [ ] 实现原配对challenge/SAS/confirm/HPKE grant和完整chain pin，当前epoch baseline取得；非空旧历史阻塞。
 - [ ] 窄CORS/OPTIONS/CSP与独立Linux信任环境；实际CA/hostname/proof/signature/AAD拒绝，既有ingress不绕过。

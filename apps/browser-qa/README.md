@@ -1,5 +1,46 @@
 # 隔离浏览器离线工作台
 
+## Sprint 3B A2b PC 合成节点
+
+PC 固定 `http://127.0.0.1:3315`，独立受控 FastAPI 工厂，不导入产品 main。复用本工作台与 PC storage adapter，所有记录命令经过独立 QA PostgreSQL 35433 的 Domain / Kernel / Outbox 事务。此前 3313 和 3314 入口继续独立。当前 **配对、Relay 网络与 G4 均未完成**。
+
+仓库根 PowerShell：
+
+```powershell
+$env:RH_QA_PROFILE='pc'
+npm run build --prefix apps/browser-qa
+Remove-Item Env:RH_QA_PROFILE
+$env:HUB_SYNC_QA='1'
+$env:PYTHONPATH='apps/api;.'
+& .venv/Scripts/python.exe -m researchhub.sync.pc_cli start
+# 另一终端（同样的 HUB_SYNC_QA 与 PYTHONPATH）
+& .venv/Scripts/python.exe -m researchhub.sync.pc_cli stop
+```
+
+默认启动创建空 Generic 合成项目；首次可使用 `start --module hdsp` 或 `start --module ice-sonocuring` 冻结另一真实模块。既有节点不允许换模块，不能重新分配项目/对象身份。启动遇到占用端口或 owner 文件即失败；停止仅携带本工具保存的随机 owner token，绝不按端口/PID终止未知服务。异常残留时先核实 owner PID 与 3315 都已退出，保留残留文件作为证据，再恢复；不要删除项目或密钥文件。
+
+为验证其他模块的空合成节点，可运行 `start --node qa-hdsp --module hdsp`。节点只在 `storage/runtime/browser-sync-qa/pc/nodes/<slug>`；slug 只允许小写字母起始的字母数字/连字符，最多48字符，拒绝绝对路径、traversal与Windows保留名。默认节点路径保持 `pc/node`，任何时刻仍只有一个3315 owned服务；stop无需知道node名称。此选项不接受个人目录。
+
+PC 根页面自动选择实际冻结项目；高级语境依据 snapshot 的 context_fields/run_forms，保留不适用旧字段并要求用户显式处理，不静默删除。服务重启使会话失效时，原页保留脏输入及 prepared command 身份，明确提示再次保存；第二次操作重新建立会话，不自动重放业务请求。
+
+私有运行目录 `storage/runtime/browser-sync-qa/pc/` 不进入 Git。owner/recovery 是独立 `TestOnlyFileDeviceKeyStore`，**UNPROTECTED QA ONLY**，不是系统受保护密钥存储。项目 key 仅在内存中生成/从已签名 HPKE self-grant 解封；持久化的是签名公共链及密文 grant。重启复核完整 pin、历史 grant 对应 manifest、当前 owner 与同一 key epoch。设备/信任/nonce 账本缺失阻断，不重置发送状态。
+
+界面创建、编辑 Run/Note；星标单独三字段 PATCH，未保存正文仍保留。下方“刷新可信状态”分列工作副本、accepted projection、冲突候选和不可变历史，不从旧 Domain 行推断无冲突。所有本地 command 均保留待发送状态；`RecordWork.pending` 只代表尚未完成后续受控发送交接，不能解释成对端回执或科研批准。本切点没有清除 pending 的传输接口，C 阶段必须用持久发送事件精确清除对应 last_local_tx，不能清除后续编辑。并发候选只读保留，完整解决 UI 后续实现。
+
+公共绑定可在文本框复制，独立 `ResearchHub/PcProjectBinding/v1` domain owner 签名；包含真实冻结 snapshot、canonical hash、JSON-stringify 来源 hash、semantic/opaque ID、principal、roots 和完整公共链。页面在实际浏览器中校验结构与 hash，仍显示须独立确认信任；自行声明的 roots 不会让 B 自动信任。
+
+真实 PC UI 测试（先 PC build；retries=0、独立 Chromium profile）：
+
+```powershell
+cd apps/browser-qa
+$env:RH_PC_ATTEMPT='unique-attempt-name'
+npx playwright test --config playwright.pc.config.ts
+```
+
+后端用 `.venv/Scripts/python.exe -m pytest tests/sync_pg/test_pc_records.py tests/sync_pg/test_pc_identity.py tests/sync_pg/test_pc_api.py tests/sync_pg/test_pc_cli.py`；必须显式 `HUB_SYNC_QA=1`。所有 attempt 保留在 runtime，失败不删除。浏览器 attempt-013 曾在截图后停止阶段超时并出现 Windows connection-reset；后续带阶段日志的 attempt-017 通过，不能据此断言原间歇失败根因已解决。
+
+## 原 Sprint 3A 离线入口
+
 固定 origin：`http://127.0.0.1:3313`。只在此地址启动；不要用 localhost。服务启动遇到端口占用会失败，不终止原监听者。全部构建、浏览器二进制、profile、截图与日志存于 ignored `storage/runtime/browser-local-qa/`，不得上传 profile。
 
 从仓库根运行：
@@ -34,7 +75,7 @@ npm start --prefix apps/browser-qa
 
 ## Sprint 3B A2a 独立工作区与协议适配切点
 
-3A 原有命令、3313、业务 IDB 和离线测试保持默认。3B 复用 `QaShell` / `Workbench`，由 `WorkbenchAdapter` 注入存储和命令；将来 PC 3315 可以复用此视图，但此提交尚未提供 PC 服务。
+本节记录 A2a 历史切点。3A 原有命令、3313、业务 IDB 和离线测试保持默认。3B 复用 `QaShell` / `Workbench`，由 `WorkbenchAdapter` 注入存储和命令；该阶段尚未提供 PC 服务，当前 A2b PC 3315 的使用见本文开头。
 
 ```powershell
 cd H:\ResearchHub\apps\browser-qa

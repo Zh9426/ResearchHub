@@ -105,7 +105,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: pip install -r apps/api/requirements.txt -r tests/sync_kernel/requirements.txt
+      - run: pip install -r apps/api/requirements.txt -r tests/sync_kernel/requirements.txt -r tests/secure_sync/requirements.txt
       - run: npm ci --prefix apps/web
       - name: 两端独立固定协议样例
         run: |

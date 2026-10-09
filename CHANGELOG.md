@@ -2,6 +2,26 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-030 — 2026-10-09 — 建立独立 PC QA 业务节点与可操作界面
+
+### 完成内容
+
+- 新增3315受限PC入口，复用工作台；Run/Note/星标经独立QA PG的Domain、Kernel、Outbox原子写入，稳定命令重试、工作版本与heads双CAS。
+- 读取分列工作副本、可信投影、候选与历史；owner/recovery/self-grant/nonce持久化，丢失关键状态停写，公开绑定只预览不自授权。
+- 精确loopback Host/Origin、会话/CSRF、owned启动停止；受限合成node slug供三模块隔离验证，产品API与生产配置不接入。
+- 复审修复会话重启后保留脏输入并显式重试、模块语境字段错配、保存后刷新竞态；保留失败证据与确定性退出竞态回归。
+
+### 验证结果
+
+- PC与Domain/Outbox真实QA PG最终34项通过、0 skipped；最终完整PC套件6项通过（3模块实际UI、重启恢复、Run/Note/dirty-star、确定性退出竞态），retries=0。
+- 产品后端108项、原3A浏览器17项、3B工作区5项通过；typecheck/build及两阶段独立复审PASS。
+- PC attempt013退出超时与Windows连接重置仍OPEN，后续成功不关闭；TLS-001原失败、固定用例和调查保持。
+- RH029精确首次CI37877406718五job成功，原TLS/3A证据归档；本迭代网络与真实配对尚未实现，不计G2/G4通过。
+
+### 后续工作
+
+- B浏览器正式密码/vault/加入与严格TLS，C双向传输/冲突/失败验收、3A显式导入；Sprint3B仍INCOMPLETE，不进入3C或生产。
+
 ## RH-029 — 2026-10-09 — 建立独立同步工作区与稳定操作转换
 
 ### 完成内容

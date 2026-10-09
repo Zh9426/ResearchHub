@@ -5,7 +5,7 @@ import {initializeSyntheticWorkspace} from './local/seeds';
 import {newDraft,RUN_STATUSES,OUTCOMES,type LocalObject,type LocalSnapshot} from './local/model';
 import {testOnlyDisconnectedAdapter} from './local/testTransport';
 export type WorkbenchExtensionContext={snapshot:LocalSnapshot;draft:LocalObject|null;dirty:boolean;busy:boolean;refresh:()=>Promise<void>;openRescueDraft:(draft:LocalObject)=>void};
-export type WorkbenchAdapter={commands:Pick<typeof localCommands,'snapshot'|'save'|'setHighlight'|'notifications'|'injectNextAbort'>;initialize:()=>Promise<void>;sync?:boolean};
+export type WorkbenchAdapter={commands:Pick<typeof localCommands,'snapshot'|'save'|'setHighlight'|'notifications'|'injectNextAbort'>;initialize:()=>Promise<void>;sync?:boolean;pc?:boolean};
 const defaultAdapter:WorkbenchAdapter={commands:localCommands,initialize:initializeSyntheticWorkspace};
 type SaveState='editing'|'saving'|'saved'|'save_failed';
 declare global {interface Window {__LOCAL_QA__?:{snapshot:typeof localCommands.snapshot;currentDraft:()=>LocalObject|null;injectNextAbort:()=>void;testOnlyTransportProbe:()=>Promise<never>}}}
@@ -20,7 +20,7 @@ export function Workbench({extension,adapter=defaultAdapter}:{extension?:(contex
  useEffect(()=>{
   let active=true;
   void localCommands.snapshot().then(snapshot=>{if(!active)return;setData(snapshot);const id=location.pathname.split('/')[4];const found=snapshot.objects.find(x=>x.id===id);if(found){setDraft(found);setSaveState('saved');}}).catch(e=>{if(active)setError(String(e));});
-  const api={snapshot:localCommands.snapshot,currentDraft:()=>structuredClone(draftRef.current),injectNextAbort:()=>localCommands.injectNextAbort(),testOnlyTransportProbe:()=>testOnlyDisconnectedAdapter.send()};window.__LOCAL_QA__=api;
+  const api={snapshot:localCommands.snapshot,currentDraft:()=>structuredClone(draftRef.current),injectNextAbort:()=>localCommands.injectNextAbort(),testOnlyTransportProbe:()=>testOnlyDisconnectedAdapter.send()};if(!adapter.pc)window.__LOCAL_QA__=api;
   const change=()=>{setNotice('其他标签页有本地更新；当前编辑内容保持不变。');void refresh().catch(e=>setError(String(e)));};
   localCommands.notifications?.addEventListener('message',change);
   const unload=(e:BeforeUnloadEvent)=>{if(dirtyRef.current){e.preventDefault();e.returnValue='';}};
@@ -28,7 +28,18 @@ export function Workbench({extension,adapter=defaultAdapter}:{extension?:(contex
   window.addEventListener('beforeunload',unload);document.addEventListener('click',link,true);
   return()=>{active=false;localCommands.notifications?.removeEventListener('message',change);window.removeEventListener('beforeunload',unload);document.removeEventListener('click',link,true);delete window.__LOCAL_QA__;};
  },[]);
- const project=data?.projects.find(p=>p.route_alias===alias);
+ const project=data?.projects.find(p=>p.route_alias===alias)??(adapter.pc?data?.projects[0]:undefined);
+ useEffect(()=>{if(adapter.pc&&data?.projects.length&&!data.projects.some(p=>p.route_alias===alias))setAlias(data.projects[0].route_alias);},[data,alias,adapter.pc]);
+ const contextFields=(()=>{
+  if(!adapter.pc)return alias==='hdsp'?[['repository','代码仓库'],['config','仿真配置说明']]:alias==='ice'?[['experiment_conditions','实验条件说明'],['unexpected_events','异常观察']]:[['context','补充语境']];
+  if(!project||draft?.kind!=='Run')return [];
+  const fields=(project.module_snapshot.context_fields??[]) as {id:string;name:string;value_type:string}[];
+  const forms=(project.module_snapshot.run_forms??[]) as {run_type:string;groups:{fields:string[]}[]}[];
+  const matching=forms.filter(f=>f.run_type===draft.run_type);
+  const allowed=new Set(matching.length?matching.flatMap(f=>f.groups.flatMap(g=>g.fields)):fields.map(f=>f.id));
+  return fields.filter(f=>allowed.has(f.id)&&f.value_type==='string').map(f=>[f.id,f.name]);
+ })();
+ const unsupportedContext=adapter.pc&&draft?.kind==='Run'?Object.keys(draft.context_data).filter(k=>!contextFields.some(([id])=>id===k)):[];
  function canLeave(){return !dirty||confirm('本次修改尚未保存，确定放弃当前编辑？');}
  // Full-document links retain native beforeunload protection. Local selections
  // replace the current URL, avoiding same-document back entries without a router.
@@ -65,12 +76,12 @@ export function Workbench({extension,adapter=defaultAdapter}:{extension?:(contex
  <label>观察<textarea rows={5} value={draft.observation} onChange={e=>edit({observation:e.target.value})}/></label><div className="qa-toolbar"><label>运行状态<select value={draft.status} onChange={e=>edit({status:e.target.value as typeof draft.status})}>{RUN_STATUSES.map(v=><option key={v} value={v}>{human(v)}</option>)}</select></label><label>科研结果<select value={draft.scientific_outcome} onChange={e=>edit({scientific_outcome:e.target.value as typeof draft.scientific_outcome})}>{OUTCOMES.map(v=><option key={v} value={v}>{human(v)}</option>)}</select></label></div>
  <button type="button" aria-pressed={draft.is_highlighted} onClick={()=>adapter.sync?void highlight():edit({is_highlighted:!draft.is_highlighted})}>{draft.is_highlighted?'取消星标':'设为星标'}</button><p className="muted">星标独立于运行状态和科研结果；失败或阴性结果也可标记。</p>
  {draft.is_highlighted&&<><label>星标类型（可选）<input value={draft.highlight_type} onChange={e=>edit({highlight_type:e.target.value})}/></label><label>星标说明（可选）<textarea value={draft.highlight_note} onChange={e=>edit({highlight_note:e.target.value})}/></label></>}
- <details><summary>高级语境（可选）</summary>{(alias==='hdsp'?[['repository','代码仓库'],['config','仿真配置说明']]:alias==='ice'?[['experiment_conditions','实验条件说明'],['unexpected_events','异常观察']]:[['context','补充语境']]).map(([key,label])=><label key={key}>{label}<textarea value={draft.context_data[key]??''} onChange={e=>edit({context_data:{...draft.context_data,[key]:e.target.value}})}/></label>)}</details>
+ <details><summary>高级语境（可选）</summary>{contextFields.map(([key,label])=><label key={key}>{label}<textarea value={draft.context_data[key]??''} onChange={e=>edit({context_data:{...draft.context_data,[key]:e.target.value}})}/></label>)}{unsupportedContext.map(key=><div key={key}><p>{key}：当前类型不允许，原内容保留；请明确处理后保存。</p><pre>{draft.context_data[key]}</pre><button type="button" onClick={()=>{const next={...draft.context_data};delete next[key];edit({context_data:next});}}>删除不适用字段 {key}</button></div>)}</details>
  </>}</>:<label>笔记正文<textarea rows={8} value={draft.body} onChange={e=>edit({body:e.target.value})}/></label>}
  </fieldset><button className="primary" disabled={busy} onClick={()=>void save()}>保存到本机</button>
  {conflict&&<div><p>审核状态：conflict（本地编辑冲突，未请求科研批准）</p><button onClick={async()=>{try{const snapshot=await localCommands.snapshot();setComparison(snapshot.objects.find(o=>o.id===draft.id)??null);}catch(e){setError(String(e));}}}>比较当前记录</button><button onClick={()=>void save(true)}>另存草稿</button>{comparison&&<pre data-testid="comparison">{JSON.stringify(comparison,null,2)}</pre>}</div>}
  </div>:<Empty>选择记录，或创建一条 Run / Note。</Empty>}</Panel></div>
- <Panel title="本地队列与状态"><div className="qa-content">{adapter.sync?<><p data-testid="transport">已保存到本机，尚未连接传输服务；对端接收未确认。</p><p>待处理操作 {data.operations.length} 条 · 本地历史 {data.audit.length} 条</p><p>尚未请求科研批准。</p></>:<><p data-testid="transport">transport：not_configured · 待同步：本轮尚未连接传输服务</p><p>review：{conflict?'conflict':'not_requested'} · 未请求科研批准</p><p>待处理操作 {data.operations.length} 条 · 本地历史 {data.audit.length} 条 · NEEDS_WIRE_ADAPTER</p><p className="muted">本地操作保留完整内容，尚不是可发送的 SyncTransaction。明文合成数据，不含真实设备授权。</p></>}{notice&&<p role="status">{notice}</p>}</div></Panel>
+ <Panel title="本地队列与状态"><div className="qa-content">{adapter.sync?<><p data-testid="transport">已保存到本机，尚未连接传输服务；对端接收未确认。</p>{adapter.pc?<p>PC 事务与可信状态见下方；正文保存经独立 PC 业务服务。</p>:<p>待处理操作 {data.operations.length} 条 · 本地历史 {data.audit.length} 条</p>}<p>尚未请求科研批准。</p></>:<><p data-testid="transport">transport：not_configured · 待同步：本轮尚未连接传输服务</p><p>review：{conflict?'conflict':'not_requested'} · 未请求科研批准</p><p>待处理操作 {data.operations.length} 条 · 本地历史 {data.audit.length} 条 · NEEDS_WIRE_ADAPTER</p><p className="muted">本地操作保留完整内容，尚不是可发送的 SyncTransaction。明文合成数据，不含真实设备授权。</p></>}{notice&&<p role="status">{notice}</p>}</div></Panel>
  </>}
  {data&&extension?.({snapshot:data,draft,dirty,busy,refresh,openRescueDraft})}
  </>;

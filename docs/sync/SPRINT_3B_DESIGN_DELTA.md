@@ -14,6 +14,8 @@
 
 PC owner建立空合成项目，生成semantic/opaque ID、冻结module snapshot和规范digest、当前完整manifest链与独立pin roots。签名项目绑定含能力、principal映射；UI通过受信owner人工确认pin，不能从Relay自授权。浏览器生成自己的Ed25519/X25519密钥，沿原五分钟challenge/SAS、两私钥possession、owner消费、签名HPKE grant加入。仅加入当前epoch空基线，然后PC创建baseline让B真实拉取。非空旧历史需要可信bootstrap时明确BLOCKED，不跳cursor。
 
+最小真实加入路径使用新的专用3B profile，不调用三项目演示seed；现有seed及pending完整保留，不按名字迁移或重分配UUID。空工作区完成独立设备生成、owner pin和配对后，加入PC指定semantic UUID与真实snapshot。vault先持久已验证grant/key，业务库再短事务写project、VERIFIED binding与join marker；中间状态显示加入未完成，同一receipt幂等补齐，不能提前发送。正常加入UI需要与本地演示初始化分开；若未来支持同profile多个同模块项目，必须先改为UUID或唯一alias路由，不能复用generic别名混淆身份。owner在成员加入后签目标设备专用binding，principal_map覆盖合法发送者；同设备actor身份不可因刷新静默改写。绑定按已pin的manifest/head单调CAS更新，旧转换与跨epoch pending保留，不自动换身份重签。此加入接口方案已只读复核，B阶段实现。
+
 显式协议组合 `(protocol_version=2,schema_version=2)` 只为本轮Run/Note扩展；v1=(1,1)白名单/bytes/revision不变，混合(2,1)/(1,2)仍拒绝。SecureEnvelope外壳版本/suite/domain仍1，事务(2,2)仅transaction记录可用，header与内部版本严格一致且签名/AAD覆盖。旧端拒绝新版本，不丢字段降级。
 
 | 本地 | 正式映射/边界 |
@@ -47,6 +49,8 @@ CORS精确允许 `http://127.0.0.1:3314`、GET/POST、`content-type,x-rh-proof`�
 单次手动“立即同步”，持久claim/CAS防双tab并发，退出释放/恢复；无隐藏无限重试。固定集合→稳定转换→持久封装→browser fetch→RelayStored记录；未知ACK结果保留原envelope供下次显式重送。HTTP proof可更新，业务身份不可更新。
 
 新增独立版本的device-signed应用回执，绑定项目、sender/target、原message/envelope/transaction digest、epochs与stage。应用回执只从durable接收结果产生，拒绝/隔离不签KERNEL_APPLIED；公共Relay只校验存取，不裁决科学结果；B验证目标签名后才显示PC已应用，冲突状态另列。旧v1 ACK不改义。
+
+PeerApplyReceipt v1设计字段固定为version/opaque_project_id/sender_device_id/target_device_id/message_id/sequence/envelope_digest/semantic_transaction_digest/membership_epoch/key_epoch/manifest_digest/stage/state_at_commit/signature，签名域ResearchHub/PeerApplyReceipt/v1\0；stage复用KERNEL_APPLIED，state_at_commit仅ACCEPTED/CANDIDATE，描述历史提交事实而非当前科研状态。新POST/GET /v1/peer-receipts，旧ack不改；Relay以message+target为不可变身份，核对对应message全部绑定和当前目标签名，exact retry幂等。GET仅原sender/target授权读取。客户端先从durable Received+Kernel生成并持久缓存回执，后发送；QUARANTINED/异常不签。Browser按本地缓存envelope及等待的特定PC目标验证完整pin链/signature/epoch/digest，不接受其他成员代签。旧epoch回执只作历史确认、撤销后不升级当前状态；晚冲突后的UI读当前DAG，不把旧ACCEPTED回执当当前projection。此为DESIGNED ONLY，C阶段实现与测试。
 
 B仅实现本轮Run/Note所需保守DAG/整批屏障，使用相同向量与Python Kernel差异验证；不移植完整产品内核。并发同BASE保留全部head，三方BASE/本地/远端按字段展示，用户选择/手填，expected_heads CAS拒绝过期解决。新resolution revision/audit，不改历史。普通冲突采用原offline_proposal语义：显示“冲突解决提案已同步，待人工批准”，始终CANDIDATE，不推进AcceptedProjection。发送/接收的受信QA策略仅对整个v2 Run/Note普通resolve事务选择该模式，检查结果/parents/当前heads均未protected、锁内expected_heads精确相等，不能由payload选权限；不修改原Kernel离线历史heads契约。禁止LWW，回显不创建新local operation。接收先完成principal与txid/raw/digest幂等识别，已应用相同事务直接返回持久结果，再对新resolve检查exact-head；否则自己的解决提案回显会被错误判stale。晚分叉递归使争议事务及Dependency后代成为CANDIDATE，按事务撤回整批AcceptedProjection，不能仅隐藏冲突对象。业务Kernel序列与Relay cursor分别持久，不合并为一个watermark。
 
