@@ -1,0 +1,15 @@
+import {runtime,origin} from './paths.mjs';
+import {resolve} from 'node:path';
+import {mkdirSync,writeFileSync,existsSync,unlinkSync} from 'node:fs';
+import {createServer} from 'node:http';
+import {randomUUID} from 'node:crypto';
+import {chromium} from '@playwright/test';
+const ownerPath=resolve(runtime,'browser-owner.json');
+if(existsSync(ownerPath))throw Error('QA browser ownership file exists; stop its owner first. Do not use a second process with this profile.');
+mkdirSync(resolve(runtime,'profiles'),{recursive:true});
+const context=await chromium.launchPersistentContext(resolve(runtime,'profiles/manual'),{headless:false,channel:'chromium'});
+const token=randomUUID();
+const control=createServer(async(req,res)=>{if(req.method!=='POST'||req.headers['x-qa-owner']!==token){res.writeHead(403);res.end();return;}res.end('stopping');await context.close();});
+control.listen(0,'127.0.0.1',()=>{writeFileSync(ownerPath,JSON.stringify({token,port:control.address().port,pid:process.pid}));});
+context.on('close',()=>{control.close();if(existsSync(ownerPath))unlinkSync(ownerPath);});
+const page=await context.newPage();await page.goto(origin).catch(e=>console.error('Open failed (first offline launch needs prior initialization):',e.message));

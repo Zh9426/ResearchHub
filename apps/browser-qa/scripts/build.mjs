@@ -1,0 +1,17 @@
+import {build} from 'esbuild';
+import {mkdir,writeFile,readFile,copyFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {resolve} from 'node:path';
+import {dist,root,origin} from './paths.mjs';
+await mkdir(dist,{recursive:true});
+const result=await build({entryPoints:['src/main.tsx'],bundle:true,format:'esm',platform:'browser',target:'es2022',outfile:resolve(dist,'app.js'),metafile:true,minify:true,nodePaths:[resolve(root,'apps/browser-qa/node_modules')],alias:{react:resolve(root,'apps/browser-qa/node_modules/react'),'react-dom':resolve(root,'apps/browser-qa/node_modules/react-dom')}});
+const forbidden=Object.keys(result.metafile.inputs).filter(p=>/node:|\/lib\/api|\/lib\/auth|node_modules\/next\//.test(p));
+if(forbidden.length)throw Error(`Forbidden browser dependencies: ${forbidden}`);
+await copyFile('src/icon.svg',resolve(dist,'icon.svg'));
+const js=await readFile(resolve(dist,'app.js'));const css=await readFile(resolve(dist,'app.css'));
+if(/node:(?:fs|sqlite|crypto|path|http|https|net|tls|buffer|process)|NEXT_PUBLIC_API|native-env|127\.0\.0\.1:8000/.test(js.toString()))throw Error('Forbidden runtime dependency in browser bundle');
+const version=createHash('sha256').update(js).update(css).digest('hex').slice(0,16);
+await writeFile(resolve(dist,'index.html'),'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Research Hub · 浏览器离线实验版</title><link rel="icon" href="/icon.svg"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>');
+const sw=(await readFile('src/sw.js','utf8')).replaceAll('__CACHE__',`researchhub-browser-qa-shell-${version}`).replaceAll('__ORIGIN__',origin);
+await writeFile(resolve(dist,'sw.js'),sw);await writeFile(resolve(dist,'bundle-inputs.json'),JSON.stringify(result.metafile.inputs,null,2));
+console.log(`QA build ${version}: ${dist}`);
