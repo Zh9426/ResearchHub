@@ -1,5 +1,27 @@
 # 隔离浏览器离线工作台
 
+## Sprint 3B B1 正式浏览器密码验证
+
+B1验证正式Envelope、Python双向互通及独立密钥库，不代表真实配对或HTTPS已通过。正式套件仍为AES256GCM/Ed25519/HPKE-X25519-HKDFSHA256-AES256GCM；浏览器自己的non-extractable设备私钥不传给Node或Python。测试授权材料、profile和原始日志仅存ignored runtime。
+
+从仓库根安装 `npm ci --prefix packages/secure-sync`，再进入 `apps/browser-qa`：
+
+```powershell
+$env:RH_QA_TEST_ONLY='1'
+npm run build:sync
+$env:RH_B1_ATTEMPT='unique-b1-attempt'
+node node_modules/@playwright/test/cli.js test --config playwright.security.config.ts
+# 普通入口验证须使用另一全新attempt；旧目录禁止复用
+$env:RH_QA_TEST_ONLY='0'
+npm run build:sync
+$env:RH_B1_NORMAL='1'
+$env:RH_B1_ATTEMPT='unique-normal-attempt'
+node node_modules/@playwright/test/cli.js test --config playwright.security.config.ts
+Remove-Item Env:RH_QA_TEST_ONLY, Env:RH_B1_NORMAL, Env:RH_B1_ATTEMPT
+```
+
+必须先有项目`.venv`及安全测试依赖；可用`RH_QA_PYTHON`指定受控Python解释器。每次测试使用新attempt、独立Chromium profile、retries=0；第一次失败原样保留，不重复同attempt。CI仅上传白名单`summary.json`，不上传oracle材料、原始错误、密钥、proof或profile。业务数据库与vault分开，整个profile一致回滚仍无法检测；本机明文合成记录不因传输E2E而获得磁盘加密。
+
 ## Sprint 3B A2b PC 合成节点
 
 PC 固定 `http://127.0.0.1:3315`，独立受控 FastAPI 工厂，不导入产品 main。复用本工作台与 PC storage adapter，所有记录命令经过独立 QA PostgreSQL 35433 的 Domain / Kernel / Outbox 事务。此前 3313 和 3314 入口继续独立。当前 **配对、Relay 网络与 G4 均未完成**。

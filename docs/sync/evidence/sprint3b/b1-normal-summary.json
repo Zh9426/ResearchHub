@@ -1,0 +1,26 @@
+{
+  "scope": "SYNTHETIC B1 Chromium cryptography; network and pairing UI NOT VERIFIED",
+  "timestamp": "2026-10-09T04:06:31.645Z",
+  "attempt": "b1-normal-004",
+  "status": "passed",
+  "sourceCommit": "WORKTREE",
+  "buildHash": "f014176147fb8b5ea2908ddcc8142585de2c74225776a315494da3233270ef91",
+  "node": "v24.15.0",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.22631",
+    "arch": "x64"
+  },
+  "chromium": "156.0.8078.4",
+  "hpke": null,
+  "retries": 0,
+  "tests": 1,
+  "results": [
+    {
+      "title": "normal 3B bundle excludes TEST ONLY fixture and fault bridges; UI stays unverified",
+      "status": "passed",
+      "durationMs": 1297,
+      "retry": 0
+    }
+  ]
+}

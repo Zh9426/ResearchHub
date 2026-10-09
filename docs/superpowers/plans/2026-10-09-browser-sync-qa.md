@@ -23,7 +23,7 @@ A2a已完成并两阶段复审PASS（RH029）：3314/storage adapter/专门星�
 
 ## 3. B浏览器正式安全与加入
 为降低跨平台安全改动的审查范围，按B1（共享安全核心、真实浏览器密码、独立vault及固定向量）→B2（真实owner加入、UI与严格TLS/CORS）连续实施；每个子任务先规格再质量复审，B整体通过后再进入C网络业务。
-- [ ] 实际浏览器Ed/X/HPKE/AES/SHA、Python双向vectors、独立key IDB、nonce预约/缓存状态机负例。
+- [x] 实际浏览器Ed/X/HPKE/AES/SHA、Python双向vectors、独立key IDB、nonce预约/缓存状态机负例。B1规格及质量独立复审PASS，RH031；不代表B2网络Gate。
 - [ ] 实现原配对challenge/SAS/confirm/HPKE grant和完整chain pin，当前epoch baseline取得；非空旧历史阻塞。
 - [ ] 窄CORS/OPTIONS/CSP与独立Linux信任环境；实际CA/hostname/proof/signature/AAD拒绝，既有ingress不绕过。
 - [ ] 安全规格/质量复审与exact版本记录，前置满足才进入网络业务。

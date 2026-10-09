@@ -5,6 +5,49 @@ on:
 permissions:
   contents: read
 jobs:
+  browser-security-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/storage/runtime/browser-local-qa/browsers
+      RH_B1_ATTEMPT: ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 安装固定浏览器与独立Python密码实现
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -r apps/api/requirements.txt -r tests/secure_sync/requirements.txt
+          npm ci --prefix apps/web
+          npm ci --prefix apps/browser-qa
+          npm ci --prefix packages/secure-sync
+      - name: 安装隔离Chromium
+        working-directory: apps/browser-qa
+        run: npx playwright install --with-deps chromium
+      - name: 类型检查及显式合成授权测试构建
+        env:
+          RH_QA_TEST_ONLY: '1'
+        run: |
+          npm --prefix packages/secure-sync run typecheck
+          npm --prefix apps/browser-qa run typecheck
+          npm --prefix apps/browser-qa run build:sync
+      - name: 真实Chromium正式密码与独立Python互通
+        working-directory: apps/browser-qa
+        run: node node_modules/@playwright/test/cli.js test --config playwright.security.config.ts
+      - name: 上传白名单结果而非原始密码测试材料
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-security-qa-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            storage/runtime/browser-sync-qa/security/ci-${{ github.run_id }}-${{ github.run_attempt }}/summary.json
+          if-no-files-found: warn
+          retention-days: 14
   browser-local-qa:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -23,6 +66,7 @@ jobs:
         run: |
           npm ci --prefix apps/web
           npm ci --prefix apps/browser-qa
+          npm ci --prefix packages/secure-sync
       - name: 安装隔离 Chromium 及 Linux 系统依赖
         working-directory: apps/browser-qa
         run: npx playwright install --with-deps chromium

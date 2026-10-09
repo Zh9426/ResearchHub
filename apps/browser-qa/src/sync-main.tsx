@@ -11,3 +11,4 @@ if(location.origin!=='http://127.0.0.1:3314')document.body.textContent='拒绝�
 else createRoot(document.getElementById('root')!).render(<QaShell sync><Workbench adapter={adapter} extension={()=><BindingPanel/>}/></QaShell>);
 declare const __SYNC_TEST_ONLY__:boolean;
 if(__SYNC_TEST_ONLY__)void import('./sync/test-fixture');
+if(__SYNC_TEST_ONLY__)void import('./sync/security-test-fixture');

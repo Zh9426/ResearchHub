@@ -1,3 +1,4 @@
+import {wrapContext,type WrapContext} from './wrap-context.ts';
 import { webcrypto, createPrivateKey, createPublicKey } from 'node:crypto';
 import { CipherSuite, DhkemX25519HkdfSha256, HkdfSha256, Aes256Gcm } from '@hpke/core';
 import { canonicalBytes } from '../../sync-protocol/src/canonical.ts';
@@ -32,30 +33,7 @@ export async function aesDecrypt(key: Uint8Array, nonce: Uint8Array, ciphertext:
         throw new Error('DECRYPT_FAILED');
     }
 }
-export interface WrapContext {
-    opaque_project_id: string;
-    recipient_device_id: string;
-    key_epoch: number;
-    membership_epoch: number;
-    session_id: string;
-    recipient_signing_public_key: string;
-    recipient_public_key: string;
-}
-export function wrapContext(context: WrapContext): Uint8Array {
-    const fields = 'opaque_project_id recipient_device_id key_epoch membership_epoch session_id recipient_signing_public_key recipient_public_key'.split(' ').sort();
-    if (Object.keys(context).sort().join() != fields.join())
-        throw new Error('INVALID_WRAP_CONTEXT');
-    for (const f of ['opaque_project_id', 'recipient_device_id', 'session_id'] as const)
-        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(context[f]) || context[f] === '00000000-0000-0000-0000-000000000000')
-            throw new Error('INVALID_WRAP_CONTEXT');
-    for (const n of [context.key_epoch, context.membership_epoch])
-        if (!Number.isSafeInteger(n) || n < 1)
-            throw new Error('INVALID_WRAP_CONTEXT');
-    for (const f of ['recipient_public_key', 'recipient_signing_public_key'] as const)
-        if (!/^[0-9a-f]{64}$/.test(context[f]))
-            throw new Error('INVALID_WRAP_CONTEXT');
-    return canonicalBytes(context);
-}
+export {wrapContext,type WrapContext} from './wrap-context.ts';
 const suite = () => new CipherSuite({ kem: new DhkemX25519HkdfSha256(), kdf: new HkdfSha256(), aead: new Aes256Gcm() });
 export async function wrapKey(pub: Uint8Array, key: Uint8Array, context: WrapContext): Promise<Uint8Array> {
     const info = wrapContext(context);

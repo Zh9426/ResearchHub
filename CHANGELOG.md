@@ -2,6 +2,24 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-031 — 2026-10-09 — 浏览器正式密码与不可变密文持久化
+
+### 完成内容
+
+- 抽取共享Envelope/membership/checkpoint规则，保留Node兼容入口；真实浏览器WebCrypto与固定HPKE库处理正式v1/v2，原向量和套件不变。
+- 独立non-extractable密钥IDB、授权永久标记、原子nonce预约/高水位检查、准备token与sealed摘要镜像；实际Run/Note/星标映射经过可恢复跨库密封，不允许已sealed内容重新加密。
+- 损坏或身份不一致保留业务和密文并BLOCKED；普通构建排除TESTONLY授权/故障入口；CI新增真实Chromium密码job，仅上传白名单summary。
+
+### 验证结果
+
+- 最终真实Chromium密码/互通/持久化负例10/10通过，无skip、retries=0；普通构建1/1、原A2工作区5/5、Node安全54/54、Python原安全182/182；两包typecheck/diff检查通过。
+- 010 sealed丢失、011局部counter回滚均先保留实际RED再最小补丁；不能以最终通过覆盖首败或宣称识别整个profile一致回滚。
+- 原v1与TLS调查文件hash未变；RH030首次CI五job全部成功，原3A17项与TLS固定20轮归档。B1精确提交CI将在推送后核验。
+
+### 后续工作
+
+- B2真实owner加入、严格HTTPS/CORS；C双向传输、冲突、失败验收与3A显式导入。TLS-001和PC013保持OPEN；Sprint3B仍INCOMPLETE，不进入3C或生产。
+
 ## RH-030 — 2026-10-09 — 建立独立 PC QA 业务节点与可操作界面
 
 ### 完成内容
