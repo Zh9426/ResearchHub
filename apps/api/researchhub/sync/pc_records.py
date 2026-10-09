@@ -61,6 +61,29 @@ def read_record(db, project_id, object_type, object_id):
         'history':[{'revision':r.revision,'transaction_id':r.transaction_id,'document':r.document,
                     'parents':r.parents} for r in history(db,project_id,object_type,object_id)]}
 
+def displayed_document(view):
+    """A completed work copy is historical; only pending edits override trust."""
+    work=view['work']
+    return work['document'] if work and work['pending'] else view['trusted']['accepted']
+
+def complete_handoff(db, project_id, object_type, object_id, transaction_id, version):
+    """Apply a durable handoff result only to the exact local version it describes.
+
+    Caller verifies/persists the transport result outside this short transaction.
+    Lock ordering is Trust -> Project -> Work, matching the receiving service.
+    """
+    guard(db.get_bind())
+    from .secure.transport_pg import Trust
+    db.scalar(select(Trust).where(Trust.semantic_project==project_id).with_for_update())
+    lock_project(db,project_id)
+    work=db.scalar(select(RecordWork).where(RecordWork.project_id==project_id,
+        RecordWork.object_type==object_type,RecordWork.object_id==object_id).with_for_update())
+    if work is None or work.last_local_tx!=transaction_id or work.version!=version:
+        return False
+    work.pending=False
+    db.flush()
+    return True
+
 def execute_command(db, context, project_id, command, *, fault=None):
     guard(db.get_bind())
     command=copy.deepcopy(command)
@@ -77,10 +100,10 @@ def execute_command(db, context, project_id, command, *, fault=None):
     _payload(kind,patch,2)
     if operation=='highlight' and (kind!='ResearchRun' or set(patch)!={'is_highlighted','highlight_type','highlight_note'}):
         reject('QA_SCOPE','highlight requires exactly three fields')
-    state=lock_project(db,project_id)
     from .pc_pairing import active_journal
     from .secure.transport_pg import Trust
-    trust=db.scalar(select(Trust).where(Trust.semantic_project==project_id))
+    trust=db.scalar(select(Trust).where(Trust.semantic_project==project_id).with_for_update())
+    state=lock_project(db,project_id)
     if trust is not None and active_journal(db,trust.project):
         reject('PAIRING_IN_PROGRESS','PAIRING_IN_PROGRESS: finish owner pairing before baseline')
     principal=resolve_principal(db,context,project_id)

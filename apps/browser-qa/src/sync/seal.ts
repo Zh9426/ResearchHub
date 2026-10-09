@@ -2,12 +2,16 @@ import { transactionDigest, revision, validateTransaction, canonicalBytes } from
 import { BrowserVault, type SealIdentity } from '../../../../packages/secure-sync/src/vault-browser';
 import { equal } from '../../../../packages/secure-sync/src/binary';
 import type { WireMapping, BindingRecord } from './wire';
+import {AuthorizationInstaller,requireAuthorization} from './authorization';
+import {PageReceiver} from './receiver';
 const VAULT_NAME = 'researchhub-browser-sync-qa-vault-v1';
 const VAULT_MARKER = 'security-vault-v1';
 const req = <T>(r: IDBRequest<T>) => new Promise<T>((ok, no) => { r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
 /** Coordinates two databases, without claiming an atomic transaction across them. */
 export class WireSealer {
     constructor(private open: () => Promise<IDBDatabase>, private testOnly = false) { }
+    async authorization(){return new AuthorizationInstaller(this.open,await this.vault());}
+    async receiver(){return new PageReceiver(this.open,await this.vault());}
     private async meta<T>(mode: IDBTransactionMode, work: (store: IDBObjectStore) => Promise<T>): Promise<T> {
         const db = await this.open();
         const tx = db.transaction('meta', mode);
@@ -74,6 +78,7 @@ export class WireSealer {
             if (!mapping?.transaction || mapping.conversion !== 'CONVERTED' || !mapping.transaction_digest)
                 throw Error('MAPPING_NOT_CONVERTED');
             const binding = await req(s.get(`binding:${mapping.transaction.project_id}`)) as BindingRecord;
+            if(!this.testOnly)requireAuthorization(await req(s.get(`authorization:${mapping.transaction.project_id}`)),binding);
             if (!binding || (binding.state !== 'VERIFIED' && !(this.testOnly && binding.state === 'TEST_ONLY')) || JSON.stringify(binding) !== mapping.binding_fingerprint)
                 throw Error('BINDING_CHANGED');
             return { mapping, binding };
@@ -112,6 +117,7 @@ export class WireSealer {
         return this.meta('readwrite', async (s) => {
             const current = await req(s.get(mapping.id)) as WireMapping;
             const now = await req(s.get(binding.id));
+            if(!this.testOnly)requireAuthorization(await req(s.get(`authorization:${binding.binding.semantic_project_id}`)),now);
             if (JSON.stringify(now) !== JSON.stringify(binding))
                 throw Error('BINDING_CHANGED');
             if (JSON.stringify({ ...current, envelope: null, envelope_digest: null, transport: null }) !== JSON.stringify({ ...mapping, envelope: null, envelope_digest: null, transport: null }))
@@ -136,6 +142,7 @@ export class WireSealer {
             const raw = await vault.ready(mapping.prepare_id, mapping.envelope, identity);
             await this.meta('readonly', async (store) => {
                 const current = await req(store.get(mapping.id)), now = await req(store.get(binding.id));
+                if(!this.testOnly)requireAuthorization(await req(store.get(`authorization:${binding.binding.semantic_project_id}`)),now);
                 if (JSON.stringify(current) !== JSON.stringify(mapping) || JSON.stringify(now) !== JSON.stringify(binding))
                     throw Error('MAPPING_CAS_MISMATCH');
             });

@@ -16,6 +16,8 @@ PC owner建立空合成项目，生成semantic/opaque ID、冻结module snapshot
 
 最小真实加入路径使用新的专用3B profile，不调用三项目演示seed；现有seed及pending完整保留，不按名字迁移或重分配UUID。空工作区完成独立设备生成、owner pin和配对后，加入PC指定semantic UUID与真实snapshot。vault先持久已验证grant/key，业务库再短事务写project、VERIFIED binding与join marker；中间状态显示加入未完成，同一receipt幂等补齐，不能提前发送。正常加入UI需要与本地演示初始化分开；若未来支持同profile多个同模块项目，必须先改为UUID或唯一alias路由，不能复用generic别名混淆身份。owner在成员加入后签目标设备专用binding，principal_map覆盖合法发送者；同设备actor身份不可因刷新静默改写。绑定按已pin的manifest/head单调CAS更新，旧转换与跨epoch pending保留，不自动换身份重签。此加入接口方案已只读复核，B阶段实现。
 
+**RH040 AMENDED — 授权安装顺序。** 上述早期“vault先持久、业务后写”的顺序由统一协调器替代：事务外校验完整签名binding/chain，业务短事务先写BLOCKED、递增generation与固定transition token，再安装vault pin/grant，最后短CAS写READY绑定与公共授权镜像。业务镜像是接收/转换/发送提交时的授权门槛；不声称跨数据库原子性。中断仅允许恢复同一transition；完整相同receipt重试不增generation，缺镜像的旧绑定保持BLOCKED。正常join、链安装、撤销共用此路径，显式TEST_ONLY密码fixture与正常入口分开。PC命令与交接统一Trust→Project→Work锁序。测试范围见本轮报告。
+
 B2采用文本复制的标准challenge/SAS/双私钥proof/HPKE grant；复用pairing.consume而非新造认证。PC受会话/Origin/CSRF限制的配对协调器持久journal：固定session/recipient双公钥/role/prefix/principal、旧head、exact challenge/receipt/candidate和phase。CHALLENGE_READY→SQLite OWNER_COMMITTED→HTTPS Relay membership确认→PG_COMMITTED（同事务Trust链、principal/map、journal）→B_INSTALLED；每步崩溃从同session已存receipt恢复，不能重新consume或生成grant。READY启动前先核验并恢复已有journal，不因任意SQLite新head自动覆盖PG；未知第三head或缺失journal BLOCKED。PC binding从已提交PG状态重构签名，不继续用启动时旧快照。
 
 Relay bootstrap仅受控QA setup调用原pin_bootstrap；/v1/hello不是项目创建。发布采用原/v1/membership及/v1/membership/receipt，专用恢复helper仅允许journal已验证的旧/候选manifest签这些固定路径。ACK未知时先查candidate receipt，旧授权查询确认仍为old才重送exact candidate；网络错误不能推断已提交或未提交。此处有意不使用/v1/pairing/complete：现有接口在SQLite已consume但Relay未提交且五分钟过期时无法恢复，不能放宽过期规则。保留PcProjectBinding原wrapper；每个manifest head固定一份canonical principal_map，已有device→actor不改，若未来需同epoch修改map才另增版本链。B完成独立安装并真实HTTPS hello确认当前head/空sequence后，再创建baseline；本轮不支持任意历史初始化。
@@ -69,6 +71,8 @@ PeerApplyReceipt v1设计字段固定为version/opaque_project_id/sender_device_
 B仅实现本轮Run/Note所需保守DAG/整批屏障，使用相同向量与Python Kernel差异验证；不移植完整产品内核。并发同BASE保留全部head，三方BASE/本地/远端按字段展示，用户选择/手填，expected_heads CAS拒绝过期解决。新resolution revision/audit，不改历史。普通冲突采用原offline_proposal语义：显示“冲突解决提案已同步，待人工批准”，始终CANDIDATE，不推进AcceptedProjection。发送/接收的受信QA策略仅对整个v2 Run/Note普通resolve事务选择该模式，检查结果/parents/当前heads均未protected、锁内expected_heads精确相等，不能由payload选权限；不修改原Kernel离线历史heads契约。禁止LWW，回显不创建新local operation。接收先完成principal与txid/raw/digest幂等识别，已应用相同事务直接返回持久结果，再对新resolve检查exact-head；否则自己的解决提案回显会被错误判stale。晚分叉递归使争议事务及Dependency后代成为CANDIDATE，按事务撤回整批AcceptedProjection，不能仅隐藏冲突对象。业务Kernel序列与Relay cursor分别持久，不合并为一个watermark。
 
 浏览器DAG优先抽取sync-protocol纯record-kernel-core，独立对照Python相同v2 transcript；共享严格payload校验，不复制字段表。依次完成principal/幂等、冻结module、parent/change/audit身份、完整物化、权限、依赖、heads/common BASE、晚冲突整批/依赖撤回、状态/审计/序列。BASE是唯一最大共同祖先，不能按时间选；offline proposal永远CANDIDATE。页内先在staged snapshot顺序计算，末尾短IDB CAS一次提交；任一步失败无半页。接收的transaction当前state与初始receipt_state分开，旧ACCEPTED回执不能覆盖晚冲突后的CANDIDATE。差异向量覆盖到达顺序、同BASE、独立对象、缺parent/dependency、身份collision、批次+后继撤回、resolution重复回显/过期拒绝、页失败与预验证后CAS变化。
+
+当前本地对象表只支持UUID单键；正式内核仍支持类型+UUID身份。同UUID多类型或与已有本地项目/类型冲突时，接收整页明确BLOCKED且不推进游标，不通过重分配ID或丢投影迁就本地模型。未来复合键支持需显式迁移设计。
 
 已保存Run星标单击独立字段命令：读持久记录+CAS，只改显式星标字段，dirty正文保持；列表/详情/队列一致。正文/星标/对端状态的机器细节在诊断抽屉。
 

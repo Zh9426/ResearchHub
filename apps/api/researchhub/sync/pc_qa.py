@@ -136,7 +136,8 @@ def create_app(*,engine=None,runtime=None,module_id='generic',pairing_transport=
             for kind,oid in sorted(keys):
                 if kind not in ('ResearchRun','Note'):continue
                 view=read_record(db,pid,kind,oid);records.append({'object_id':oid,'object_type':kind,**view})
-                work=view['work'];doc=work['document'] if work else view['trusted']['accepted']
+                from .pc_records import displayed_document
+                work=view['work'];doc=displayed_document(view)
                 if doc is not None:objects.append(local_object(kind,oid,pid,doc,work['version'] if work else 0))
             outboxes=list(db.scalars(select(Outbox).where(Outbox.project_id==pid)))
             status=project_status(db,pid)

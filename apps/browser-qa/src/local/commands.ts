@@ -59,7 +59,13 @@ export class LocalCommandService {
       const operation:LocalOperation={id:operationId,project_id:object.project_id,object_id:object.id,object_type:object.kind,operation_type:event,payload:result,known_base_revision:null,local_format_version:1,source,state:'pending',wire_adapter:'NEEDS_WIRE_ADAPTER',created_at:time};
       const audit:LocalAudit={id:auditId,operation_id:operationId,object_id:object.id,project_id:object.project_id,event,local_edit_version:result.local_edit_version,source,created_at:time,local_format_version:1};
       tx.objectStore('objects').put(result);tx.objectStore('operations').add(operation);const last=tx.objectStore('audit').add(audit);
-      last.onsuccess=()=>{const commit=()=>{if(quota){fail(new DOMException('TEST ONLY：模拟配额不足；真实事务回滚，本次修改尚未保存','QuotaExceededError'));}else if(abort){fail(Error('TEST ONLY：写请求后真实事务中止，本次修改尚未保存'));}else tx.commit();};if(this.captureSyncBase){const base=tx.objectStore('meta').get(`received-heads:${object.id}`);base.onsuccess=()=>{const saved=tx.objectStore('meta').add({id:`operation-base:${operationId}`,operation_id:operationId,received_heads:base.result??null,local_edit_version:result.local_edit_version});saved.onsuccess=commit;};}else commit();};
+      last.onsuccess=()=>{const commit=()=>{if(quota){fail(new DOMException('TEST ONLY：模拟配额不足；真实事务回滚，本次修改尚未保存','QuotaExceededError'));}else if(abort){fail(Error('TEST ONLY：写请求后真实事务中止，本次修改尚未保存'));}else tx.commit();};if(this.captureSyncBase){
+       const meta=tx.objectStore('meta'),base=meta.get(`received-heads:${object.id}`),pending=meta.get(`pending-operation:${object.id}`);let left=2;
+       for(const r of [base,pending])r.onsuccess=()=>{if(--left)return;
+        const saved=meta.add({id:`operation-base:${operationId}`,operation_id:operationId,predecessor_operation_id:pending.result?.operation_id??null,received_heads:base.result??null,working_version:object.local_edit_version,local_edit_version:result.local_edit_version});
+        saved.onsuccess=()=>{const head=meta.put({id:`pending-operation:${object.id}`,operation_id:operationId,local_edit_version:result.local_edit_version});head.onsuccess=commit;};
+       };
+      }else commit();};
      };
     };
    };

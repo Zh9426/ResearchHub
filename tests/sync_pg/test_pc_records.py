@@ -83,3 +83,36 @@ def test_remote_only_carrier_same_id_and_late_conflict_retry(domain_world):
     replay=apply(w,cmd)
     assert replay['receipt']['state']=='CANDIDATE'
     assert replay['transaction_id']==result['transaction_id']
+
+def test_exact_handoff_and_pending_read_selection(domain_world):
+    from researchhub.sync.pc_records import complete_handoff, displayed_document
+    w=domain_world;PcBase.metadata.create_all(w.engine)
+    first=command();apply(w,first)
+    with Session(w.engine) as db,db.begin():
+        view=read_record(db,w.project_id,'ResearchRun',first['object_id'])
+        assert displayed_document(view)==view['work']['document']
+    second={**command(),'object_id':first['object_id'],'operation':'update',
+            'expected_work_version':1,'expected_heads':view['trusted']['heads'],'patch':{'title':'newer'}}
+    apply(w,second)
+    with Session(w.engine) as db,db.begin():
+        assert not complete_handoff(db,w.project_id,'ResearchRun',first['object_id'],first['transaction_id'],1)
+        assert read_record(db,w.project_id,'ResearchRun',first['object_id'])['work']['pending']
+        assert complete_handoff(db,w.project_id,'ResearchRun',first['object_id'],second['transaction_id'],2)
+        view=read_record(db,w.project_id,'ResearchRun',first['object_id'])
+        assert not view['work']['pending']
+        view['work']['document']={'title':'stale copy'}
+        assert displayed_document(view)==view['trusted']['accepted']
+        view['trusted']['accepted']=None
+        assert displayed_document(view) is None
+
+def test_command_locks_trust_before_project_and_work(domain_world):
+    from sqlalchemy import event
+    w=domain_world;PcBase.metadata.create_all(w.engine);statements=[]
+    def record(conn,cursor,statement,parameters,context,executemany):
+        if 'FOR UPDATE' in statement:statements.append(statement)
+    event.listen(w.engine,'before_cursor_execute',record)
+    try:apply(w,command())
+    finally:event.remove(w.engine,'before_cursor_execute',record)
+    from researchhub.sync.secure.transport_pg import Trust
+    assert Trust.__tablename__ in statements[0]
+    assert any('qa_record_work' in s for s in statements[1:])

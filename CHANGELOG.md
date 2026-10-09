@@ -2,6 +2,28 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-040 — 2026-10-09 — 授权镜像与浏览器整页接收
+
+### 完成内容
+
+- 正常加入统一经过 BLOCKED→vault→READY 授权协调器，短事务校验 generation/token，旧绑定缺少镜像时阻断。
+- 实际 IndexedDB 整页接收在原生密码验证后原子提交，分离 Relay cursor 与 Kernel sequence。
+- 本地保存冻结因果来源，转换保留离线分支；独立 pending/handoff 状态不改原操作审计，迟到回执不清新编辑。
+- PC 仅 pending 工作副本优先；交接匹配事务及版本，统一 Trust→Project→Work 锁序。
+- RH039 首次 CI 七 job 成功，完整证据归档；新增接收 CI 步骤只上传固定摘要。
+
+### 验证结果
+
+- 独立 Windows Chromium 23 项实际 IDB/原生密码场景通过，清理通过；不代表 Windows Relay HTTPS 或双向网络通过。
+- 真实 QA PostgreSQL 六项、原 A2 五项、B1 十项、正常加入本地 UI 两项、协议五十九项通过。
+- 类型检查、网络诊断七项通过；原 RED、锁序失败、交接后旧基线失败与修补证据分别保留。
+- 旧 v1/TLS 调查五个保护文件哈希未变。原 3A 本机固定输出未重跑以免覆盖旧证据，仍由 CI 原套件验证；新提交首次 CI 待执行。
+
+### 后续工作
+
+- 接入 PC record policy、持久封装桥接、实际手动双向传输、签名设备回执、冲突与导入界面及完整 A–P 验收。
+- TLS-001/PC013 保持 OPEN，Sprint3B 整体仍 INCOMPLETE；不进入 Sprint3C 或生产。
+
 ## RH-039 — 2026-10-09 — 浏览器记录内核与独立PG差异验证
 
 ### 完成内容

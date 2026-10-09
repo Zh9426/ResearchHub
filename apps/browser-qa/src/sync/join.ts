@@ -1,4 +1,4 @@
-/** Joining is vault-first, followed by a short business transaction. */
+/** Joining first blocks business authorization, then installs vault and business mirrors. */
 import {canonicalBytes,digest,strictLoads} from '../../../../packages/sync-protocol/src/browser';
 import {fingerprint,verifyBootstrap,verifyTransition,verifySigned,verifyGrant,memberOf,type PublicObject} from '../../../../packages/secure-sync/src/membership-core';
 import {answerChallenge,confirmation} from '../../../../packages/secure-sync/src/pairing-browser';
@@ -56,25 +56,25 @@ export class BrowserJoin {
   await verifySigned('PcProjectBinding',wrapper,memberOf(head,head.authority_device_id,['owner']).signing_public_key);
   await verifyGrant(receipt.grant,head);
   if(receipt.grant.context.session_id!==start.session_id||receipt.grant.context.recipient_device_id!==device.deviceId)throw Error('GRANT_SESSION_MISMATCH');
-  // No business authorization can exist before these independently durable gates.
-  const trust=await vault.pin(owner,recovery,chain);await vault.acceptGrant(receipt.grant);
-  const hello=await relayFetch(device,trust,'POST','/v1/hello',{},{});
-  if(hello.audience!==AUDIENCE||hello.manifest_digest!==trust.headDigest||!Array.isArray(hello.transaction_version_pairs)||!hello.transaction_version_pairs.some((p:unknown)=>JSON.stringify(p)==='[2,2]'))throw Error('HELLO_CAPABILITY_OR_HEAD_MISMATCH');
-  if(hello.sequence!==0&&saved.stage!=='COMPLETE')throw Error('BOOTSTRAP_REQUIRED');
-  const canonicalBinding=strictLoads(canonicalBytes(b)) as PublicProjectBinding;
   const resultDigest=await digest(result);
-  await this.tx('readwrite',async tx=>{
+  if(saved.stage==='COMPLETE'&&saved.resultDigest!==resultDigest)throw Error('BINDING_CHANGED');
+  const installer=await new WireSealer(this.open).authorization();
+  await installer.install(wrapper,{ownerRoot:owner,recoveryRoot:recovery,grant:receipt.grant,
+   beforeReady:async trust=>{
+    const hello=await relayFetch(device,trust,'POST','/v1/hello',{},{});
+    if(hello.audience!==AUDIENCE||hello.manifest_digest!==trust.headDigest||!Array.isArray(hello.transaction_version_pairs)||!hello.transaction_version_pairs.some((p:unknown)=>JSON.stringify(p)==='[2,2]'))throw Error('HELLO_CAPABILITY_OR_HEAD_MISMATCH');
+    if(hello.sequence!==0&&saved.stage!=='COMPLETE')throw Error('BOOTSTRAP_REQUIRED');
+   },commit:async(tx)=>{
    const meta=tx.objectStore('meta'),current=await req(meta.get('join-session'));
    if(JSON.stringify(current)!==JSON.stringify(saved))throw Error('JOIN_CAS_MISMATCH');
    const old=await req(meta.get(`binding:${b.semantic_project_id}`));
    if(saved.stage==='COMPLETE'){
-    if(saved.resultDigest!==resultDigest||old?.state!=='VERIFIED'||JSON.stringify(old.binding)!==JSON.stringify(canonicalBinding))throw Error('BINDING_CHANGED');return;
+    if(saved.resultDigest!==resultDigest||old?.state!=='VERIFIED'||JSON.stringify(old.binding)!==JSON.stringify(b))throw Error('BINDING_CHANGED');return;
    }
    if(await req(tx.objectStore('projects').count())||await req(meta.get('identity'))||await req(tx.objectStore('objects').count())||await req(tx.objectStore('operations').count())||await req(tx.objectStore('audit').count()))throw Error('EMPTY_WORKSPACE_REQUIRED');
    await req(tx.objectStore('projects').add({id:b.semantic_project_id,route_alias:b.module_snapshot.id==='ice-sonocuring'?'ice':b.module_snapshot.id,title:'SYNTHETIC · 已配对项目',scope:'SYNTHETIC',module_id:b.module_snapshot.id,module_version:b.module_snapshot.version,module_snapshot:b.module_snapshot,module_hash:b.local_module_hash.value,local_format_version:1}));
    await req(meta.add({id:'identity',workspace_id:crypto.randomUUID(),device_id:device.deviceId,scope:'SYNTHETIC_QA',authorization:'none'}));
-   await req(meta.add({id:`binding:${b.semantic_project_id}`,state:'VERIFIED',generation:1,binding:canonicalBinding}));
-   await req(meta.put({...saved,stage:'COMPLETE',resultDigest,manifestHead:trust.headDigest,principalMap:b.principal_map,helloSequence:0}));
-  });
+   await req(meta.put({...saved,stage:'COMPLETE',resultDigest,manifestHead:b.trust.manifest_head,principalMap:b.principal_map,helloSequence:0}));
+  }});
  }
 }
