@@ -21,6 +21,10 @@ npm start --prefix apps/browser-qa
 
 工作区及操作记录是明文合成 QA 数据。待处理操作始终未接入传输；本地版本不是服务器 revision，星标和 Note.body 等仍需 wire adapter。不要把这里的队列作为 SecureEnvelope 发送，也不要用个人科研数据测试。
 
+救援演示：展开“诊断与合成草稿救援”，导出明文包；当前未保存输入会作为独立草稿保留。用另一个全新、专用 QA profile 在线加载应用（不要初始化项目），选择该文件，先看预览，再确认恢复。程序创建新 QA 身份，保留旧事件来源；重复同包不增加记录，同 ID 异内容或非空工作区拒绝覆盖。恢复出的未保存草稿需单独打开为新草稿并保存。密钥、nonce账本、Cookie和设备信任均不在救援包中。
+
+诊断显示实际持久存储申请与用量估计；申请获准仍不是永不丢失保证。TEST ONLY 区域可模拟配额、持久化拒绝和无网络adapter失败，或请求真实IDB版本升级；升级阻塞时关闭持有旧连接的QA标签页再继续。不会自动删库或清空pending。配额模拟不是真实磁盘满，adapter失败不是TLS测试。
+
 组合接口：`src/main.tsx` 的 `QaShell({children})` 包含 `Workbench`；`Workbench.extension({snapshot,draft,dirty,refresh})` 用于本地诊断/救援扩展。`localCommands.snapshot()` 以同一只读事务返回一致快照。共享纯展示组件 `apps/web/src/components/presentational.tsx` 与纯翻译表可在浏览器导入；旧 `ui.tsx` 兼容reexport但仍包含服务端API调用，QA不得导入它。前端bundle由esbuild platform=browser及输入图禁止API/auth/Next依赖。所有Node imports只存在build/test/CLI工具中，不作为浏览器业务计算。
 
 专用浏览器异常退出恢复：若 `browser-owner.json` 残留，先使用该文件记录的PID在任务管理器/`Get-Process -Id <pid>`核查控制进程，并检查是否仍有命令行指向 `storage/runtime/browser-local-qa/profiles/manual` 的Chromium进程。只要任一进程仍在，或无法确定归属，就不要删除owner文件，不要启动第二个浏览器；正常关闭该QA浏览器/控制进程后再检查。仅在确认控制进程和该专用profile浏览器均已退出后，删除 `storage/runtime/browser-local-qa/browser-owner.json` 再运行browser命令。保留profile内容，不删除个人浏览器锁、不终止未知进程。CLI默认拒绝残留owner，防止误入仍在使用的profile。

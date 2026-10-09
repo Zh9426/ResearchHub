@@ -3,9 +3,10 @@ import {Panel,Empty,human} from '../../web/src/components/presentational';
 import {localCommands,LocalConflictError} from './local/commands';
 import {initializeSyntheticWorkspace} from './local/seeds';
 import {newDraft,RUN_STATUSES,OUTCOMES,type LocalObject,type LocalSnapshot} from './local/model';
-export type WorkbenchExtensionContext={snapshot:LocalSnapshot;draft:LocalObject|null;dirty:boolean;refresh:()=>Promise<void>};
+import {testOnlyDisconnectedAdapter} from './local/testTransport';
+export type WorkbenchExtensionContext={snapshot:LocalSnapshot;draft:LocalObject|null;dirty:boolean;busy:boolean;refresh:()=>Promise<void>;openRescueDraft:(draft:LocalObject)=>void};
 type SaveState='editing'|'saving'|'saved'|'save_failed';
-declare global {interface Window {__LOCAL_QA__?:{snapshot:typeof localCommands.snapshot;currentDraft:()=>LocalObject|null;injectNextAbort:()=>void}}}
+declare global {interface Window {__LOCAL_QA__?:{snapshot:typeof localCommands.snapshot;currentDraft:()=>LocalObject|null;injectNextAbort:()=>void;testOnlyTransportProbe:()=>Promise<never>}}}
 export function Workbench({extension}:{extension?:(context:WorkbenchExtensionContext)=>ReactNode}){
  const [data,setData]=useState<LocalSnapshot|null>(null),[alias,setAlias]=useState(location.pathname.split('/')[2]||'generic');
  const [draft,setDraft]=useState<LocalObject|null>(null),[dirty,setDirty]=useState(false),[saveState,setSaveState]=useState<SaveState>('editing');
@@ -16,7 +17,7 @@ export function Workbench({extension}:{extension?:(context:WorkbenchExtensionCon
  useEffect(()=>{
   let active=true;
   void localCommands.snapshot().then(snapshot=>{if(!active)return;setData(snapshot);const id=location.pathname.split('/')[4];const found=snapshot.objects.find(x=>x.id===id);if(found){setDraft(found);setSaveState('saved');}}).catch(e=>{if(active)setError(String(e));});
-  const api={snapshot:localCommands.snapshot,currentDraft:()=>structuredClone(draftRef.current),injectNextAbort:()=>localCommands.injectNextAbort()};window.__LOCAL_QA__=api;
+  const api={snapshot:localCommands.snapshot,currentDraft:()=>structuredClone(draftRef.current),injectNextAbort:()=>localCommands.injectNextAbort(),testOnlyTransportProbe:()=>testOnlyDisconnectedAdapter.send()};window.__LOCAL_QA__=api;
   const change=()=>{setNotice('其他标签页有本地更新；当前编辑内容保持不变。');void refresh().catch(e=>setError(String(e)));};
   localCommands.notifications?.addEventListener('message',change);
   const unload=(e:BeforeUnloadEvent)=>{if(dirtyRef.current){e.preventDefault();e.returnValue='';}};
@@ -40,6 +41,7 @@ export function Workbench({extension}:{extension?:(context:WorkbenchExtensionCon
   try{await refresh();}catch(e){setError(`记录已提交到本机，但列表刷新失败，请重新读取：${String(e)}`);}
  }
  async function initialize(){setSaveState('saving');setError('');try{await initializeSyntheticWorkspace();await refresh();setSaveState('editing');}catch(e){setError(String(e));setSaveState('save_failed');}}
+ function openRescueDraft(savedDraft:LocalObject){if(busy||!canLeave())return;const p=data?.projects.find(x=>x.id===savedDraft.project_id);if(!p)return;setAlias(p.route_alias);setDraft({...structuredClone(savedDraft),id:crypto.randomUUID(),local_edit_version:0});setDirty(true);setSaveState('editing');setError('');setConflict(false);setComparison(null);history.replaceState(null,'',`/projects/${p.route_alias}`);}
  return <>
  {error&&<p role="alert" className="error qa-content">{error}</p>}
  {!data?<Panel title="本地工作区"><p className="qa-content">读取本地数据… <button onClick={()=>void refresh().catch(e=>setError(String(e)))}>重试读取</button></p></Panel>:!data.identity?<Panel title="空 QA 工作区"><div className="qa-content"><p>仅首次点击时写入三个 SYNTHETIC 项目及冻结模块快照。记录以明文保存在此隔离浏览器中。</p><button className="primary" disabled={busy} onClick={initialize}>初始化合成工作区</button></div></Panel>:<>
@@ -58,7 +60,7 @@ export function Workbench({extension}:{extension?:(context:WorkbenchExtensionCon
  {conflict&&<div><p>审核状态：conflict（本地编辑冲突，未请求科研批准）</p><button onClick={async()=>{try{const snapshot=await localCommands.snapshot();setComparison(snapshot.objects.find(o=>o.id===draft.id)??null);}catch(e){setError(String(e));}}}>比较当前记录</button><button onClick={()=>void save(true)}>另存草稿</button>{comparison&&<pre data-testid="comparison">{JSON.stringify(comparison,null,2)}</pre>}</div>}
  </div>:<Empty>选择记录，或创建一条 Run / Note。</Empty>}</Panel></div>
  <Panel title="本地队列与状态"><div className="qa-content"><p data-testid="transport">transport：not_configured · 待同步：本轮尚未连接传输服务</p><p>review：{conflict?'conflict':'not_requested'} · 未请求科研批准</p><p>待处理操作 {data.operations.length} 条 · 本地历史 {data.audit.length} 条 · NEEDS_WIRE_ADAPTER</p><p className="muted">本地操作保留完整内容，尚不是可发送的 SyncTransaction。明文合成数据，不含真实设备授权。</p>{notice&&<p role="status">{notice}</p>}</div></Panel>
- {extension?.({snapshot:data,draft,dirty,refresh})}
  </>}
+ {data&&extension?.({snapshot:data,draft,dirty,busy,refresh,openRescueDraft})}
  </>;
 }

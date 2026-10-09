@@ -20,9 +20,9 @@
 - [x] 真实浏览器验证离线核心闭环、两tab不同ID并存/同版本一成一拒、保存失败输入保留。规格→质量复审后提交。
 
 ## Task 3：救援与存储错误
-- [ ] src/local/rescue.ts与storage.ts：完整明文合成包，strict schema+canonical摘要，排除key/nonce/信任；预览、原子恢复、重复幂等、碰撞拒绝、新身份、保留事件source。
-- [ ] 当前未保存输入另存到救援草稿；quota/abort/persist拒绝/升级blocked可见，不删库；真实IDB abort与模拟quota区分记录。
-- [ ] 独立空profile恢复/重复/冲突、草稿恢复、无key克隆；规格→质量复审后提交。
+- [x] src/local/rescue.ts与storage.ts：完整明文合成包，strict schema+canonical摘要，排除key/nonce/信任；预览、原子恢复、重复幂等、碰撞拒绝、新身份、保留事件source。
+- [x] 当前未保存输入另存到救援草稿；quota/abort/persist拒绝/升级blocked可见，不删库；真实IDB abort与模拟quota区分记录。
+- [x] 独立空profile恢复/重复/冲突、草稿恢复、无key克隆；规格→质量复审后提交。
 
 ## Task 4：浏览器协议与受限安全探针
 - [ ] packages/sync-protocol提取纯canonical/schema与Node digest包装，browser入口异步WebCrypto；原vector bytes/hash/error不变。BROWSER_ADAPTER_MATRIX列Node-only与星标差异。

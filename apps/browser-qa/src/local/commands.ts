@@ -13,14 +13,16 @@ function validate(object:LocalObject){
 }
 export class LocalCommandService {
  private abortNext=false;
+ private quotaNext=false;
  readonly notifications=typeof BroadcastChannel==='undefined'?null:new BroadcastChannel('researchhub-synthetic-local-changes-v1');
  snapshot=readSnapshot;
  // QA-only fault hook; abort follows successful write requests, before commit.
  injectNextAbort(){this.abortNext=true;}
+ injectNextQuota(){this.quotaNext=true;}
  async save(input:LocalObject):Promise<LocalObject>{
   const object=structuredClone(input);validate(object);
   const operationId=crypto.randomUUID(),auditId=crypto.randomUUID(),time=new Date().toISOString();
-  const abort=this.abortNext;this.abortNext=false;const db=await openLocalDatabase();
+  const abort=this.abortNext,quota=this.quotaNext;this.abortNext=false;this.quotaNext=false;const db=await openLocalDatabase();
   return new Promise((resolve,reject)=>{
    const tx=db.transaction([...STORES],'readwrite');let failure:Error|undefined;let result:LocalObject;
    const fail=(error:Error)=>{failure=error;tx.abort();};
@@ -48,7 +50,7 @@ export class LocalCommandService {
       const operation:LocalOperation={id:operationId,project_id:object.project_id,object_id:object.id,object_type:object.kind,operation_type:event,payload:result,known_base_revision:null,local_format_version:1,source,state:'pending',wire_adapter:'NEEDS_WIRE_ADAPTER',created_at:time};
       const audit:LocalAudit={id:auditId,operation_id:operationId,object_id:object.id,project_id:object.project_id,event,local_edit_version:result.local_edit_version,source,created_at:time,local_format_version:1};
       tx.objectStore('objects').put(result);tx.objectStore('operations').add(operation);const last=tx.objectStore('audit').add(audit);
-      last.onsuccess=()=>{if(abort){fail(Error('TEST ONLY：写请求后真实事务中止，本次修改尚未保存'));}else tx.commit();};
+      last.onsuccess=()=>{if(quota){fail(new DOMException('TEST ONLY：模拟配额不足；真实事务回滚，本次修改尚未保存','QuotaExceededError'));}else if(abort){fail(Error('TEST ONLY：写请求后真实事务中止，本次修改尚未保存'));}else tx.commit();};
      };
     };
    };
