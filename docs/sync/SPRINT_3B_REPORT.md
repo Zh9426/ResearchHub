@@ -50,7 +50,7 @@ PC命令的change/audit/time在首次成功持久提交后固定；完全回滚�
 
 已推送并核验远端精确SHA相同，main/v0.2.0未移动。[首次CI37879759374](https://github.com/Zh9426/ResearchHub/actions/runs/37879759374) attempt1五job全部成功。Linux原3A17项、固定TLS20轮通过，新增PC后端也被sync-kernel job实际收集；当前CI尚无PC/3B浏览器专项job。归档 `storage/runtime/browser-local-qa/ci-37879759374-attempt1/`，TLS zip SHA256 `910fc64a5bcce1fd24addd78aeed28e9fae975fb3abfca38f40d5f480a7673a7`，browser zip `7ae7152ffdf8cff15f728047639b1302fd77cc6654ea4d46fc509a073ae31096`。该成功不关闭TLS-001或PC013。
 
-### B1 — RH-031 / 浏览器正式密码与持久密封
+### B1 — RH-031 / 5ae5eeda09e3cc35db23106b17d13019500e106d
 
 `IMPLEMENTED / VERIFIED_IN_REAL_BROWSER`（仅密码与本地持久化范围）：共享平台无关 Envelope、membership、checkpoint 规则；真实 Chromium 使用 WebCrypto 与固定 @hpke/core 1.9.0 执行正式密码操作，独立 Python 实现验证双向互通。设备私钥和项目 CryptoKey 独立 IDB 保存且 non-extractable；业务 mapping 与 vault 之间采用可恢复准备/密封状态，不声称跨库原子提交。
 
@@ -66,13 +66,50 @@ PC命令的change/audit/time在首次成功持久提交后固定；完全回滚�
 
 普通构建 `b1-normal-004` 实际Chromium1项通过，hash `f014176147fb8b5ea2908ddcc8142585de2c74225776a315494da3233270ef91`，无测试注入。原A2工作区5项通过；两包typecheck通过。现有3313未知所属服务未终止，本机未重复原3A，保留此前及精确CI的范围区分。脱敏结果：[正式密码](evidence/sprint3b/b1-security-summary.json)、[普通构建](evidence/sprint3b/b1-normal-summary.json)。
 
+已推送并核验远端相同SHA，main/v0.2.0未移动；[首次CI37882487122](https://github.com/Zh9426/ResearchHub/actions/runs/37882487122) attempt1六job全部成功。Linux Chromium156.0.8078.4正式密码10项、原3A17项、固定TLS20轮通过；B1构建hash与Windows相同。归档 `storage/runtime/browser-local-qa/ci-37882487122-attempt1/`：TLS zip SHA256 `fea09842528ac2723d8dd7d42c8232bfa0e2cff577528a361de422048a9de614`，原browser zip `8c8e711e0c3b11a948792ac320ffcc4f3f0eb5620349c94c72edaa5ee6eebd16`，仅含白名单summary的security zip `1d38684e5e9c94b647caa0d6b845906e59a81babd37f3b07c7335d48d750d4ed`。该Linux密码测试没有执行浏览器网络或真实配对；不计B2/G4，也不关闭TLS-001/PC013。
+
+### B2a — PC owner 配对协调器（RH032）
+
+`IMPLEMENTED / VERIFIED_IN_REAL_LOOPBACK_NETWORK`（仅PC/Python配对路径）：持久PG journal、固定session challenge、SQLite原consume/receipt、原Relay membership发布/未知ACK查询恢复及PG chain/principal提交。启动仅恢复已登记journal；非空项目与未知第三head阻断。动态PcProjectBinding从PG构建，JSONB回读恢复canonical键序；完成态重取仍检查当前ACTIVE/epoch/head。实际浏览器配对UI、浏览器TLS/CORS尚未实现，不能计完整G1/G2/G4通过。
+
+最终 `pc/b2a-regression-05`：sync_vectors、sync_kernel、sync_pg、secure_sync完整集合403项通过，exit0、无skipped，包含原owned_start_stop。独立 `pc/b2a-network-02`：真实严格HTTPS原38001入口配对1项通过，exit0、无skipped。两目录保留command/result/exit/JUnit。异常边界、503、ACK未知等故障使用显式注入，单列 `FAULT_INJECTED_ONLY`，不能外推真实进程崩溃或断电。规格与质量独立复审均 PASS。
+
+RED01/02为临时目录权限；03/04预期缺实现；05为业务阻断/端点/transport缺失；06为JSONB回读snapshot哈希；07为setup CLI缺失；08为完成态撤销及503分类；09为stream deadline分类；10为崩溃注入窗口。逐项保留，不将环境错误、测试缺项与产品失败混为同类，也不关闭TLS-001/PC013。
+
+两项质量 P2 先以 `pc/b2a-red-11` 复现（5 failed / 1 passed）：同步配对阻塞 HTTP 事件循环、构造环境错误绕过异常映射。最小补丁将构造/动作/关闭整体交给线程池，精确处理已知 setup 错误。修补后 `pc/b2a-api-regression-02` 五个完整 PC 文件 **43 passed / 11.40s**，`pc/b2a-network-03` 原严格 HTTPS **1 passed / 1.44s**，均 exit0、0 skipped。中间 api-regression-01 为 Windows monotonic 同 tick 的测试误判（39 passed / 1 failed），改为事件先后断言，保留原记录；不是放宽超时或反复重跑。上述403项是P2修补前完整结果，未混称为修补后重跑。
+
 ## 失败保留
+
+B2a收尾遇到环境中断：`pc/b2a-regression-03` 没有退出状态/JUnit，不能计通过。继续执行的 `b2a-regression-04` 期间35433/35434/38001均不可达，核验Docker Linux engine未运行；保存 `environment.txt` 后仅终止该轮明确owned等待进程，记录 `ENVIRONMENT_BLOCKED/CANCELLED`、exit -1。后台启动Docker Desktop、核对既有QA scope并只start原容器，原Relay `--start` guard成功；没有init/destroy/清库、重建身份或调整超时/证书。恢复记录在该轮 `restore.txt`，后续新attempt结果单列。
 
 本轮第一次Relay初始化使用PATH中的Anaconda Python，缺少psycopg；被既有就绪检查包装为QA_PG_UNAVAILABLE。独立诊断定位在驱动导入、未到SQL/TLS。保留首次输出及诊断；改用项目.venv后单次受guard数据库连接和--start通过，未改源码/超时/证书。证据 `storage/runtime/browser-sync-qa/init-attempt1-transcript.txt`、`init-failure-analysis.md`、`pg-diagnostic-venv.json`、`start-venv-attempt2.log`。
 
 A1所有RED、错误解释器、受限临时目录、Node工作目录/导出/对象原型测试错误及明确修正后结果分别保留在 `storage/runtime/browser-sync-qa/protocol/`，不覆盖原失败，不以重跑关闭未知问题。
 
 A2a独立复审修复了nil UUID、null principal与模块额外字段错误接受；保留审查转录、RED和修正后记录。最终规格与质量复审PASS。
+
+## A–P 验收进度（整体尚未验收）
+
+| 场景 | 当前实际证据与缺口 |
+|---|---|
+| A 同一项目加入 | PC签名公共绑定、浏览器严格预览已有；真实配对正在B2实施，未计通过 |
+| B 离线创建与星标 | A2独立浏览器工作区已验证；同一已加入项目的端到端重开待验收 |
+| C 连续离线修改 | 稳定mapping与父链、实际浏览器正式密封已验证；真实发送待C |
+| D Browser→PC | NOT IMPLEMENTED |
+| E PC→Browser | NOT IMPLEMENTED |
+| F PC节点暂离线 | NOT VERIFIED；本机进程停止不等于宿主断电 |
+| G 双向冲突 | DESIGNED ONLY；三方比较与解决尚未实现 |
+| H 不同对象与回显 | NOT VERIFIED |
+| I ACK丢失/重复 | vault密文exact retry已验证；真实网络ACK丢失尚未验收 |
+| J 保存和接收失败 | 本地IDB/CAS及安全持久化负例已验证；接收整页事务待C |
+| K 星标字段隔离 | A2/B1本地即时保存、dirty隔离及协议映射已验证；跨端待C |
+| L 版本与身份 | v1/v2/Python/Chromium密码与身份负例已验证；完整网络路径待验收 |
+| M 浏览器网络边界 | NOT VERIFIED；严格Linux TLS/CORS待B2，Windows明确未验证 |
+| N 撤销与旧epoch | B1 vault撤销/history负例已验证；PC真实撤销与网络待验收 |
+| O 旧3A记录适配 | NOT IMPLEMENTED；不能按名字合并或克隆发送身份 |
+| P 状态真实性 | 本地工作与可信PC投影已分列；peer receipt与双端状态尚未实现 |
+
+上述局部测试不等于对应完整场景PASS。正常关闭重开、故障注入与真正进程终止分别记录；尚无操作系统断电、实体手机或真实磁盘满证据。
 
 ## 当前 Gate
 

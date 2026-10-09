@@ -30,3 +30,13 @@ def test_owned_start_stop_finishes():
     finally:
         if server.poll() is None:server.terminate();server.wait(timeout=5)
         print('STAGE stderr',server.stderr.read())
+
+
+def test_cli_has_explicit_setup_action(monkeypatch):
+    import researchhub.sync.pc_cli as cli
+    called=[]
+    monkeypatch.setattr(sys,'argv',['pc_cli','setup','--node','synthetic-test'])
+    monkeypatch.setattr(cli,'setup_selected_node',lambda path,module:called.append((path,module)),raising=False)
+    cli.main()
+    assert len(called)==1
+    assert called[0][0].name=='synthetic-test'

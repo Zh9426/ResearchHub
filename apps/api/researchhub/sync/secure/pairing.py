@@ -104,6 +104,65 @@ def answer_challenge(challenge, pinned_manifest, device, *, confirmation, now):
     return proof
 
 
+def create_or_load_reserved_challenge(store, owner, recipient, *, session_id,
+                                      project, expected_manifest_digest, issued_at, now):
+    """Only a durable reservation supplies this identity; default API stays random.
+
+    Existing bytes are verified against their historical pin at issuance, including
+    used/expired sessions. Loading does not authorize a fresh consume or reset attempts.
+    """
+    def existing(db):
+        row = db.execute('SELECT body FROM challenges WHERE session=?', (session_id,)).fetchone()
+        if row is None:
+            return None
+        challenge = strict_loads(row[0])
+        if canonical_bytes(challenge) != row[0] or any((
+            challenge['session_id'] != session_id,
+            challenge['opaque_project_id'] != project,
+            challenge['manifest_digest'] != expected_manifest_digest,
+            challenge['issued_at'] != issued_at,
+            challenge['recipient'] != recipient,
+            challenge['authority_device_id'] != owner.device_id,
+        )):
+            raise ValueError('PAIRING_RESERVATION_MISMATCH')
+        historical = store.history(project, challenge['membership_epoch'], db=db)
+        verify_challenge(challenge, historical, issued_at)
+        if member_of(historical, owner.device_id, roles=('owner',))['signing_public_key'] != owner.signing_public:
+            raise ValueError('DEVICE_KEY_MISMATCH')
+        return challenge
+
+    with store.transaction() as db:
+        found = existing(db)
+        if found is not None:
+            return found
+        manifest = store.verified_current(project, db=db)
+    if digest(manifest) != expected_manifest_digest:
+        raise ValueError('MEMBERSHIP_CAS_MISMATCH')
+    if not issued_at <= now < issued_at + 300:
+        raise ValueError('PAIRING_EXPIRED')
+    if member_of(manifest, owner.device_id, roles=('owner',))['signing_public_key'] != owner.signing_public:
+        raise ValueError('DEVICE_KEY_MISMATCH')
+    response = os.urandom(32)
+    challenge = dict(version=1, session_id=session_id, opaque_project_id=project,
+        manifest_digest=expected_manifest_digest, membership_epoch=manifest['membership_epoch'],
+        key_epoch=manifest['key_epoch'], authority_device_id=owner.device_id, recipient=recipient,
+        issued_at=issued_at, expires_at=issued_at+300,
+        wrapped_challenge=b64encode(wrap_key(bytes.fromhex(recipient['recipient_public_key']),
+            response, grant_context(manifest,recipient,session_id))))
+    challenge['sas'] = challenge_sas(challenge)
+    challenge = signed_object('PairingChallenge',challenge,owner.signing_seed)
+    verify_challenge(challenge,manifest,now)
+    with store.transaction() as db:
+        found = existing(db)
+        if found is not None:
+            return found
+        if digest(store.verified_current(project,db=db)) != expected_manifest_digest:
+            raise ValueError('MEMBERSHIP_CAS_MISMATCH')
+        db.execute('INSERT INTO challenges(session,body,response_digest) VALUES (?,?,?)',
+            (session_id,canonical_bytes(challenge),hashlib.sha256(response).hexdigest()))
+    return challenge
+
+
 def consume(store, owner, challenge, proof, key, *, now, crash_point=None):
     failure = None
     result = None

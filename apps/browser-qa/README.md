@@ -1,5 +1,22 @@
 # 隔离浏览器离线工作台
 
+## Sprint 3B B2a PC owner 配对 API
+
+这是 owner 端配对切点；浏览器加入界面与浏览器 HTTPS 尚未完成，不计完整双端验收。只对全新、空合成项目使用下列准备命令；已加入或已有历史的节点不得再次 bootstrap。
+
+```powershell
+$env:HUB_SYNC_QA='1'
+$env:HUB_RELAY_QA='1'
+$env:PYTHONPATH='apps/api;.'
+# 先按既有 QA Relay 文档启动 35433/35434 与严格 HTTPS 38001。
+& .venv/Scripts/python.exe -m researchhub.sync.pc_cli setup --node synthetic-pairing --module generic
+& .venv/Scripts/python.exe -m researchhub.sync.pc_cli start --node synthetic-pairing --module generic
+# 另一终端使用相同环境
+& .venv/Scripts/python.exe -m researchhub.sync.pc_cli stop
+```
+
+`/api/pairing/start`、`confirm`、`resume` 仅接收 canonical JSON，通过 PC 3315 同源 session/CSRF 边界。状态查询为 `/api/pairing/status?session_id=...`。journal 固定 challenge 与收据；网络结果未知后显式 resume，同一 session 不重新 consume 或发 grant。完成后 `/api/binding` 返回当前完整绑定。非空历史、未知 head 或失效授权会拒绝，不能清库或重置身份来掩盖失败。仅 Python/PC 原 HTTPS 测试已验证，浏览器 UI 将在后续切点接入。
+
 ## Sprint 3B B1 正式浏览器密码验证
 
 B1验证正式Envelope、Python双向互通及独立密钥库，不代表真实配对或HTTPS已通过。正式套件仍为AES256GCM/Ed25519/HPKE-X25519-HKDFSHA256-AES256GCM；浏览器自己的non-extractable设备私钥不传给Node或Python。测试授权材料、profile和原始日志仅存ignored runtime。

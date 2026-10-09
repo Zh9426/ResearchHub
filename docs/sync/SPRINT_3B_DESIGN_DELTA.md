@@ -54,6 +54,8 @@ B1永久prepare marker与预约行同时绑定身份、token、nonce、sealed状
 
 CORS精确允许 `http://127.0.0.1:3314`、GET/POST、`content-type,x-rh-proof`，不允许credentials；OPTIONS在proof之前处理，仅preflight响应，无业务读写或nonce消费。实际请求仍完整proof验证，错误响应也只向允许origin暴露。B的CSP固定 `connect-src 'self' https://127.0.0.1:38001`。
 
+Linux网络验收由CI runner启动原Relay、PC3315和静态3314；两个新OS用户分别运行可信CA和错误CA浏览器，使用各自实际home/NSS/profile，浏览器测试不启动PC或读取其配置/私钥。只复制公共ca.crt，不开放TLS目录、Relay state或env；源码/依赖/浏览器二进制仅rX，只有所选profile/results目录可写，必要时父目录仅增加专用用户traverse ACL，不整仓chown。独立网络lifecycle采用外部服务模式，原3A helper含义不改。CA/hostname负例使用真实浏览器顶层导航到原127入口或https://localhost:38001，断言HTTP之前明确CERT信任/名称错误；不受3314的connect-src影响，不新增诊断页或放宽CSP。不能把401、IPv6连接拒绝、超时或CORS失败当证书验证。报告区分导航证书负例与3314 fetch/preflight/proof正例，普通页面仍仅连接原127入口。验收后关闭实际Chromium进程并分别owned stop，失败证据保留；临时用户由一次性CI环境回收。此段为待实施harness方案，不是已执行证明。
+
 ## C：传输、冲突与真实状态
 
 单次手动“立即同步”，持久claim/CAS防双tab并发，退出释放/恢复；无隐藏无限重试。固定集合→稳定转换→持久封装→browser fetch→RelayStored记录；未知ACK结果保留原envelope供下次显式重送。HTTP proof可更新，业务身份不可更新。

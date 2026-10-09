@@ -201,6 +201,7 @@ jobs:
       - name: 真实 loopback TLS、隔离 PG、进程故障与明文扫描
         run: |
           python scripts/secure-relay-qa.py --init
+          python -m pytest tests/pc_pairing_network -q --basetemp storage/runtime/browser-sync-qa/ci-pairing-tests
           python scripts/secure-relay-qa.py --test
       - name: 保留 TLS 用例的固定字段诊断
         if: always()

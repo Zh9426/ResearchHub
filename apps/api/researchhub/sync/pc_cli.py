@@ -18,14 +18,34 @@ def node_path(runtime,name):
     if not result.is_relative_to((runtime/'nodes').resolve()):raise ValueError('INVALID_QA_NODE_PATH')
     return result
 
+
+def setup_selected_node(path,module):
+    from .secure.transport_pg import client_engine
+    from .pc_identity import setup_node
+    from .pc_pairing import pin_node_bootstrap,make_transport
+    engine=client_engine()
+    try:
+        node=setup_node(engine,path,module)
+        pin_node_bootstrap(node)
+        transport=make_transport(engine,node)
+        try:
+            hello=transport.request('POST','/v1/hello',{})
+            if hello['sequence']!=0 or hello['manifest_digest']!=node.binding['trust']['manifest_head']:
+                raise ValueError('EMPTY_RELAY_PIN_REQUIRED')
+        finally:transport.close()
+        print('PC_QA_BOOTSTRAP_PINNED_EMPTY')
+    finally:engine.dispose()
+
 def main():
     parser=argparse.ArgumentParser(description='SYNTHETIC QA ONLY PC node at 127.0.0.1:3315')
-    parser.add_argument('action',choices=('start','stop'))
+    parser.add_argument('action',choices=('start','stop','setup'))
     parser.add_argument('--module',choices=('generic','hdsp','ice-sonocuring'),default='generic')
     parser.add_argument('--node',help='Optional isolated synthetic node slug, within owned PC runtime only')
     args=parser.parse_args()
     runtime=ROOT/'storage/runtime/browser-sync-qa/pc'
     selected_node=node_path(runtime,args.node)
+    if args.action=='setup':
+        setup_selected_node(selected_node,args.module);return
     owner_file=runtime/'server-owner.json'
     if args.action=='stop':
         owner=json.loads(owner_file.read_text())

@@ -60,6 +60,49 @@ class SecureTransport:
                 )
 
     def request(self, method, path, body=None, query=None):
+        with Session(self.engine) as db, db.begin():
+            _, history = locked(db, self.project)
+            return self._request_manifest(history[-1], method, path, body, query)
+
+    def pairing_request(self, session_id, operation, *, db):
+        """Only this registered, verified journal may authorize fixed membership paths.
+
+        No public trust/manifest override exists. The caller holds the PG project
+        lock; signing revalidates both stored heads and the exact grant scope.
+        """
+        from ..pc_pairing import PairingJournal, RelayOldHead
+        from packages.secure_wire.membership import verify_transition, verify_grant, verify_challenge
+        trust, history = locked(db, self.project)
+        row = db.get(PairingJournal, session_id)
+        if (row is None or row.project != self.project or row.active_project != self.project
+                or row.stage not in ('CONSUMED','RELAY_UNKNOWN','RELAY_CONFIRMED') or not row.receipt):
+            raise ValueError('PAIRING_JOURNAL_REQUIRED')
+        old = row.reserved['old']; candidate = row.receipt['manifest']
+        if digest(history[-1]) != digest(old):raise ValueError('PAIRING_JOURNAL_HEAD')
+        verify_transition(old,candidate,trust.recovery)
+        verify_grant(row.receipt['grant'],candidate)
+        verify_challenge(row.challenge,old,row.reserved['issued_at'])
+        context=row.receipt['grant']['context']
+        if (candidate['members'] != [*old['members'],row.reserved['recipient']]
+                or candidate['key_epoch'] != old['key_epoch']
+                or context['session_id'] != session_id
+                or context['recipient_device_id'] != row.reserved['recipient']['device_id']
+                or row.receipt['challenge_digest'] != digest(row.challenge)):
+            raise ValueError('PAIRING_JOURNAL_SCOPE')
+        member_of(old,self.device.device_id,roles=('owner',))
+        if operation == 'receipt':
+            try:
+                return self._request_manifest(candidate,'GET','/v1/membership/receipt',
+                    query={'candidate_digest':digest(candidate)})
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 401 and exc.response.content == canonical_bytes({'ok':False,'code':'AUTH_REJECTED'}):
+                    raise RelayOldHead() from None
+                raise
+        if operation == 'current':return self._request_manifest(old,'GET','/v1/membership')
+        if operation == 'publish':return self._request_manifest(old,'POST','/v1/membership',{'manifest':candidate})
+        raise ValueError('PAIRING_OPERATION_REQUIRED')
+
+    def _request_manifest(self, manifest, method, path, body=None, query=None):
         query = query or {}
         suffix = "&".join(f"{k}={query[k]}" for k in sorted(query))
         if method == "GET":
@@ -69,47 +112,47 @@ class SecureTransport:
             raw = bounded_canonical(body)
         else:
             raise ValueError("INVALID_REQUEST")
-        with Session(self.engine) as db, db.begin():
-            _, history = locked(db, self.project)
-            manifest = history[-1]
-            member_of(manifest, self.device.device_id)
-            proof = signed_object(
-                "RelayRequest",
-                {
-                    "version": 1,
-                    "audience": AUDIENCE,
-                    "method": method,
-                    "path": path,
-                    "query": query,
-                    "opaque_project_id": self.project,
-                    "device_id": self.device.device_id,
-                    "membership_epoch": manifest["membership_epoch"],
-                    "key_epoch": manifest["key_epoch"],
-                    "manifest_digest": digest(manifest),
-                    "body_digest": hashlib.sha256(raw).hexdigest(),
-                    "request_id": str(uuid4()),
-                    "issued_at": int(time.time()),
-                },
-                self.device.signing_seed,
-            )
-            with self.http.stream(
-                method,
-                path + ("?" + suffix if suffix else ""),
-                content=raw,
-                headers={
-                    "content-type": "application/json",
-                    "accept-encoding": "identity",
-                    "x-rh-proof": b64encode(canonical_bytes(proof)),
-                },
-            ) as response:
-                response.raise_for_status()
-                response_body = read_response(response)
-            value = strict_loads(response_body)
-            if canonical_bytes(value) != response_body:
-                raise ValueError("NONCANONICAL_RELAY_RESPONSE")
-            if set(value) != {"ok", "result"} or value["ok"] is not True:
-                raise ValueError("INVALID_RELAY_RESPONSE")
-            return value["result"]
+        member_of(manifest, self.device.device_id)
+        proof = signed_object(
+            "RelayRequest",
+            {
+                "version": 1,
+                "audience": AUDIENCE,
+                "method": method,
+                "path": path,
+                "query": query,
+                "opaque_project_id": self.project,
+                "device_id": self.device.device_id,
+                "membership_epoch": manifest["membership_epoch"],
+                "key_epoch": manifest["key_epoch"],
+                "manifest_digest": digest(manifest),
+                "body_digest": hashlib.sha256(raw).hexdigest(),
+                "request_id": str(uuid4()),
+                "issued_at": int(time.time()),
+            },
+            self.device.signing_seed,
+        )
+        with self.http.stream(
+            method,
+            path + ("?" + suffix if suffix else ""),
+            content=raw,
+            headers={
+                "content-type": "application/json",
+                "accept-encoding": "identity",
+                "x-rh-proof": b64encode(canonical_bytes(proof)),
+            },
+        ) as response:
+            response_body = read_response(response)
+            # Preserve only the bounded response so journal auth rejection can
+            # be distinguished from an uncertain network/server outcome.
+            response._content = response_body
+            response.raise_for_status()
+        value = strict_loads(response_body)
+        if canonical_bytes(value) != response_body:
+            raise ValueError("NONCANONICAL_RELAY_RESPONSE")
+        if set(value) != {"ok", "result"} or value["ok"] is not True:
+            raise ValueError("INVALID_RELAY_RESPONSE")
+        return value["result"]
 
     def push(self, message_id):
         with Session(self.engine) as db:

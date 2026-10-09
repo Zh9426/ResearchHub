@@ -37,9 +37,11 @@ class Node:
     project_key: bytes=field(repr=False)
     runtime: Path
 
-def setup_node(engine,runtime,module_id='generic'):
+def setup_node(engine,runtime,module_id='generic',*,pairing_transport=None):
     if os.environ.get('HUB_SYNC_QA')!='1':raise RuntimeError('Explicit HUB_SYNC_QA=1 required')
     transport_pg.guard(engine)
+    # Register pairing metadata before create_all, without changing the product schema.
+    from .pc_pairing import OwnerPairing, active_journal
     runtime=Path(runtime).resolve()
     root=Path(__file__).resolve().parents[4]/'storage/runtime/browser-sync-qa/pc'
     if not runtime.is_relative_to(root.resolve()):raise ValueError('PC_OWNED_RUNTIME_REQUIRED')
@@ -97,6 +99,25 @@ def setup_node(engine,runtime,module_id='generic'):
         if stage!='PREPARED' or str(exc)!='UNTRUSTED_PROJECT':raise
         store.bootstrap(meta['manifest'],meta['owner_root'],meta['recovery_root'])
         current=store.verified_current(meta['opaque'])
+    with Session(engine) as db:
+        pending=active_journal(db,meta['opaque'])
+        pending_session=pending.session_id if pending else None
+    if pending_session:
+        historical=store.history(meta['opaque'],meta['grant']['context']['membership_epoch'])
+        key=open_grant(meta['grant'],historical,owner)
+        provisional=Node({'opaque_project_id':meta['opaque'],'semantic_project_id':meta['semantic']},
+            {},TrustedContext(meta['principal']),owner,key,runtime)
+        owned_transport=pairing_transport is None
+        if owned_transport:
+            from .pc_pairing import make_transport
+            pairing_transport=make_transport(engine,provisional)
+        try:
+            recovered=OwnerPairing(engine,provisional,pairing_transport).resume(pending_session)
+            if recovered['stage'] in ('RELAY_UNKNOWN','BLOCKED'):
+                raise ValueError('PAIRING_RECOVERY_'+recovered['stage']+':'+pending_session)
+        finally:
+            if owned_transport:pairing_transport.close()
+        current=store.verified_current(meta['opaque'])
     with Session(engine) as db, db.begin():
         db.execute(text('SELECT pg_advisory_xact_lock(:key)'),{'key':int(node_id[:15],16)})
         row=db.get(PcNode,node_id)
@@ -135,12 +156,32 @@ def setup_node(engine,runtime,module_id='generic'):
                 register_principal(db,principal_id=meta['principal'],user_id=meta['user'],device_id=owner.device_id,
                     session_id=meta['session'],project_id=meta['semantic'],actor_id=meta['actor'],actor_type='human')
             row.stage='READY'
-        binding={'binding_version':1,'semantic_project_id':meta['semantic'],'opaque_project_id':meta['opaque'],
+        binding,wrapper=binding_in_session(db,owner,runtime)
+    return Node(binding,wrapper,TrustedContext(meta['principal']),owner,key,runtime)
+
+
+def binding_in_session(db,owner,runtime,target_device=None):
+    from .pc_pairing import fixed_public_map
+    row=db.get(PcNode,hashlib.sha256(str(Path(runtime).resolve()).encode()).hexdigest())
+    if row is None or row.stage!='READY':raise ValueError('BLOCKED_NODE_NOT_READY')
+    meta=row.metadata_public
+    trust,chain=transport_pg.locked(db,meta['opaque']);current=chain[-1]
+    public_map=fixed_public_map(db,trust,current)
+    target_device=target_device or owner.device_id
+    public_principal=next((item for item in public_map if item['device_id']==target_device),None)
+    if public_principal is None:raise ValueError('BLOCKED_TARGET_PRINCIPAL')
+    snapshot=json.loads(meta['snapshot_json'])
+    binding={'binding_version':1,'semantic_project_id':meta['semantic'],'opaque_project_id':meta['opaque'],
             'module_snapshot':snapshot,'module_snapshot_hash':digest(snapshot),
             'local_module_hash':{'algorithm':'sha256-json-stringify','value':hashlib.sha256(meta['snapshot_json'].encode()).hexdigest()},
             'capabilities':{'protocol_version':2,'schema_version':2,'object_types':['ResearchRun','Note']},
-            'principal':public_principal,'principal_map':[public_principal],
+            'principal':public_principal,'principal_map':public_map,
             'trust':{'membership_epoch':current['membership_epoch'],'key_epoch':current['key_epoch'],
                 'manifest_head':digest(current),'owner_root':meta['owner_root'],'recovery_root':meta['recovery_root'],'manifest_chain':chain}}
     wrapper=signed_object('PcProjectBinding',{'version':1,'binding':binding},owner.signing_seed)
-    return Node(binding,wrapper,TrustedContext(meta['principal']),owner,key,runtime)
+    return binding,wrapper
+
+
+def current_binding(engine,node,target_device=None):
+    with Session(engine) as db,db.begin():
+        return binding_in_session(db,node.owner,node.runtime,target_device)

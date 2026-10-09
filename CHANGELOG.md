@@ -2,6 +2,24 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-032 — 2026-10-09 — 持久化 PC owner 配对与中断恢复
+
+### 完成内容
+
+- PC 配对 journal 固定 challenge、接收者、授权前后 head 与 receipt，复用原 SQLite consume 和 Relay membership 路径；未知 ACK 查询原候选，不重复授权。
+- 动态公共绑定保留完整 principal 映射与 canonical snapshot；完成态仍验证当前授权，空项目加入与业务写入互斥，未知 head 阻断。
+- 提供受限 setup CLI 与 session/CSRF 配对 API；同步构造、数据库、HTTPS 和关闭整体进入线程池，已知环境缺失返回明确错误。
+
+### 验证结果
+
+- P2 修补前完整协议/内核/PG/安全集合 403 项通过；修补后五个完整 PC 文件 43 项通过、独立原入口严格 HTTPS 配对 1 项通过，均 exit 0、无 skipped。
+- 保留 RED11 的事件循环阻塞与配置异常证据；中间测试 Windows 时钟同 tick 误判改为事件顺序断言，失败记录不覆盖。Docker 中断的未完成运行不计通过。
+- RH031 精确首次 CI 六 job 成功，浏览器密码 10 项、原3A 17项及 TLS 固定20轮归档；本提交 CI 待推送核验。
+
+### 后续工作
+
+- 浏览器真实加入 UI、严格 TLS/CORS、双向传输与冲突失败验收仍待完成。TLS-001 与 PC013 保持 OPEN，Sprint3B 仍 INCOMPLETE，不进入3C或生产。
+
 ## RH-031 — 2026-10-09 — 浏览器正式密码与不可变密文持久化
 
 ### 完成内容

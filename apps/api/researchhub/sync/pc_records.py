@@ -78,6 +78,11 @@ def execute_command(db, context, project_id, command, *, fault=None):
     if operation=='highlight' and (kind!='ResearchRun' or set(patch)!={'is_highlighted','highlight_type','highlight_note'}):
         reject('QA_SCOPE','highlight requires exactly three fields')
     state=lock_project(db,project_id)
+    from .pc_pairing import active_journal
+    from .secure.transport_pg import Trust
+    trust=db.scalar(select(Trust).where(Trust.semantic_project==project_id))
+    if trust is not None and active_journal(db,trust.project):
+        reject('PAIRING_IN_PROGRESS','PAIRING_IN_PROGRESS: finish owner pairing before baseline')
     principal=resolve_principal(db,context,project_id)
     action_digest=digest(command)
     previous=db.get(RecordCommand,command['command_id'])

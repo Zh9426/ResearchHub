@@ -1,0 +1,80 @@
+{
+  "scope": "SYNTHETIC B1 Chromium cryptography; network and pairing UI NOT VERIFIED",
+  "timestamp": "2026-10-09T04:10:16.053Z",
+  "attempt": "ci-37882487122-1",
+  "status": "passed",
+  "sourceCommit": "5ae5eeda09e3cc35db23106b17d13019500e106d",
+  "buildHash": "9314b08923ee4779a84ab20ca8cfe1433e3583f7ec4d0ee6c3af00cb4fcd62fc",
+  "node": "v24.21.0",
+  "os": {
+    "platform": "linux",
+    "release": "6.17.0-1022-azure",
+    "arch": "x64"
+  },
+  "chromium": "156.0.8078.4",
+  "hpke": "1.9.0",
+  "retries": 0,
+  "tests": 10,
+  "results": [
+    {
+      "title": "fixed v1 + independent Python v2 HPKE, signatures, challenge, nonextractable keys",
+      "status": "passed",
+      "durationMs": 42,
+      "retry": 0
+    },
+    {
+      "title": "real LocalCommandService Note Run star mapping seals exact bytes; Python opens",
+      "status": "passed",
+      "durationMs": 557,
+      "retry": 0
+    },
+    {
+      "title": "reopen persists CryptoKeys; dual tabs CAS consume nonces; sealed recovery copies exact bytes",
+      "status": "passed",
+      "durationMs": 1900,
+      "retry": 0
+    },
+    {
+      "title": "signed ciphertext substitution, missing key authorization and same-epoch fork are rejected",
+      "status": "passed",
+      "durationMs": 61,
+      "retry": 0
+    },
+    {
+      "title": "missing authorization markers and mutated business READY identities fail closed",
+      "status": "passed",
+      "durationMs": 127,
+      "retry": 0
+    },
+    {
+      "title": "matching counter rollback below a retained reservation fails closed without repairing counters",
+      "status": "passed",
+      "durationMs": 42,
+      "retry": 0
+    },
+    {
+      "title": "last safe nonce seals and remains retryable; exhaustion cannot reserve another nonce",
+      "status": "passed",
+      "durationMs": 146,
+      "retry": 0
+    },
+    {
+      "title": "old chains, tampered READY, missing and corrupt ledger fail closed preserving operations",
+      "status": "passed",
+      "durationMs": 57,
+      "retry": 0
+    },
+    {
+      "title": "full pinned revoke chain blocks current send, retains historical quarantine and checkpoint validation",
+      "status": "passed",
+      "durationMs": 54,
+      "retry": 0
+    },
+    {
+      "title": "complete vault loss cannot regenerate existing identity or consume pending work",
+      "status": "passed",
+      "durationMs": 16,
+      "retry": 0
+    }
+  ]
+}

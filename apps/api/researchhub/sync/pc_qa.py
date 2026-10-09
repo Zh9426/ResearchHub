@@ -5,10 +5,11 @@ import secrets
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .models import ObjectRevision, Outbox
-from .pc_identity import setup_node
+from .pc_identity import setup_node,current_binding
 from .pc_records import RecordWork, execute_command, read_record
 from .projection import project_status
 from .protocol import ProtocolError
@@ -26,10 +27,10 @@ def local_object(kind,oid,pid,document,version):
         'status':document.get('status','planned'),'scientific_outcome':document.get('scientific_outcome','unknown'),
         'context_data':document.get('context_data',{}),'is_highlighted':document.get('is_highlighted',False)}
 
-def create_app(*,engine=None,runtime=None,module_id='generic'):
+def create_app(*,engine=None,runtime=None,module_id='generic',pairing_transport=None):
     if os.environ.get('HUB_SYNC_QA')!='1':raise RuntimeError('Explicit HUB_SYNC_QA=1 required')
     engine=engine or client_engine();guard(engine)
-    node=setup_node(engine,runtime or ROOT/'storage/runtime/browser-sync-qa/pc/node',module_id)
+    node=setup_node(engine,runtime or ROOT/'storage/runtime/browser-sync-qa/pc/node',module_id,pairing_transport=pairing_transport)
     app=FastAPI(docs_url=None,redoc_url=None,openapi_url=None)
     app.state.node=node
     sessions={}
@@ -75,7 +76,52 @@ def create_app(*,engine=None,runtime=None,module_id='generic'):
         return result
 
     @app.get('/api/binding')
-    def binding():return {'binding':node.binding,'signed_binding':node.signed_binding,'pairing':'NOT_IMPLEMENTED'}
+    def binding():
+        binding,wrapper=current_binding(engine,node)
+        return {'binding':binding,'signed_binding':wrapper,'pairing':'OWNER_TEXT_V1'}
+
+    @app.get('/api/pairing/status')
+    def pairing_status(session_id:str|None=None):
+        from .pc_pairing import OwnerPairing
+        owner=OwnerPairing(engine,node,None)
+        try:return owner.status(session_id)
+        except ValueError:return JSONResponse({'error':'PAIRING_SESSION_INVALID'},409)
+
+    def pairing_operation(action,data):
+        from .pc_pairing import OwnerPairing,make_transport
+        import httpx
+        transport=None
+        try:
+            try:
+                transport=pairing_transport or make_transport(engine,node)
+                owner=OwnerPairing(engine,node,transport)
+            except ValueError as exc:
+                if str(exc)=='RELAY_QA_SETUP_REQUIRED':
+                    return JSONResponse({'error':'RELAY_UNAVAILABLE_RESUME_REQUIRED'},503)
+                if str(exc)=='QA_CA_PATH_REQUIRED':
+                    return JSONResponse({'error':'PAIRING_REJECTED_CHECK_STATUS'},409)
+                raise
+            try:
+                if action=='start':return owner.start(data['recipient'])
+                if action=='confirm':return owner.confirm(data['session_id'],data['proof'])
+                return owner.resume(data['session_id'])
+            except (ValueError,TypeError,KeyError):return JSONResponse({'error':'PAIRING_REJECTED_CHECK_STATUS'},409)
+        except (httpx.HTTPError,OSError):return JSONResponse({'error':'RELAY_UNAVAILABLE_RESUME_REQUIRED'},503)
+        finally:
+            if pairing_transport is None and transport is not None:transport.close()
+
+    @app.post('/api/pairing/{action}')
+    async def pairing_action(action:str,request:Request):
+        from packages.secure_wire.canonical import strict_loads
+        from .secure.transport_bounds import bounded_canonical
+        try:
+            raw=await request.body();data=strict_loads(raw)
+            if bounded_canonical(data)!=raw or type(data) is not dict:raise ValueError()
+            fields={'start':{'recipient'},'confirm':{'session_id','proof'},'resume':{'session_id'}}
+            if action not in fields or set(data)!=fields[action]:raise ValueError()
+        except (ValueError,TypeError):return JSONResponse({'error':'CANONICAL_PAIRING_REQUEST_REQUIRED'},422)
+        # Construction, PG/SQLite/network work and owned transport cleanup all block.
+        return await run_in_threadpool(pairing_operation,action,data)
 
     @app.get('/api/snapshot')
     def snapshot():
@@ -102,7 +148,7 @@ def create_app(*,engine=None,runtime=None,module_id='generic'):
                 'module_hash':node.binding['local_module_hash']['value'],'local_format_version':1}],
             'objects':objects,'operations':[],'audit':[],'drafts':[]}
         return {'snapshot':local,'records':records,'project_status':status,
-                'outbox_count':len(outboxes),'transport':'NOT_IMPLEMENTED','pairing':'NOT_IMPLEMENTED'}
+                'outbox_count':len(outboxes),'transport':'NOT_IMPLEMENTED','pairing':'OWNER_TEXT_V1'}
 
     @app.post('/api/command')
     async def command(request:Request):
