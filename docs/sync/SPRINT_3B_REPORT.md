@@ -94,6 +94,26 @@ RH032 已推送 `e7eedb7b56eb417d5ae9bef26a4391fae349316f`，远端同 SHA，mai
 
 ## 失败保留
 
+### C1 — 浏览器记录内核差异验证（RH039）
+
+质量复审发现核心状态缺少项目/模块pin，合法的另一项目context可能与既有state混合；另验收runner对子进程缺少阶段期限。已保留独立复现并修补，规格与质量复审最终均PASS。下方22场景是修补前范围；最终 `c1-local/pins-browser-20261009-01` 为24场景实际PG/浏览器快照通过，bundle SHA256 `ffbf37344d1da2120e8780b3fc3232f07c843d0f9f708863d9a67cb593b3adca`，仍明确dirty工作树。RecordState与receiver都固定项目和模块，含echo也核验pin；原跨项目与换模块两个RED保留 `pins-red-20261009-01`。最终协议59项及两包类型检查经根协调者复验通过；最终PG固定向量pytest在 `c1-local/root-pg-final-20261009-01` 1项通过、4.37秒、无skip。
+
+runner现在直接持有本次独立persistent Chromium句柄，worker只经临时loopback CDP连接；endpoint不上传。oracle/PW子进程各有120秒阶段期限，超时即失败并只回收本次spawn句柄，保存退出元数据。`oracle-timeout-20261009-01`、`worker-timeout-20261009-01` 使用明确挂起子进程故障，两者均FAIL/exit1、timedOut与exited均true，实际浏览器最终清理PASS，单列FAULT_INJECTED_ONLY；不是业务成功或真实数据库死锁证据。原测试网络参数不变。子进程helper两项经独立复验通过。
+
+`IMPLEMENTED / VERIFIED_IN_REAL_BROWSER`：无IO纯TS记录内核复用严格wire/canonical校验；窄Python QA wrapper仅对新普通Run/Note解决事务检查exact当前heads并选择候选提案，旧Kernel不改。普通offline_proposal不升级为ACCEPTED；三个AI principal清空Human字段仍拒绝。保存不可变修订、共同BASE、当前事务状态与首次receipt_state；晚冲突撤回整批和依赖后继投影，保留独立对象，重复回显不增加序列与审计。
+
+`c1-local/browser-diff-20261009-03` 实际Windows Chromium156.0.8078.4，对真实隔离PG逐步比较22场景的heads、修订/文档、事务/回执、候选冲突、投影、依赖、审计、sequence/watermark全部一致。另3组共同BASE由真实旧Kernel合法历史事务构造后与浏览器比较，包含多最大共同祖先返回空。纯页面末项失败保持输入snapshot不变；这不是IDB事务/CAS验收。所有owned浏览器PID已退出。bundle SHA256 `da3ec23a1035fbee07e5da41fbd440ef7c7c9aec233ce61951005918f8f8fcc1`，当时sourceCommit为RH038且workingTreeDirty=true，不能当作RH038已包含C1。
+
+协议57项与类型检查通过（根协调者独立复验），新增PG pytest 1项通过；pytest cache权限warning单列，不影响测试结果。`c1-local/`保留oracle-red01夹具外键错误、oracle-red02四个语义差异、core-red01十九项失败、offline-red01两项错误ACCEPTED、ai-red01三项权限差异，以及修补后结果。browser-diff01是entry路径构建错误，未执行浏览器；02首次22场景通过，03增加状态元数据、历史BASE和进程清理验收。未覆盖原失败，没有放宽原规则。C2实际IDB接收、传输与操作界面尚待实施。
+
+### B2 实际安全接入验收（RH038）
+
+完整首次CI最终7个job全部通过；归档 `storage/runtime/browser-local-qa/ci-37915243012-attempt1/`。原TLS固定20轮通过，TLS zip SHA256 `682b9823bf0ffce91e89e3113d475506766a3e831a67cded73a98aa30a01549c`；旧3A浏览器17项与B1密码10项通过。该结果不覆盖RH033–RH037首败，也不关闭TLS-001。
+
+提交 `97fe70cfbac1d6fca3c17c8ff742b687c303eb45` 已与GitHub开发分支同SHA同步。首次 [CI37915243012](https://github.com/Zh9426/ResearchHub/actions/runs/37915243012) attempt1的网络job通过，retries=0。Linux Chromium156.0.8078.4，新OS账户、独立NSS/profile；trusted流程到达COMPLETE，3次成功OPTIONS、2次签名POST，原38001 HTTPS入口。真实UI完成同一空项目加入、原生证明、签名绑定与module内容/双hash校验、receipt刷新重取。错误CA、错误hostname、无效proof、opaque未授权origin的真实拒绝均通过；pin/grant后hello故障为显式route.abort注入，移除注入后由用户动作恢复，单列FAULT_INJECTED_ONLY。
+
+两浏览器关闭与owned服务退出均通过，新账户最终进程为空。安全摘要与完整网络工件保留 `storage/runtime/browser-sync-qa/rh038-network-diagnostic/`，zip SHA256 `63cdcbb39e45d3639d348817bc7f47c4b0728d5003a19557d330fc5e210e6790`。实际脱敏页面：[桌面](evidence/sprint3b/b2-trusted-desktop.png)、[390px视口](evidence/sprint3b/b2-trusted-mobile-viewport.png)，输入区由Playwright遮盖；只证明加入阶段，非双向业务。浏览器构建hash `f283ee604f1e28041a5280cd529aff80814322c075ca9e204616dcd428a4b66d`。Windows浏览器HTTPS仍NOT VERIFIED，非空历史bootstrap未实现，TLS-001/PC013仍OPEN。下一内部检查点为C。
+
 RH037（`8cd1005f3b27575a4fbe1db583c63147559c6111`）首次 [CI37913330768](https://github.com/Zh9426/ResearchHub/actions/runs/37913330768) attempt1：六个既有job通过，网络job仍FAIL。隔离Chromium156.0.8078.4已实际启动；错误CA拒绝通过，trusted流程通过错误hostname拒绝后到达`OWNER_START`并失败，尚无正向browser Fetch（preflights/signedPosts均0）。清理前继承XDG目录仍EACCES；清理后两个账户均为HOME_FALLBACK、目录实际位于自己的home且临时目录创建/清理成功；browser close与账户进程归零均通过。因此只确认启动隔离补丁有效，不计完整B2通过。
 
 完整归档 `storage/runtime/browser-local-qa/ci-37913330768-attempt1/`：失败日志zip `35610910e1c7e659962068e61b8e07ca7bceb139bd49aaccec01880ade167ae7`，网络zip `5787a7038c8cbbcc078680f565f710d01a9a9d359c4a963f21d6f3e9e268dfba`，TLS zip `0bf405f4bfdeb8aeee2c7eb3f9c2cd5bc74beb8024ab26372cde0ca43d8cabfe`。原固定20轮通过仍不关闭TLS-001。未重跑该SHA。
@@ -136,7 +156,7 @@ RH038规格复审另发现测试清理串行调用可能因证据写入或浏览
 
 | 场景 | 当前实际证据与缺口 |
 |---|---|
-| A 同一项目加入 | PC签名公共绑定、浏览器严格预览已有；真实配对正在B2实施，未计通过 |
+| A 同一项目加入 | RH038真实Linux UI完成同一空项目加入、双hash与身份绑定；非空历史bootstrap未实现 |
 | B 离线创建与星标 | A2独立浏览器工作区已验证；同一已加入项目的端到端重开待验收 |
 | C 连续离线修改 | 稳定mapping与父链、实际浏览器正式密封已验证；真实发送待C |
 | D Browser→PC | NOT IMPLEMENTED |
@@ -148,7 +168,7 @@ RH038规格复审另发现测试清理串行调用可能因证据写入或浏览
 | J 保存和接收失败 | 本地IDB/CAS及安全持久化负例已验证；接收整页事务待C |
 | K 星标字段隔离 | A2/B1本地即时保存、dirty隔离及协议映射已验证；跨端待C |
 | L 版本与身份 | v1/v2/Python/Chromium密码与身份负例已验证；完整网络路径待验收 |
-| M 浏览器网络边界 | FAIL / INCOMPLETE；RH037实际Chromium启动、错误CA/hostname拒绝已有证据，OWNER_START失败，正向Fetch/CORS尚未通过；Windows未验证 |
+| M 浏览器网络边界 | RH038实际Linux严格TLS、直接Fetch、CORS正负例通过；Windows未验证，C业务路径仍待验收 |
 | N 撤销与旧epoch | B1 vault撤销/history负例已验证；PC真实撤销与网络待验收 |
 | O 旧3A记录适配 | NOT IMPLEMENTED；不能按名字合并或克隆发送身份 |
 | P 状态真实性 | 本地工作与可信PC投影已分列；peer receipt与双端状态尚未实现 |
@@ -162,9 +182,9 @@ RH038质量复审发现READY前停滞无法取得清理句柄的旧helper缺口�
 | Gate | 当前状态 |
 |---|---|
 | G1 项目与协议一致 | INCOMPLETE；仅版本契约已验证，同项目加入/操作映射尚在实施 |
-| G2 浏览器安全接入 | INCOMPLETE；正式密码与实际证书负例已有证据，RH037配对阶段失败，正向网络待新补丁首次CI |
+| G2 浏览器安全接入 | B检查点PASS；B1正式密码与RH038实际Linux配对/严格TLS/Fetch通过，后续C变更仍需回归 |
 | G3 本地可靠性 | INCOMPLETE；3A回归通过不替代3B |
-| G4 实际双向传输 | INCOMPLETE；B2网络测试失败，C尚未实现 |
+| G4 实际双向传输 | INCOMPLETE；B2通过，C实施中，尚无双向业务验收 |
 | G5 冲突与幂等 | NOT VERIFIED |
 | G6 人类体验与状态 | INCOMPLETE |
 | G7 隔离与回归 | INCOMPLETE；A1回归已通过，后续改动待验收 |

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test --test-isolation=none test/wire.test.ts test/v2.test.ts",
+    "test": "node --test --test-isolation=none test/wire.test.ts test/v2.test.ts test/record-kernel.test.ts",
     "typecheck": "node ../../apps/web/node_modules/typescript/bin/tsc -p tsconfig.json"
   }
 }

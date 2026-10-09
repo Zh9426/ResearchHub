@@ -54,11 +54,16 @@ jobs:
           node --test apps/browser-qa/scripts/crashpad-path-probe.test.mjs
           node --test apps/browser-qa/tests-owner/cleanup.test.ts
           node --test apps/browser-qa/tests-owner/owned-start.test.ts
+          node --test apps/browser-qa/scripts/owned-command.test.mjs
           python -m pytest tests/test_browser_network_ci_diagnostics.py -q
           npm --prefix packages/secure-sync run typecheck
           npm --prefix apps/browser-qa run typecheck
           npm --prefix apps/browser-qa run build:sync
           RH_QA_PROFILE=pc npm --prefix apps/browser-qa run build
+      - name: 实际浏览器与独立PG记录内核差异验证
+        env:
+          RH_QA_PYTHON: python
+        run: node apps/browser-qa/scripts/record-kernel-qa.mjs ci-${{ github.run_id }}-${{ github.run_attempt }}
       - name: 独立OS用户真实浏览器配对与原入口严格TLS
         run: python scripts/browser-network-qa-ci.py
       - name: 上传网络白名单结果
@@ -73,6 +78,8 @@ jobs:
             storage/runtime/browser-sync-qa/network-ci/trusted-desktop.png
             storage/runtime/browser-sync-qa/network-ci/trusted-mobile.png
             storage/runtime/tls-case-evidence/ingress-*.json
+            storage/runtime/browser-sync-qa/c1-local/ci-${{ github.run_id }}-${{ github.run_attempt }}/summary.json
+            storage/runtime/browser-sync-qa/c1-local/ci-${{ github.run_id }}-${{ github.run_attempt }}/browser-summary.json
           if-no-files-found: warn
           retention-days: 30
   browser-security-qa:
