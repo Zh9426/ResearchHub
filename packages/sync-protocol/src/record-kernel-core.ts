@@ -63,7 +63,8 @@ export async function applyRecord(source:RecordState,value:unknown,trusted:Recor
  for(const c of tx.changes){
   if(!['ResearchRun','Note'].includes(c.object_type))fail('RECORD_SCOPE_REQUIRED');
   const hs=state.heads[key(c)]??[];
-  if(resolving&&!equal(c.parents,hs))fail('CONFLICT_CHANGED');
+  if(resolving&&context.mode==='online'&&!equal(c.parents,hs))fail('CONFLICT_CHANGED');
+  if(resolving&&context.mode==='offline_proposal'&&c.parents.length>1&&!state.conflicts.some(x=>equal(x.heads,c.parents)&&x.heads.every(h=>key(state.revisions[h].semantic)===key(c))))fail('CONFLICT_CHANGED');
   const parents=c.parents.map(id=>state.revisions[id]??fail('DEPENDENCY_REQUIRED'));
   if(parents.some(r=>r.semantic.project_id!==c.project_id||key(r.semantic)!==key(c)))fail('CROSS_OBJECT_PARENT');
   const row=materialize(c,parents);

@@ -26,6 +26,8 @@ def object_view(db, project_id, object_type, object_id):
             'status': 'conflicted' if conflict else 'accepted' if accepted else 'candidate',
             'heads': head_set, 'candidate_count': len(candidates),
             'candidates': [{'revision': r.revision, 'transaction_id': r.transaction_id,
+                            'device_id':r.semantic['device_id'],'actor_id':r.semantic['actor_id'],
+                            'state':db.get(SyncTransaction,r.transaction_id).state,
                             'document': r.document, 'lifecycle': r.lifecycle} for r in candidates],
             'base': db.get(ObjectRevision, conflict.common_base).document if conflict and conflict.common_base else None,
             'base_revision': conflict.common_base if conflict else None,

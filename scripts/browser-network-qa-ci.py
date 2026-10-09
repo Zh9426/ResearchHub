@@ -3,6 +3,7 @@
 Only public CA bytes cross into the browser user's home. Runtime, service logs and
 credentials stay owned by the runner. No browser operation runs as the PC owner.
 """
+import argparse
 import hashlib
 import json
 import os
@@ -121,7 +122,21 @@ def process_cleanup_failures(snapshot, probe_exit):
     return failures
 
 
-def main():
+def network_scenario(scenario):
+    choices = {
+        'baseline': {'directory': 'network-ci', 'config': 'playwright.network.config.ts',
+                     'node': 'ci-browser-pairing'},
+        'conflict': {'directory': 'conflict-ci', 'config': 'playwright.conflict.config.ts',
+                     'node': 'ci-browser-conflict'},
+    }
+    if not isinstance(scenario, str) or scenario not in choices:
+        raise ValueError('UNKNOWN_NETWORK_SCENARIO')
+    return choices[scenario]
+
+
+def main(scenario='baseline'):
+    selected = network_scenario(scenario)
+    OUT = RUNTIME / 'browser-sync-qa' / selected['directory']
     if sys.platform != 'linux' or os.environ.get('GITHUB_ACTIONS') != 'true':
         raise RuntimeError('EPHEMERAL_LINUX_CI_ONLY')
     if os.environ.get('HUB_SYNC_QA') != '1' or os.environ.get('HUB_RELAY_QA') != '1':
@@ -136,7 +151,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=False)
     evidence = {'scope': 'SYNTHETIC isolated Linux browser network',
                 'sourceCommit': os.environ['GITHUB_SHA'], 'TLS_001': 'OPEN',
-                'PRODUCTION_READY': False, 'stages': [], 'status': 'RUNNING'}
+                'PRODUCTION_READY': False, 'scenario': scenario, 'stages': [], 'status': 'RUNNING'}
     services = []
     logs = []
     owned_user_ids = []
@@ -253,8 +268,8 @@ def main():
                                            '-i', str(home / 'qa-ca.crt')], cwd=home))
         evidence['caSha256'] = hashlib.sha256(public_ca.read_bytes()).hexdigest()
         env = {**os.environ, 'PYTHONPATH': str(ROOT / 'apps/api') + os.pathsep + str(ROOT)}
-        run('pc-setup', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'setup', '--node', 'ci-browser-pairing'], env=env)
-        start_service('pc', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'start', '--node', 'ci-browser-pairing'],
+        run('pc-setup', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'setup', '--node', selected['node']], env=env)
+        start_service('pc', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'start', '--node', selected['node']],
                       'http://127.0.0.1:3315', env)
         start_service('browser-static', [node, 'apps/browser-qa/scripts/server.mjs'],
                       'http://127.0.0.1:3314', {**env, 'RH_QA_PROFILE': 'sync'})
@@ -299,7 +314,7 @@ def main():
                 'catch(e){if(e.code!=="EACCES")throw e}', str(RUNTIME)], cwd=home))
             try:
                 run('browser-' + case, as_user(user, [node, 'node_modules/@playwright/test/cli.js',
-                    'test', '--config', 'playwright.network.config.ts'], values=values, clean_browser=True), timeout=420)
+                    'test', '--config', selected['config']], values=values, clean_browser=True), timeout=420)
             finally:
                 # Only reviewed public summary is copied. Raw logs/profiles never leave home/runtime.
                 summary = results / 'summary.json'
@@ -312,7 +327,10 @@ def main():
                 if case == 'trusted' and present == 0:
                     public_result = json.loads((OUT / (case + '-summary.json')).read_text())
                     if public_result.get('status') == 'passed':
-                        for filename in ('desktop.png', 'mobile.png'):
+                        screenshots = ('desktop.png', 'mobile.png')
+                        if scenario == 'conflict':
+                            screenshots += ('conflict-comparison.png', 'conflict-candidate.png')
+                        for filename in screenshots:
                             run('collect-' + filename.split('.')[0], ['sudo', 'install', '-m', '0600',
                                 '-o', str(os.getuid()), '-g', str(os.getgid()), str(results / filename),
                                 str(OUT / ('trusted-' + filename))])
@@ -399,4 +417,6 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--scenario', choices=('baseline', 'conflict'), default='baseline')
+    sys.exit(main(parser.parse_args().scenario))

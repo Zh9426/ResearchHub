@@ -1,0 +1,50 @@
+import {applyRecord,emptyRecordState} from '../../../packages/sync-protocol/src/record-kernel-core';
+import {recordContext} from '../src/sync/receiver';
+/** Component authorization fixture only; native IDB/WebCrypto, no network claim. */
+import {BrowserConflicts} from '../src/sync/conflicts';
+export async function conflictProposals(q:any){
+ const assert=(v:unknown,m:string)=>{if(!v)throw Error(m);};
+ const f=await q.fixture(),installer=await q.sealer.authorization();await installer.install(f.wrapper,{ownerRoot:f.binding.trust.owner_root,recoveryRoot:f.binding.trust.recovery_root,grant:f.grant});
+ const receiver=await q.sealer.receiver(),base=f.transaction('SYNTHETIC conflict BASE');await receiver.receive(f.project.id,await f.page([base]));
+ const oid=base.changes[0].object_id,parent=await q.digest(base.changes[0]);
+ const local=(await q.commands.snapshot()).objects.find((o:any)=>o.id===oid);await q.commands.save({...local,body:'local branch'});
+ const op=(await q.commands.snapshot()).operations.find((o:any)=>o.object_id===oid);await q.adapter.convert(op.id);
+ let cursor=await q.meta('relay-cursor:'+f.project.id);await receiver.receive(f.project.id,await f.page([f.transaction('remote branch',oid,[parent],[base.transaction_id])],cursor.cursor,cursor.chain_digest));
+ const service=new BrowserConflicts(q.open),first=(await service.list(f.project.id)).find(r=>r.object_id===oid)!;
+ assert(first.trusted.candidates.length===2&&first.trusted.base?.content==='SYNTHETIC conflict BASE','three way complete BASE');
+ assert(new Set(first.trusted.candidates.map(c=>c.device_id)).size===2,'device branch identity');
+ const work=(await q.commands.snapshot()).objects.find((o:any)=>o.id===oid);await q.commands.save({...work,body:'new unsent work'});
+ let denied=false;try{await service.resolve(first,{title:'SYNTHETIC conflict',content:'stale'});}catch{denied=true;}assert(denied,'stale work CAS must reject');
+ const second=(await service.list(f.project.id)).find(r=>r.object_id===oid)!;
+ cursor=await q.meta('relay-cursor:'+f.project.id);await receiver.receive(f.project.id,await f.page([f.transaction('third branch',oid,[parent],[base.transaction_id])],cursor.cursor,cursor.chain_digest));
+ denied=false;try{await service.resolve(second,{title:'SYNTHETIC conflict',content:'stale heads'});}catch{denied=true;}assert(denied,'stale heads CAS must reject');
+ assert((await q.commands.snapshot()).objects.find((o:any)=>o.id===oid).body==='new unsent work','failed proposal preserves pending input');
+ const third=(await service.list(f.project.id)).find(r=>r.object_id===oid)!;assert(third.trusted.candidates.length===3,'third branch retained');
+ const beforeBlocked=JSON.stringify({snapshot:await q.commands.snapshot(),kernel:await q.meta('record-kernel:'+f.project.id),pending:await q.meta('pending-operation:'+oid)});
+ denied=false;try{await service.resolve(third,{title:'SYNTHETIC conflict',content:'resolved proposal'});}catch(e){denied=String(e).includes('PENDING_OPERATION_REQUIRES_SYNC');}
+ assert(denied,'unconverted pending predecessor must fail closed before proposal');
+ assert(JSON.stringify({snapshot:await q.commands.snapshot(),kernel:await q.meta('record-kernel:'+f.project.id),pending:await q.meta('pending-operation:'+oid)})===beforeBlocked,'blocked proposal must write nothing');
+ const pending=await q.meta('pending-operation:'+oid),predecessor=await q.adapter.convert(pending.operation_id);
+ const compared=(await service.list(f.project.id)).find(r=>r.object_id===oid)!;
+ assert(compared.trusted.heads.includes(predecessor.revision),'explicit predecessor conversion enters compared heads');
+ await service.resolve(compared,{title:'SYNTHETIC conflict',content:'resolved proposal'});
+ const final=(await service.list(f.project.id)).find(r=>r.object_id===oid)!;assert(final.trusted.candidates.length===1&&final.trusted.candidates[0].state==='CANDIDATE'&&!final.trusted.accepted,'proposal is never accepted');
+ const saved=(await q.commands.snapshot()).operations.find((o:any)=>o.object_id===oid&&o.operation_type==='resolve');const mapping=await q.adapter.convert(saved.id);
+ assert(mapping.transaction.changes[0].operation==='resolve'&&mapping.parents.length===3&&mapping.dependencies.length===3,'stable explicit all-parent resolve');
+ assert(mapping.parents.includes(predecessor.revision)&&mapping.dependencies.includes(predecessor.transaction_id),'proposal depends on latest unsent predecessor');
+ const sendState=(await q.meta('record-kernel:'+f.project.id)).state,binding=await q.meta('binding:'+f.project.id);
+ let peer=emptyRecordState(f.project.id,f.binding.module_snapshot_hash);
+ for(const item of Object.values(sendState.transactions).sort((a:any,b:any)=>a.receipt.sequence-b.receipt.sequence) as any[])peer=(await applyRecord(peer,item.raw,recordContext(binding,item.raw))).snapshot;
+ peer=(await applyRecord(peer,predecessor.transaction,recordContext(binding,predecessor.transaction))).snapshot;
+ assert(JSON.stringify(peer.heads['Note:'+oid])===JSON.stringify([mapping.revision]),'independent peer replay and late predecessor echo keep single proposal head');
+ await receiver.completeHandoff(saved.id,mapping.transaction_id,saved.payload.local_edit_version);
+ assert(!(await q.commands.snapshot()).objects.find((o:any)=>o.id===oid),'candidate projection removed after exact handoff');
+ const reopened=(await service.list(f.project.id)).find(r=>r.object_id===oid)!;
+ await service.resolve(reopened,{title:'SYNTHETIC conflict',content:'candidate revised'});
+ const later=(await q.commands.snapshot()).operations.filter((o:any)=>o.object_id===oid&&o.operation_type==='resolve').sort((a:any,b:any)=>b.payload.local_edit_version-a.payload.local_edit_version)[0];
+ assert(later.payload.local_edit_version===saved.payload.local_edit_version+1,'resolution work version survives projection removal');
+ const frozen=await service.list(f.project.id);const blocked={...await q.meta('authorization:'+f.project.id),state:'BLOCKED'};await q.meta(blocked.id,blocked);
+ denied=false;try{await service.list(f.project.id);}catch{denied=true;}assert(denied,'revoked read blocked');
+ denied=false;try{await service.resolve(frozen[0],{title:'SYNTHETIC conflict',content:'blocked'});}catch{denied=true;}assert(denied,'revoked write blocked');
+ return ['native-conflict-read-three-branches-base-device','native-resolve-work-and-heads-cas','native-resolve-immutable-all-parents-candidate','native-resolve-read-write-authorization','native-resolve-unconverted-pending-zero-write','native-resolve-explicit-predecessor-peer-send-chain'];
+}

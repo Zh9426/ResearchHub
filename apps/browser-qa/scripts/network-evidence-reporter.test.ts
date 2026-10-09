@@ -61,3 +61,16 @@ test('baseline mismatch exposes only reviewed DOM local and kernel enums',()=>{
  for(const value of [{dom:'expected',local:'expected',kernel:'expected'},{dom:'missing',local:'missing',kernel:'missing'},{dom:'ambiguous',local:'other',kernel:'conflicted'},{dom:'hidden',local:'read_failed',kernel:'read_failed'},{dom:'other',local:'expected',kernel:'other'}])assert.deepEqual(safe(value),value);
  for(const value of [null,'PRIVATE_SECRET',{dom:'PRIVATE_SECRET',local:'expected',kernel:'expected'},{dom:'expected',local:'expected',kernel:'expected',raw:'PRIVATE_SECRET'},{dom:'expected',local:'expected'}])assert.equal(safe(value),null);
 });
+
+test('conflict diagnostics admit reviewed locations and stages only',()=>{
+ for(const phase of ['CONFLICT_BASE','CONFLICT_SAME_BASE_EDITS','CONFLICT_OFFLINE_PROPOSAL','CONFLICT_STALE_COMPARE_REJECT','CONFLICT_CANDIDATE_CONVERGENCE','CONFLICT_COMPLETE'])assert.equal(reporter.safePhase(phase),phase);
+ assert.equal(reporter.safePhase('CONFLICT_BASE secret'), 'START');
+ const result=reporter.summarizeError({stack:'at /private/tests-network-matrix/conflict-roundtrip.ts:12:3\nat /private/tests-network-matrix/secret.ts:12:3\nat /private/tests-network-matrix/conflict.spec.ts:8:2'});
+ assert.deepEqual(result.locations,[{file:'conflict-roundtrip.ts',line:12,column:3},{file:'conflict.spec.ts',line:8,column:2}]);
+ assert.equal(JSON.stringify(result).includes('private'),false);assert.equal(JSON.stringify(result).includes('secret'),false);
+});
+
+test('conflict title is a fixed mapping and arbitrary titles never escape',()=>{
+ assert.equal(reporter.safeTitle('C conflict actual browser pairing and candidate convergence'),'C conflict actual browser pairing and candidate convergence');
+ assert.equal(reporter.safeTitle('PRIVATE_SECRET_SENTINEL'),'B2 actual browser pairing, strict TLS and narrow CORS');
+});

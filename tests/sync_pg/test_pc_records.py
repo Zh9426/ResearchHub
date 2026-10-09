@@ -116,3 +116,27 @@ def test_command_locks_trust_before_project_and_work(domain_world):
     from researchhub.sync.secure.transport_pg import Trust
     assert Trust.__tablename__ in statements[0]
     assert any('qa_record_work' in s for s in statements[1:])
+
+def test_explicit_resolution_candidate_and_frozen_cas(domain_world):
+    w=domain_world;PcBase.metadata.create_all(w.engine)
+    c=command('Note',{'title':'SYNTHETIC','content':'base'});created=apply(w,c)
+    branches=[]
+    for actor,text in [('human','local'),('human_b','remote')]:
+        tx=w.make(kind='Note',oid=c['object_id'],operation='update',parents=created['heads'],payload={'content':text},actor=actor)
+        tx['protocol_version']=tx['schema_version']=2;tx['changes'][0]['schema_version']=2
+        w.apply(tx,actor=actor);branches.append(tx)
+    with Session(w.engine) as db:view=read_record(db,w.project_id,'Note',c['object_id'])
+    cmd={**command('Note'),'object_id':c['object_id'],'operation':'resolve','expected_work_version':1,'expected_heads':view['trusted']['heads'],'patch':{'title':'SYNTHETIC','content':'proposal'}}
+    third=w.make(kind='Note',oid=c['object_id'],operation='update',parents=created['heads'],payload={'content':'third'},actor='human_b')
+    third['protocol_version']=third['schema_version']=2;third['changes'][0]['schema_version']=2
+    w.apply(third,actor='human_b')
+    with pytest.raises(ProtocolError,match='heads'):apply(w,cmd)
+    with Session(w.engine) as db:cmd['expected_heads']=read_record(db,w.project_id,'Note',c['object_id'])['trusted']['heads']
+    result=apply(w,cmd)
+    assert apply(w,cmd)['receipt']['state']=='CANDIDATE'
+    assert result['receipt']['state']=='CANDIDATE'
+    with Session(w.engine) as db:
+        view=read_record(db,w.project_id,'Note',c['object_id'])
+        assert view['trusted']['accepted'] is None and len(view['trusted']['heads'])==1
+        assert db.get(Outbox,cmd['transaction_id']).envelope['transaction']['changes'][0]['operation']=='resolve'
+    with pytest.raises(ProtocolError,match='version'):apply(w,{**cmd,'command_id':str(uuid4()),'transaction_id':str(uuid4())})

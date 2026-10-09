@@ -1,0 +1,870 @@
+{
+  "version": 2,
+  "module": {
+    "id": "synthetic-record-kernel",
+    "run_types": [
+      {
+        "id": "experiment"
+      }
+    ],
+    "context_fields": []
+  },
+  "module_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+  "principal": {
+    "principal_id": "10000000-0000-4000-8000-000000000002",
+    "project_id": "10000000-0000-4000-8000-000000000001",
+    "device_id": "10000000-0000-4000-8000-000000000003",
+    "actor_id": "10000000-0000-4000-8000-000000000004",
+    "actor_type": "human",
+    "active": true
+  },
+  "cases": [
+    {
+      "name": "third-before-proposal",
+      "steps": [
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000064",
+            "idempotency_key": "10000000-0000-4000-8000-000000000064",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002774",
+                "audit_id": "10000000-0000-4000-8000-000000004e84",
+                "transaction_id": "10000000-0000-4000-8000-000000000064",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "create",
+                "parents": [],
+                "payload": {
+                  "title": "SYNTHETIC",
+                  "content": "原文  "
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002774"
+            ],
+            "dependencies": []
+          },
+          "expected": "ACCEPTED"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000065",
+            "idempotency_key": "10000000-0000-4000-8000-000000000065",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002775",
+                "audit_id": "10000000-0000-4000-8000-000000004e85",
+                "transaction_id": "10000000-0000-4000-8000-000000000065",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "local"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002775"
+            ],
+            "dependencies": []
+          },
+          "expected": "ACCEPTED"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000066",
+            "idempotency_key": "10000000-0000-4000-8000-000000000066",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002776",
+                "audit_id": "10000000-0000-4000-8000-000000004e86",
+                "transaction_id": "10000000-0000-4000-8000-000000000066",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "remote"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002776"
+            ],
+            "dependencies": []
+          },
+          "expected": "CANDIDATE"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000068",
+            "idempotency_key": "10000000-0000-4000-8000-000000000068",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002778",
+                "audit_id": "10000000-0000-4000-8000-000000004e88",
+                "transaction_id": "10000000-0000-4000-8000-000000000068",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "third"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002778"
+            ],
+            "dependencies": []
+          },
+          "expected": "CANDIDATE"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000067",
+            "idempotency_key": "10000000-0000-4000-8000-000000000067",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002777",
+                "audit_id": "10000000-0000-4000-8000-000000004e87",
+                "transaction_id": "10000000-0000-4000-8000-000000000067",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "resolve",
+                "parents": [
+                  "3ee1210d29d8aa9c1ccf1175458f563ccc29110bf440cd6883d540b3b21a5994",
+                  "b46218fd63aab227766a8319ed44aa71ee6b74afc9980330ec1b3a4ef3e4a071"
+                ],
+                "payload": {
+                  "content": "reviewed"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002777"
+            ],
+            "dependencies": []
+          },
+          "expected": "CANDIDATE",
+          "mode": "offline_proposal"
+        }
+      ]
+    },
+    {
+      "name": "third-after-proposal",
+      "steps": [
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000064",
+            "idempotency_key": "10000000-0000-4000-8000-000000000064",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002774",
+                "audit_id": "10000000-0000-4000-8000-000000004e84",
+                "transaction_id": "10000000-0000-4000-8000-000000000064",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "create",
+                "parents": [],
+                "payload": {
+                  "title": "SYNTHETIC",
+                  "content": "原文  "
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002774"
+            ],
+            "dependencies": []
+          },
+          "expected": "ACCEPTED"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000065",
+            "idempotency_key": "10000000-0000-4000-8000-000000000065",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002775",
+                "audit_id": "10000000-0000-4000-8000-000000004e85",
+                "transaction_id": "10000000-0000-4000-8000-000000000065",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "local"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002775"
+            ],
+            "dependencies": []
+          },
+          "expected": "ACCEPTED"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000066",
+            "idempotency_key": "10000000-0000-4000-8000-000000000066",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002776",
+                "audit_id": "10000000-0000-4000-8000-000000004e86",
+                "transaction_id": "10000000-0000-4000-8000-000000000066",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "remote"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002776"
+            ],
+            "dependencies": []
+          },
+          "expected": "CANDIDATE"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000067",
+            "idempotency_key": "10000000-0000-4000-8000-000000000067",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002777",
+                "audit_id": "10000000-0000-4000-8000-000000004e87",
+                "transaction_id": "10000000-0000-4000-8000-000000000067",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "resolve",
+                "parents": [
+                  "3ee1210d29d8aa9c1ccf1175458f563ccc29110bf440cd6883d540b3b21a5994",
+                  "b46218fd63aab227766a8319ed44aa71ee6b74afc9980330ec1b3a4ef3e4a071"
+                ],
+                "payload": {
+                  "content": "reviewed"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002777"
+            ],
+            "dependencies": []
+          },
+          "expected": "CANDIDATE",
+          "mode": "offline_proposal"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000068",
+            "idempotency_key": "10000000-0000-4000-8000-000000000068",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002778",
+                "audit_id": "10000000-0000-4000-8000-000000004e88",
+                "transaction_id": "10000000-0000-4000-8000-000000000068",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "third"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002778"
+            ],
+            "dependencies": []
+          },
+          "expected": "CANDIDATE"
+        }
+      ]
+    },
+    {
+      "name": "revoked-historical-proposal",
+      "steps": [
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000064",
+            "idempotency_key": "10000000-0000-4000-8000-000000000064",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002774",
+                "audit_id": "10000000-0000-4000-8000-000000004e84",
+                "transaction_id": "10000000-0000-4000-8000-000000000064",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "create",
+                "parents": [],
+                "payload": {
+                  "title": "SYNTHETIC",
+                  "content": "原文  "
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002774"
+            ],
+            "dependencies": []
+          },
+          "expected": "ACCEPTED"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000065",
+            "idempotency_key": "10000000-0000-4000-8000-000000000065",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002775",
+                "audit_id": "10000000-0000-4000-8000-000000004e85",
+                "transaction_id": "10000000-0000-4000-8000-000000000065",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "local"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002775"
+            ],
+            "dependencies": []
+          },
+          "expected": "ACCEPTED"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000066",
+            "idempotency_key": "10000000-0000-4000-8000-000000000066",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002776",
+                "audit_id": "10000000-0000-4000-8000-000000004e86",
+                "transaction_id": "10000000-0000-4000-8000-000000000066",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "remote"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002776"
+            ],
+            "dependencies": []
+          },
+          "expected": "CANDIDATE"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000068",
+            "idempotency_key": "10000000-0000-4000-8000-000000000068",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002778",
+                "audit_id": "10000000-0000-4000-8000-000000004e88",
+                "transaction_id": "10000000-0000-4000-8000-000000000068",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "third"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002778"
+            ],
+            "dependencies": []
+          },
+          "expected": "CANDIDATE"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000067",
+            "idempotency_key": "10000000-0000-4000-8000-000000000067",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002777",
+                "audit_id": "10000000-0000-4000-8000-000000004e87",
+                "transaction_id": "10000000-0000-4000-8000-000000000067",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "resolve",
+                "parents": [
+                  "3ee1210d29d8aa9c1ccf1175458f563ccc29110bf440cd6883d540b3b21a5994",
+                  "b46218fd63aab227766a8319ed44aa71ee6b74afc9980330ec1b3a4ef3e4a071"
+                ],
+                "payload": {
+                  "content": "reviewed"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002777"
+            ],
+            "dependencies": []
+          },
+          "expected": "PRINCIPAL_REVOKED",
+          "mode": "offline_proposal",
+          "revoke": true
+        }
+      ]
+    },
+    {
+      "name": "unknown-subset-proposal",
+      "steps": [
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000064",
+            "idempotency_key": "10000000-0000-4000-8000-000000000064",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002774",
+                "audit_id": "10000000-0000-4000-8000-000000004e84",
+                "transaction_id": "10000000-0000-4000-8000-000000000064",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "create",
+                "parents": [],
+                "payload": {
+                  "title": "SYNTHETIC",
+                  "content": "原文  "
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002774"
+            ],
+            "dependencies": []
+          },
+          "expected": "ACCEPTED"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000065",
+            "idempotency_key": "10000000-0000-4000-8000-000000000065",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002775",
+                "audit_id": "10000000-0000-4000-8000-000000004e85",
+                "transaction_id": "10000000-0000-4000-8000-000000000065",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "local"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002775"
+            ],
+            "dependencies": []
+          },
+          "expected": "ACCEPTED"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000066",
+            "idempotency_key": "10000000-0000-4000-8000-000000000066",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002776",
+                "audit_id": "10000000-0000-4000-8000-000000004e86",
+                "transaction_id": "10000000-0000-4000-8000-000000000066",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "remote"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002776"
+            ],
+            "dependencies": []
+          },
+          "expected": "CANDIDATE"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000068",
+            "idempotency_key": "10000000-0000-4000-8000-000000000068",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002778",
+                "audit_id": "10000000-0000-4000-8000-000000004e88",
+                "transaction_id": "10000000-0000-4000-8000-000000000068",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "update",
+                "parents": [
+                  "3178d2605ce51bfc8ed3399020678a25c4a09d2d6c904600e7fb959abbc6f747"
+                ],
+                "payload": {
+                  "content": "third"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002778"
+            ],
+            "dependencies": []
+          },
+          "expected": "CANDIDATE"
+        },
+        {
+          "transaction": {
+            "transaction_id": "10000000-0000-4000-8000-000000000067",
+            "idempotency_key": "10000000-0000-4000-8000-000000000067",
+            "project_id": "10000000-0000-4000-8000-000000000001",
+            "device_id": "10000000-0000-4000-8000-000000000003",
+            "actor_id": "10000000-0000-4000-8000-000000000004",
+            "actor_type": "human",
+            "protocol_version": 2,
+            "schema_version": 2,
+            "created_at": "2026-10-09T01:02:03.004Z",
+            "changes": [
+              {
+                "change_id": "10000000-0000-4000-8000-000000002777",
+                "audit_id": "10000000-0000-4000-8000-000000004e87",
+                "transaction_id": "10000000-0000-4000-8000-000000000067",
+                "project_id": "10000000-0000-4000-8000-000000000001",
+                "device_id": "10000000-0000-4000-8000-000000000003",
+                "actor_id": "10000000-0000-4000-8000-000000000004",
+                "actor_type": "human",
+                "object_id": "10000000-0000-4000-8000-00000000000a",
+                "object_type": "Note",
+                "operation": "resolve",
+                "parents": [
+                  "3ee1210d29d8aa9c1ccf1175458f563ccc29110bf440cd6883d540b3b21a5994",
+                  "7a07d09c2ea26a54dbc4608c483e6c04716ea73cf0e552c79743a3d6f11ede53"
+                ],
+                "payload": {
+                  "content": "reviewed"
+                },
+                "schema_version": 2,
+                "module_snapshot_hash": "e69c5b97215db612a9a10ac97a800e6a577d9503627654d74ccbfd22447fc06c",
+                "created_at": "2026-10-09T01:02:03.004Z"
+              }
+            ],
+            "ordered_change_ids": [
+              "10000000-0000-4000-8000-000000002777"
+            ],
+            "dependencies": []
+          },
+          "expected": "CONFLICT_CHANGED",
+          "mode": "offline_proposal"
+        }
+      ]
+    }
+  ],
+  "common_base": [],
+  "scope": "Independent conflict proposal delivery-order transcripts; synthetic only"
+}

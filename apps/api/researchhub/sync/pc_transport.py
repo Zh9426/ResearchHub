@@ -1,5 +1,6 @@
 """Durable PC QA outbox bridge. Crypto runs after identity commit, before CAS."""
 from uuid import uuid4
+from dataclasses import replace
 import time
 from sqlalchemy import String, LargeBinary, Integer, BigInteger, select
 from sqlalchemy.orm import Mapped,mapped_column,Session
@@ -162,7 +163,7 @@ class PcTransport:
                     cursor=db.get(Trust,project).cursor
                 page=request('GET','/v1/messages',query={'cursor':cursor,'limit':100})
                 receive(self.engine,project,self.node.owner,{epoch:self.node.project_key},page,cursor,
-                    apply_record=lambda db,tx,ctx:apply_record_in_session(db,tx,ctx,self.node.binding['module_snapshot'],project_id=semantic),commit_guard=check)
+                    apply_record=lambda db,tx,ctx:apply_record_in_session(db,tx,replace(ctx,mode='offline_proposal',grant_id=None) if all(c['operation']=='resolve' for c in tx['changes']) else ctx,self.node.binding['module_snapshot'],project_id=semantic),commit_guard=check)
                 received+=len(page['rows'])
                 return bool(page['has_more'])
             more=pull()

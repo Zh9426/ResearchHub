@@ -6,9 +6,9 @@
 
 当前记录状态区区分本机保存、转换封装、中继接收、指定设备应用和当前科研候选/冲突。中继已存储仍可能尚未被另一节点拉取；只有验过目标签名且绑定这次操作的回执才能确认对端应用。再次编辑后不能沿用上次修改的确认状态。页面输入未保存时，拉取保留脏输入；星标命令只保存星标字段。出现失败时保留内容和原消息，下次显式点击使用相同业务身份重试。
 
-本节描述当前实施路径，真实严格 HTTPS 双向业务验收状态以 `docs/sync/SPRINT_3B_REPORT.md` 为准；截至 RH040，已通过的是 Linux 配对/证书/CORS，新增业务往返测试仍待首次执行。Windows 浏览器 HTTPS 未验证；不得安装个人全局 CA 或关闭验证来运行。冲突解决与显式旧3A导入仍待完成，不能作为已交付功能使用。以下 B2/A2 等分节保留历史切点说明。
+本节描述当前实施路径，真实严格 HTTPS 双向业务验收状态以 `docs/sync/SPRINT_3B_REPORT.md` 为准；RH045 精确提交首次CI已在Linux真实Chromium通过普通UI Run/Note/星标双向往返、严格证书/CORS与目标签名应用回执。Windows 浏览器 HTTPS 未验证；不得安装个人全局 CA 或关闭验证来运行。冲突解决与显式旧3A导入仍待完成，不能作为已交付功能使用。以下 B2/A2 等分节保留历史切点说明。
 
-## Sprint 3B B2b 浏览器加入（网络验收进行中）
+## Sprint 3B B2b 浏览器加入（历史切点；当前使用方式见顶部）
 
 普通3314页面的“加入可信 PC 项目”可在空工作区生成本浏览器设备公钥。不要先初始化演示项目；已有演示或旧3A内容不能按名称合并成联网身份。
 
@@ -20,7 +20,7 @@
 
 网络失败后保留同一配对会话与回执，显式恢复；不得清库或新建密钥规避失败。独立公共绑定预览不会改变授权。此切点没有双向记录同步按钮，完整业务传输仍待C阶段。
 
-Windows本机已验证原生设备身份持久化与界面状态，**Windows严格浏览器TLS尚未验证**。不得为运行以上步骤安装全局CA或关闭证书检查。Linux网络验收使用一次性CI中的两个独立OS用户、各自NSS/profile和原QA Relay；`scripts/browser-network-qa-ci.py`仅允许在该CI环境运行，结果在正式首轮完成前保持NOT VERIFIED。
+Windows本机已验证原生设备身份持久化与界面状态，**Windows严格浏览器TLS尚未验证**。不得为运行以上步骤安装全局CA或关闭证书检查。Linux网络验收使用一次性CI中的两个独立OS用户、各自NSS/profile和原QA Relay；`scripts/browser-network-qa-ci.py`仅允许在该CI环境运行，RH045已完成基础双向首轮，具体版本、范围与遗留项见报告。
 
 本机界面定向测试（先普通 `build:sync`，全新attempt）：
 
@@ -73,7 +73,7 @@ Remove-Item Env:RH_QA_TEST_ONLY, Env:RH_B1_NORMAL, Env:RH_B1_ATTEMPT
 
 ## Sprint 3B A2b PC 合成节点
 
-PC 固定 `http://127.0.0.1:3315`，独立受控 FastAPI 工厂，不导入产品 main。复用本工作台与 PC storage adapter，所有记录命令经过独立 QA PostgreSQL 35433 的 Domain / Kernel / Outbox 事务。此前 3313 和 3314 入口继续独立。当前 **配对、Relay 网络与 G4 均未完成**。
+PC 固定 `http://127.0.0.1:3315`，独立受控 FastAPI 工厂，不导入产品 main。复用本工作台与 PC storage adapter，所有记录命令经过独立 QA PostgreSQL 35433 的 Domain / Kernel / Outbox 事务。此前 3313 和 3314 入口继续独立。以下保留 A2b 启动流程；该历史切点尚无网络，当前基本双向网络验收见顶部 RH045 状态。
 
 仓库根 PowerShell：
 
@@ -96,7 +96,7 @@ PC 根页面自动选择实际冻结项目；高级语境依据 snapshot 的 con
 
 私有运行目录 `storage/runtime/browser-sync-qa/pc/` 不进入 Git。owner/recovery 是独立 `TestOnlyFileDeviceKeyStore`，**UNPROTECTED QA ONLY**，不是系统受保护密钥存储。项目 key 仅在内存中生成/从已签名 HPKE self-grant 解封；持久化的是签名公共链及密文 grant。重启复核完整 pin、历史 grant 对应 manifest、当前 owner 与同一 key epoch。设备/信任/nonce 账本缺失阻断，不重置发送状态。
 
-界面创建、编辑 Run/Note；星标单独三字段 PATCH，未保存正文仍保留。下方“刷新可信状态”分列工作副本、accepted projection、冲突候选和不可变历史，不从旧 Domain 行推断无冲突。所有本地 command 均保留待发送状态；`RecordWork.pending` 只代表尚未完成后续受控发送交接，不能解释成对端回执或科研批准。本切点没有清除 pending 的传输接口，C 阶段必须用持久发送事件精确清除对应 last_local_tx，不能清除后续编辑。并发候选只读保留，完整解决 UI 后续实现。
+界面创建、编辑 Run/Note；星标单独三字段 PATCH，未保存正文仍保留。下方“刷新可信状态”分列工作副本、accepted projection、冲突候选和不可变历史，不从旧 Domain 行推断无冲突。所有本地 command 均保留待发送状态；`RecordWork.pending` 只代表尚未完成后续受控发送交接，不能解释成对端回执或科研批准。A2b 当时没有 pending 传输交接；当前 C 阶段已按经过验证的回显和目标设备回执，精确交接对应 last_local_tx，不清除后续编辑。冲突解决的完整验收仍以 Sprint 3B 报告为准。
 
 公共绑定可在文本框复制，独立 `ResearchHub/PcProjectBinding/v1` domain owner 签名；包含真实冻结 snapshot、canonical hash、JSON-stringify 来源 hash、semantic/opaque ID、principal、roots 和完整公共链。页面在实际浏览器中校验结构与 hash，仍显示须独立确认信任；自行声明的 roots 不会让 B 自动信任。
 

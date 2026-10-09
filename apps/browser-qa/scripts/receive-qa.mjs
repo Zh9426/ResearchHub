@@ -62,9 +62,27 @@ try{
   assert(denied&&(await q.meta('relay-cursor:'+f.project.id)).cursor===2,'authorization CAS prevents stale receive');passed.push('authorization-generation-cas');
   passed.push(...await q.receivedRunWorkbench(q));passed.push(...await q.remoteOnlyWorkbench(q));
   assert(typeof q.manualReceipts==='function','native manual receipt API missing');passed.push(...await q.manualReceipts(q));
-  passed.push(...await q.adversarial(q));passed.push(...await q.identityCollisions(q));return passed;
+  passed.push(...await q.conflictProposals(q));passed.push(...await q.adversarial(q));passed.push(...await q.identityCollisions(q));return passed;
  }),90000);
  nativeUiStage=true;
+ await withNativeUiCleanup(async()=>{
+  await page.evaluate(()=>window.receiveQA.mountConflictUI(window.receiveQA));
+  await page.getByRole('button',{name:/^比较 /}).click();
+  await expect(page.getByLabel('笔记正文提案',{exact:true})).toHaveValue('');
+  await expect(page.getByRole('button',{name:'保存离线提案（待人工批准）'})).toBeDisabled();
+  await page.getByLabel('笔记正文提案',{exact:true}).fill('SYNTHETIC UI retained proposal');
+  await page.evaluate(()=>window.receiveQA.conflictUI.addThird());
+  await page.getByRole('button',{name:'保存离线提案（待人工批准）'}).click();
+  await expect(page.getByRole('alert')).toContainText('输入已保留');
+  await expect(page.getByLabel('笔记正文提案',{exact:true})).toHaveValue('SYNTHETIC UI retained proposal');
+  await page.getByRole('button',{name:/^比较 /}).click();
+  await expect(page.getByText('SYNTHETIC UI third',{exact:true})).toBeVisible();
+  await page.getByLabel('笔记正文提案',{exact:true}).fill('SYNTHETIC UI final proposal');
+  await page.getByRole('button',{name:'保存离线提案（待人工批准）'}).click();
+  await expect(page.getByText('提案已保存到本机：CANDIDATE，待人工批准。冲突收束不等于已接受。',{exact:true})).toBeVisible();
+  cases.push('native-conflict-field-ui-explicit-choice-stale-retention-candidate');
+ },()=>page.evaluate(()=>window.receiveQA.conflictUI?.unmount()));
+
  await withNativeUiCleanup(async()=>{
   await page.evaluate(()=>window.receiveQA.mountAccessibleWorkbench(window.receiveQA));
   await page.locator('button.qa-record').filter({hasText:'SYNTHETIC C manual Run'}).click();

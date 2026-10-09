@@ -4,6 +4,7 @@ import {resolve} from 'node:path';
 import os from 'node:os';
 import {createHash} from 'node:crypto';
 const phases=new Set('START BROWSER_LAUNCH BROWSER_VERSION UNTRUSTED_CA HOSTNAME_NEGATIVE FRESH_UI OWNER_START B_NATIVE_PROOF OWNER_CONFIRM INJECTED_HELLO_NETWORK_LOSS B_VERIFY_AND_FETCH RECEIPT_RESUME BAD_PROOF UNAUTHORIZED_ORIGIN SCREENSHOTS COMPLETE C_PC_BASELINE_UI C_B_NATIVE_EDIT_UI C_PC_READ_AND_EDIT_UI C_CLEAN_EDITOR_REFRESH C_PC_DIRTY_BASELINE_CAS C_DIRTY_EDITOR_PRESERVED C_DURABLE_NATIVE_PEER_RECEIPTS C_B_READ_BASELINE_RUN C_B_SAVE_RUN C_B_STAR_RUN C_B_SELECT_NOTE C_B_SAVE_NOTE_FIRST C_B_SAVE_NOTE_SECOND C_B_UNCONFIRMED_BEFORE_SEND C_B_SEND_PENDING C_B_RELAY_ONLY_ASSERT C_PC_APPLY_B_PENDING C_B_COLLECT_PEER_RECEIPTS C_B_PEER_ASSERT C_B_CONFIRMATION_COUNT'.split(' '));
+for(const phase of 'CONFLICT_BASE CONFLICT_SAME_BASE_EDITS CONFLICT_OFFLINE_PROPOSAL CONFLICT_STALE_COMPARE_REJECT CONFLICT_CANDIDATE_CONVERGENCE CONFLICT_COMPLETE'.split(' '))phases.add(phase);
 export function safePhase(value:unknown){return typeof value==='string'&&phases.has(value)?value:'START';}
 const manualCodes=new Set('RELAY_REJECTED RESPONSE_MISSING RESPONSE_TOO_LARGE NONCANONICAL_RESPONSE MAPPING_NOT_CONVERTED MAPPING_CAS_MISMATCH BINDING_CHANGED ENVELOPE_NOT_READY SEALED_MISSING IDENTITY_COLLISION BUSINESS_ABORTED VAULT_IDENTITY_MISMATCH VAULT_MISSING_OR_INCOMPLETE VAULT_INITIALIZATION_INCOMPLETE VAULT_AUTHORIZATION_MISMATCH AUTHORIZATION_CHANGED AUTHORIZATION_NOT_READY MANUAL_CLAIM_LOST MANUAL_SYNC_BUSY OPERATION_BASE_REQUIRED OPERATION_DEPENDENCY_CYCLE EXACT_PEER_TARGET_REQUIRED HISTORICAL_EPOCH_BLOCKED PEER_RECEIPT_CAS PEER_RECEIPT_CHANGED PEER_RECEIPT_RELAY_MISMATCH RECEIPT_CAS RELAY_RECEIPT_CHANGED RELAY_RECEIPT_MISMATCH INVALID_SIGNATURE INVALID_ENVELOPE DEPENDENCY_REQUIRED SYNC_NETWORK_UNCONFIRMED SYNC_BLOCKED MANUAL_FAILURE_UNCLASSIFIED'.split(' '));
 export function safeManualDiagnostic(value:unknown){const match=typeof value==='string'?/^Error: ([A-Z_]+)$/.exec(value):null;return match&&manualCodes.has(match[1])?match[1]:'MANUAL_FAILURE_UNCLASSIFIED';}
@@ -40,9 +41,9 @@ export function safeDiagnostics(message:string):string[]{
 }
 function sourceLocations(stack:string){
  const result:{file:string;line:number;column:number}[]=[];
- // Only two reviewed test source basenames and bounded integer positions escape.
- for(const match of stack.matchAll(/[\\/]tests-network[\\/](manual-roundtrip\.ts|network\.spec\.ts):([1-9][0-9]{0,4}):([1-9][0-9]{0,3})(?=[)\s]|$)/g)){
-  const value={file:match[1],line:Number(match[2]),column:Number(match[3])};
+ // Only explicitly paired directories/basenames and bounded positions escape.
+ for(const match of stack.matchAll(/[\/]tests-network(?:[\/](manual-roundtrip\.ts|network\.spec\.ts)|-matrix[\/](conflict-roundtrip\.ts|conflict\.spec\.ts)):([1-9][0-9]{0,4}):([1-9][0-9]{0,3})(?=[)\s]|$)/g)){
+  const value={file:match[1]??match[2],line:Number(match[3]),column:Number(match[4])};
   if(!result.some(old=>old.file===value.file&&old.line===value.line&&old.column===value.column))result.push(value);
   if(result.length===8)break;
  }
@@ -54,13 +55,14 @@ export function summarizeError(error:{name?:string;message?:string;stack?:string
  return {errorType:name&&errorTypes.has(name)?name:'UNKNOWN',sha256:createHash('sha256').update(JSON.stringify({name:error.name??null,message:error.message??null,stack:error.stack??null})).digest('hex'),diagnostics:safeDiagnostics(error.message??''),processExits:processExits(error.message??''),locations:sourceLocations(error.stack??'')};
 }
 function reviewedSummary(raw:any){return {errorType:errorTypes.has(raw?.errorType)?raw.errorType:'UNKNOWN',sha256:typeof raw?.sha256==='string'&&/^[a-f0-9]{64}$/.test(raw.sha256)?raw.sha256:null,diagnostics:Array.isArray(raw?.diagnostics)?raw.diagnostics.filter((v:unknown)=>typeof v==='string'&&Object.hasOwn(diagnosticPatterns,v)):[]};}
+export function safeTitle(value:unknown){return value==='C conflict actual browser pairing and candidate convergence'?'C conflict actual browser pairing and candidate convergence':'B2 actual browser pairing, strict TLS and narrow CORS';}
 /** Fixed-field summary only; errors, DOM, network bodies and stdout stay private. */
 export default class NetworkReporter implements Reporter{
  private rows:{title:string;status:string;retry:number}[]=[];
  private errorDiagnostics=new Set<string>();
  private errors:ReturnType<typeof summarizeError>[]=[];
  onError(error:TestError){const summary=summarizeError(error);this.errors.push(summary);for(const code of summary.diagnostics)this.errorDiagnostics.add(code);}
- onTestEnd(test:TestCase,result:TestResult){for(const error of result.errors)this.onError(error);this.rows.push({title:'B2 actual browser pairing, strict TLS and narrow CORS',status:result.status,retry:result.retry});}
+ onTestEnd(test:TestCase,result:TestResult){for(const error of result.errors)this.onError(error);this.rows.push({title:safeTitle(test.title),status:result.status,retry:result.retry});}
  onEnd(result:FullResult){
   const dir=process.env.RH_B2_RESULTS!,path=resolve(dir,'phase.json');const p=existsSync(path)?JSON.parse(readFileSync(path,'utf8')):{};
   const cleanupPath=resolve(dir,'cleanup.json'),cleanup=existsSync(cleanupPath)?JSON.parse(readFileSync(cleanupPath,'utf8')):{};

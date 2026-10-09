@@ -11,6 +11,19 @@ harness = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(harness)
 
 
+def test_network_scenarios_keep_baseline_and_conflict_isolated():
+    assert harness.network_scenario('baseline') == {
+        'directory': 'network-ci', 'config': 'playwright.network.config.ts',
+        'node': 'ci-browser-pairing'}
+    assert harness.network_scenario('conflict') == {
+        'directory': 'conflict-ci', 'config': 'playwright.conflict.config.ts',
+        'node': 'ci-browser-conflict'}
+    import pytest
+    for invalid in ('../private', '', 'production', None):
+        with pytest.raises(ValueError, match='UNKNOWN_NETWORK_SCENARIO'):
+            harness.network_scenario(invalid)
+
+
 def test_owned_process_metadata_restricts_fields():
     result = SimpleNamespace(returncode=0, stdout='12 1 Ss systemd\n13 12 S (sd-pam)\n'
                              '14 1 Z secret-credential\nmalformed\n')

@@ -161,8 +161,8 @@ RH038规格复审另发现测试清理串行调用可能因证据写入或浏览
 | A 同一项目加入 | RH038真实Linux UI完成同一空项目加入、双hash与身份绑定；非空历史bootstrap未实现 |
 | B 离线创建与星标 | A2独立浏览器工作区已验证；同一已加入项目的端到端重开待验收 |
 | C 连续离线修改 | 稳定mapping与父链、实际浏览器正式密封已验证；真实发送待C |
-| D Browser→PC | NOT IMPLEMENTED |
-| E PC→Browser | NOT IMPLEMENTED |
+| D Browser→PC | RH045实际Linux UI/原HTTPS/独立PG-IDB基础路径通过；完整失败矩阵待验收 |
+| E PC→Browser | RH045实际PC界面编辑回传B通过，同ID/内容及dirty保留；冲突流程待验收 |
 | F PC节点暂离线 | NOT VERIFIED；本机进程停止不等于宿主断电 |
 | G 双向冲突 | DESIGNED ONLY；三方比较与解决尚未实现 |
 | H 不同对象与回显 | NOT VERIFIED |
@@ -173,7 +173,7 @@ RH038规格复审另发现测试清理串行调用可能因证据写入或浏览
 | M 浏览器网络边界 | RH038实际Linux严格TLS、直接Fetch、CORS正负例通过；Windows未验证，C业务路径仍待验收 |
 | N 撤销与旧epoch | B1 vault撤销/history负例已验证；PC真实撤销与网络待验收 |
 | O 旧3A记录适配 | NOT IMPLEMENTED；不能按名字合并或克隆发送身份 |
-| P 状态真实性 | 本地工作与可信PC投影已分列；peer receipt与双端状态尚未实现 |
+| P 状态真实性 | RH045逐记录Relay与特定设备签名回执实际通过；当前DAG/历史应用分列，冲突UI待验收 |
 
 上述局部测试不等于对应完整场景PASS。正常关闭重开、故障注入与真正进程终止分别记录；尚无操作系统断电、实体手机或真实磁盘满证据。
 
@@ -268,3 +268,21 @@ RH044 `1534a30cb57a5f7819e840e41ff5f96315272b5d` 已同步，首次 [CI379431051
 产品补丁仅为目标、观察、星标说明、Note正文和高级语境五类textarea设置与可见标签一致的aria-label，不改业务值、保存处理或协议。原网络精确定位、断言、超时和TLS设置未改。新增完整B页面Run/Note外部精确定位与PC模式模块语境定位两项，后者是组件验收而非独立PC服务验收。旧32项均保留。worker `exact-label-green-5f1113ba-7a83-40c5-acab-28554da915fd` 与root独立 `root-exact-label-20261009-01` 均34 PASS、cleanup PASS、retries=0，bundle SHA256 `29e8c43f68f81d21e5282918dd0de91433ddcfa2e43d58a5b2d51bd1f5920e88`。类型检查和B/PC构建通过。该因果复现与RH044分类一致，仍须精确新SHA的Linux原网络用例通过后才能确认实际往返路径越过该缺陷。
 
 质量复审发现新增UI回归的finally unmount异常可覆盖原断言。确定性双失败RED已保留，修正为复用清理helper并递归保存AggregateError.errors/cause到忽略目录，循环、深度和分支有界；公共诊断由独立UI阶段标记决定，不依赖可能被覆盖的error属性。节点9项和类型检查通过，root独立9项通过；最终原生 `ui-cleanup-green-1e903cbc-06d4-4ad8-8eaf-3d3610683cad` 34 PASS、cleanup PASS。RED/GREEN与中间TS7016类型错误分别保存在transport-attempts，测试接入已有CI cleanup.test.ts，不跳过或吞错。尚不代表新的Linux往返通过。
+
+### RH045首次实际双向往返通过
+
+RH045 `f862361a369e440b61eff126871714967b048039` 已同步；首次 [CI37945424496](https://github.com/Zh9426/ResearchHub/actions/runs/37945424496) attempt1七job全部通过。实际Linux Chromium156.0.8078.4、Node24.21.0，以一次性OS用户/NSS/profile通过原HTTPS Relay，trusted phase=COMPLETE、retries=0、cleanup PASS。B构建SHA256 `a88c617e10dd1578034d8b4003b5b702714b3980a6d811abcfe86fb1c71a1842`。正常UI配对后，PC Run/Note baseline→B原生接收→B编辑/星标/Note连续保存→PC读取同ID和内容→PC修改→B读回完成；明确目标设备签名回执、Relay-only状态、干净表单刷新、双端脏输入保留及PC过期基线保存/星标CAS拒绝均越过原断言。另B新建Run跨端后PC version=0的远端记录仍可读，回执已验证。此为独立PG/IDB实际受控双向路径，不是共享库或Node代做浏览器密码。
+
+错误CA确切拒绝与错误hostname/invalid proof/unauthorized Origin测试保持；原TLS固定20轮通过仍不关闭TLS-001。此前RH041–RH044所有原始失败仍独立保留，标签有因果RED与新SHA原断言通过，不能用此结果关闭缺服务端时刻的RH042未来负例观测或PC013。Windows HTTPS仍NOT VERIFIED。完整归档 `storage/runtime/browser-local-qa/ci-37945424496-attempt1/`，网络zip SHA256 `d3c78af64840e71ea485749bc3125a7aa50eb1e9bfc83360f5fbfc3f852c30f5`，TLSzip `3d0a550f92bfb60f90d1dca0359e74f96e1a9ec8a0276ed3bd294945a032481b`。
+
+实际[传输状态截图](evidence/sprint3b/c-transport-status-desktop.png)可见本地/中继/目标签名应用状态。此阶段仍遮罩全部文本输入，不作为最终可读合成正文截图；后续会补仅遮配对信息的完整验收截图。原生34项和C1差异24项在精确SHA通过。当前仅基础双向路径通过，冲突提案界面、显式3A导入、已加入身份的进程重开/ACKloss/撤销/正文隐私矩阵仍未完整验收，Sprint3B整体INCOMPLETE；继续本轮，不进入3C。
+
+### RH046候选 — 冲突比较与离线提案
+
+`IMPLEMENTED / VERIFIED_IN_REAL_BROWSER`（新冲突网络尚待精确SHA验收）：B从完整Kernel枚举共同BASE、全部设备分支与单CANDIDATE；PC读服务补设备身份与真Audit。分歧字段必须显式选择或输入，冻结heads/work/授权；失败保留比较输入。新resolve保持同一项目/对象ID，新增修订、审计和Outbox/稳定mapping；无fresh Human批准时始终offline_proposal/CANDIDATE，不将旧应用回执当科研接受。
+
+TS与PC接收策略沿用既有Python历史完整冲突集合规则，第三分支先到或后到均保留；本地新提案仍严格当前CAS。规格审查发现B可越过未转换pending前驱，已用真实原生RED `c-receive/conflict-p2-20261009-red1` 保存失败，修正为计算前及短提交事务双重核验不可变CONVERTED mapping、revision属于冻结heads且Kernel事务相同；否则零写提示显式同步、重新比较。GREEN `conflict-p2-20261009-green1` 及root独立 `root-conflict-p2-20261009-01` 均41项、cleanup PASS、retries0。新增完整前驱链独立对端重放及晚到echo仍单head断言；Chromium156.0.8078.4，root bundle SHA256 `03dadf1c5940ddad37f527af2aa5db07c34ab7a51989431852ea30e2fc3770c1`。
+
+此前原生a1为子进程EPERM预启动失败；a2为首次38项，a3新增字段UI后39项，a4修正投影消失后的历史版本来源，a5新增精确handoff后重提版本单调断言，均在独立目录保留。最后Audit DTO修正另由root原生39项确认；之后P2补丁上述41项再次独立确认，不把这些阶段绿结果当作原缺陷自行消失。TS历史集合/PG接收/PC命令/Reporter早期RED仅保留在会话工具chunk 9f1f52/26c4e6/be20cd/cea2dc，未落盘原stdout；不虚报文件归档。测试编写错误1f1a05/19fcb2不计产品因果RED。
+
+root另独立协议完整63项、PG conflict_proposal+pc_records共7项、Reporter8项、harness8项、typecheck通过，原始输出在忽略目录 `rh046-root-*.txt` 与 `rh046-harness-*.txt`。Reporter首次沙箱spawn EPERM保留，授权启动子进程后才运行8项；不是断言失败重跑。新scenario选择测试先因缺函数RED，再八项通过。新增冲突用例在独立CI VM中使用全新PC node/profile/项目，复用原HTTPS入口与信任隔离；原baseline配置、180秒用例/420秒harness限制和TLS固定测试不改。可读截图只截比较区域；实际生成、图像审查和网络结论待首次CI。

@@ -69,6 +69,9 @@ export class StableWireAdapter{
    if(m.operation_fingerprint!==operationFingerprint||m.operation_id!==operation.id||m.object_id!==operation.object_id||m.prepare_id!==operation.id||m.binding_fingerprint!==JSON.stringify(binding)||m.binding_generation!==binding.generation||!m.transaction||m.transaction_digest!==await transactionDigest(m.transaction)||m.revision!==await revision(m.transaction.changes[0]))throw new WireBlocked(['IDENTITY_COLLISION: immutable operation or binding changed']);
    return m;
   }
+  // Resolution is staged with all parents and the immutable source in one CAS
+  // by BrowserConflicts; never let it fall through the single-parent update path.
+  if(operation.operation_type==='resolve')throw new WireBlocked(['RESOLVE_MAPPING_REQUIRED']);
   const preview=await previewBinding(binding.binding,project);if(preview.state==='BLOCKED')throw new WireBlocked(preview.reasons);
   const initial=snapshot.kernel?.state??emptyRecordState(project.id,binding.binding.module_snapshot_hash);
   const verifyBaseline=(value:any)=>{

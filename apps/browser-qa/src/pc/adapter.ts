@@ -1,9 +1,10 @@
+import {localDocument,type ConflictRecord} from '../sync/conflicts';
 import type {RecordSyncStatus} from '../sync/status';
 import type {WorkbenchAdapter,SyncResult} from '../Workbench';
 import type {LocalObject,LocalSnapshot,Run} from '../local/model';
 import {LocalConflictError} from '../local/commands';
 import {canonicalBytes} from '../../../../packages/sync-protocol/src/browser';
-export type PcRecord={sync_status?:RecordSyncStatus;object_id:string;object_type:string;work:{document:Record<string,unknown>;version:number;pending:boolean;base_heads:string[]}|null;trusted:{status:string;heads:string[];accepted:unknown;candidates:unknown[]};history:unknown[]};
+export type PcRecord={audit?:unknown[];sync_status?:RecordSyncStatus;object_id:string;object_type:string;work:{document:Record<string,unknown>;version:number;pending:boolean;base_heads:string[]}|null;trusted:ConflictRecord['trusted'];history:unknown[]};
 export type PcSnapshot={snapshot:LocalSnapshot;records:PcRecord[];outbox_count:number};
 let csrf='';let records:PcRecord[]=[];
 let sessionRequest:Promise<void>|null=null;
@@ -27,14 +28,17 @@ async function command(object:LocalObject,operation:string,patch:Record<string,u
  const saved=await request<{object:LocalObject;heads:string[]}>('/api/command',cmd);
  // Keep response-loss retries bound to the original command identity until process reload.
  const current=records.find(r=>r.object_id===object.id);if(current){current.trusted.heads=saved.heads;current.work={document:{},version:saved.object.local_edit_version,pending:true,base_heads:saved.heads};}
- else records.push({object_id:object.id,object_type:input.object_type,work:{document:{},version:saved.object.local_edit_version,pending:true,base_heads:saved.heads},trusted:{status:'accepted',heads:saved.heads,accepted:null,candidates:[]},history:[]});
+ else records.push({object_id:object.id,object_type:input.object_type,work:{document:{},version:saved.object.local_edit_version,pending:true,base_heads:saved.heads},trusted:{status:'accepted',heads:saved.heads,accepted:null,candidates:[],base:null,base_revision:null},history:[]});
  return saved.object;
 }
 function saveDraft(object:LocalObject,baseline?:DraftBaseline){
  const patch=object.kind==='Note'?{title:object.title,content:object.body}:{title:object.title,run_type:object.run_type,objective:object.objective,observation:object.observation,status:object.status,scientific_outcome:object.scientific_outcome,context_data:object.context_data,is_highlighted:object.is_highlighted,highlight_type:object.highlight_type,highlight_note:object.highlight_note};
  return command(object,object.local_edit_version>0||records.some(r=>r.object_id===object.id)?'update':'create',patch,baseline);
 }
-export const pcAdapter:WorkbenchAdapter={recordStatus:async object=>{const result=(await snapshot()).records.find(r=>r.object_id===object.id)?.sync_status;if(!result)throw Error('RECORD_STATUS_MISSING');return result;},captureBaseline,saveDraft:(object,baseline)=>saveDraft(object,baseline as DraftBaseline),highlightDraft:(id,version,patch,baseline)=>command({id,kind:'Run',local_edit_version:version} as Run,'highlight',patch,baseline as DraftBaseline),synchronize:()=>request<SyncResult>('/api/sync',{}),sync:true,pc:true,initialize:async()=>{throw Error('PC 项目由受控启动流程建立');},commands:{
+export const pcAdapter:WorkbenchAdapter={conflicts:{
+ list:async()=>{const value=await snapshot();return value.records.filter(r=>r.trusted.status!=='accepted').map(r=>({...r,local_device_id:value.snapshot.identity!.device_id,audit:r.audit??[],pending:r.work?.pending??false,cas:{version:r.work?.version??0,heads:[...r.trusted.heads],project:value.snapshot.projects[0].id}} as ConflictRecord));},
+ resolve:async(record,document)=>{const cas=record.cas as {version:number;heads:string[];project:string};const object=localDocument(cas.project,record.object_type,record.object_id,document,cas.version);await command(object,'resolve',document,{objectId:record.object_id,version:cas.version,heads:cas.heads});},
+},recordStatus:async object=>{const result=(await snapshot()).records.find(r=>r.object_id===object.id)?.sync_status;if(!result)throw Error('RECORD_STATUS_MISSING');return result;},captureBaseline,saveDraft:(object,baseline)=>saveDraft(object,baseline as DraftBaseline),highlightDraft:(id,version,patch,baseline)=>command({id,kind:'Run',local_edit_version:version} as Run,'highlight',patch,baseline as DraftBaseline),synchronize:()=>request<SyncResult>('/api/sync',{}),sync:true,pc:true,initialize:async()=>{throw Error('PC 项目由受控启动流程建立');},commands:{
  notifications:null,injectNextAbort(){throw Error('正常 PC 页面没有故障注入接口');},
  snapshot:async()=>(await snapshot()).snapshot,
  save:saveDraft,

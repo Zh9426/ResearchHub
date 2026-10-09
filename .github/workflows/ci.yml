@@ -85,6 +85,88 @@ jobs:
             storage/runtime/browser-sync-qa/c-receive/ci-${{ github.run_id }}-${{ github.run_attempt }}/summary.json
           if-no-files-found: warn
           retention-days: 30
+  browser-conflict-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      client-postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: researchhub_sync_kernel_qa
+          POSTGRES_USER: researchhub_sync_qa
+          POSTGRES_PASSWORD: ephemeral-browser-ci-only
+        ports:
+          - 35433:5432
+        options: >-
+          --health-cmd "pg_isready -U researchhub_sync_qa -d researchhub_sync_kernel_qa"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      HUB_SYNC_QA: '1'
+      HUB_RELAY_QA: '1'
+      HUB_SYNC_QA_URL: postgresql+psycopg://researchhub_sync_qa:ephemeral-browser-ci-only@127.0.0.1:35433/researchhub_sync_kernel_qa
+      PLAYWRIGHT_BROWSERS_PATH: /opt/rh-qa-browser
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 安装固定依赖与一次性用户证书工具
+        run: |
+          pip install -r apps/api/requirements.txt -r apps/relay/requirements.txt -r tests/secure_sync/requirements.txt
+          npm ci --prefix apps/web
+          npm ci --prefix apps/browser-qa
+          npm ci --prefix packages/secure-sync
+          sudo apt-get update
+          sudo apt-get install -y libnss3-tools acl
+          sudo install -d -m 0755 -o "$USER" /opt/rh-qa-browser
+          cd apps/browser-qa
+          npx playwright install --with-deps chromium
+      - name: 普通双节点构建（无测试授权注入）
+        env:
+          RH_QA_TEST_ONLY: '0'
+        run: |
+          node --test apps/browser-qa/scripts/network-evidence-reporter.test.ts
+          node --test apps/browser-qa/scripts/crashpad-path-probe.test.mjs
+          node --test apps/browser-qa/tests-owner/cleanup.test.ts
+          node --test apps/browser-qa/tests-owner/owned-start.test.ts
+          node --test apps/browser-qa/scripts/owned-command.test.mjs
+          python -m pytest tests/test_browser_network_ci_diagnostics.py -q
+          npm --prefix packages/secure-sync run typecheck
+          npm --prefix apps/browser-qa run typecheck
+          npm --prefix apps/browser-qa run build:sync
+          RH_QA_PROFILE=pc npm --prefix apps/browser-qa run build
+      - name: 实际浏览器与独立PG记录内核差异验证
+        env:
+          RH_QA_PYTHON: python
+        run: node apps/browser-qa/scripts/record-kernel-qa.mjs ci-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: 实际浏览器授权恢复与整页IDB接收
+        run: node apps/browser-qa/scripts/receive-qa.mjs ci-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: 独立OS用户真实浏览器冲突提案与原入口严格TLS
+        run: python scripts/browser-network-qa-ci.py --scenario conflict
+      - name: 上传网络白名单结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-conflict-qa-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            storage/runtime/browser-sync-qa/conflict-ci/harness-summary.json
+            storage/runtime/browser-sync-qa/conflict-ci/trusted-summary.json
+            storage/runtime/browser-sync-qa/conflict-ci/untrusted-summary.json
+            storage/runtime/browser-sync-qa/conflict-ci/trusted-desktop.png
+            storage/runtime/browser-sync-qa/conflict-ci/trusted-mobile.png
+            storage/runtime/browser-sync-qa/conflict-ci/trusted-conflict-comparison.png
+            storage/runtime/browser-sync-qa/conflict-ci/trusted-conflict-candidate.png
+            storage/runtime/tls-case-evidence/ingress-*.json
+            storage/runtime/browser-sync-qa/c1-local/ci-${{ github.run_id }}-${{ github.run_attempt }}/summary.json
+            storage/runtime/browser-sync-qa/c1-local/ci-${{ github.run_id }}-${{ github.run_attempt }}/browser-summary.json
+            storage/runtime/browser-sync-qa/c-receive/ci-${{ github.run_id }}-${{ github.run_attempt }}/summary.json
+          if-no-files-found: warn
+          retention-days: 30
   browser-security-qa:
     runs-on: ubuntu-latest
     timeout-minutes: 20

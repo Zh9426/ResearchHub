@@ -31,7 +31,7 @@ def apply_record_in_session(db, tx, context, module_snapshot, *, project_id):
         if c['object_type'] not in {'ResearchRun','Note'}:
             raise ProtocolError('RECORD_SCOPE_REQUIRED','ordinary record scope required')
         hs=heads(db,tx['project_id'],c['object_type'],c['object_id'])
-        if resolving and c['parents']!=hs:
+        if resolving and context.mode!='offline_proposal' and c['parents']!=hs:
             raise ProtocolError('CONFLICT_CHANGED','new proposal must name exact current heads')
         parents=[db.get(ObjectRevision,p) for p in c['parents']]
         if any(p is None for p in parents):

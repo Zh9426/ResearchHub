@@ -82,6 +82,24 @@ B仅实现本轮Run/Note所需保守DAG/整批屏障，使用相同向量与Pyth
 
 ## Gate、失败与依据
 
+### 显式 3A 导入增量（设计已复核，尚待实现）
+
+保留 3313 原 profile；从完整合成救援包选择一个项目，以其原 semantic UUID 和完整冻结 module snapshot 建立全新 PC QA 节点。owner、opaque ID、设备、项目密钥及 nonce 权限均重新建立，不能接管已有 PC 项目或按同名合并。初始化需核对 semantic ID 占用并加锁；HDSP/ICE 快照不得被当前 Generic 或新版模块替代。原 JSON 序列化来源 hash 与目标 canonical hash 分别保存和验证。
+
+B 经正常配对加入该项目后，先无写预览，再明确确认。预览给出来源摘要、所选项目、重放操作数、仅归档的其他项目/未保存草稿及字段级阻塞原因。每个对象按旧本地版本重放完整保存历史，最终材料化结果必须等于源 objects。旧 3A 的 highlight 事件可能同时包含正文变化：仅三项星标字段变化才生成新 highlight，否则生成完整 update；旧事件类型、时间和 actor 仅作来源保留，当前授权设备签新的事务。
+
+确认时重新校验 READY 授权、binding、计划摘要、目标完整历史为空及对象 UUID 无跨项目占用；单次短 IDB 事务写原包只读归档、来源映射、导入 journal、所有新操作/审计/前驱链/对象和 pending，不循环调用 save 造成半导入。同包与同绑定的重复确认返回原身份；内容、授权或非空目标不符则拒绝。未保存 drafts 只归档，不自动发送。后续使用现有手动转换、密封和同步路径，不把来源归档或旧身份写入 wire。
+
+### 冲突提案增量（RH046 工作树设计，验收结果另见报告）
+
+区分两个时刻的检查：用户新提交提案时，必须精确匹配当前 `expected_heads`、工作副本版本和授权状态；接收已经签名的不可变提案时，沿用 Python Kernel 的 `offline_proposal` 历史规则，允许引用曾完整出现过的冲突 head 集合。第三分支先于该提案抵达，不应使合法在途提案被拒收；第三分支仍保留为独立 head。任意子集、伪造集合、跨对象父节点和受保护内容仍拒绝。TS 内核及 PC 接收策略应与此既有内核规则一致，不能让外层重复校验把历史集合收窄为当前集合；此调整不放宽新提交的 CAS。
+
+比较入口从内核读取 typed object、当前 heads、唯一共同 BASE、各分支的设备身份/正文及工作副本，而不是只遍历 accepted 对象表。无 accepted projection 或仅剩单个 CANDIDATE 时，记录仍可查阅。按设备身份标注分支，完整显示多分支，不用数组顺序或时间戳决定“本地胜出”。字段比较和手工提案保留用户输入；新 head、工作版本或授权变化使旧提交失败，并提示重新比较。
+
+新提案使用同一项目/对象 ID，生成独立 resolve 修订、审计和 Outbox 操作，保留全部父依赖及旧历史。PC 经过原 Domain/Kernel/Outbox 事务；B 在事务外完成校验与内核计算，随后短 IDB 事务重新核对授权、内核头、工作副本及 pending，再一起持久化操作/审计/稳定转换映射。无 fresh Human grant 时固定使用离线提案权限；两端显示“待人工批准”，不因传输完成或历史应用回执变成 ScientificAccepted。
+
+RH045 首次 CI 已证明原基本双向网络路径通过。新增冲突和故障场景使用独立用例及合成项目，保留该原用例和 TLS 固定测试；不通过加大原失败测试超时、吞错或重复运行掩盖故障。上述冲突增量仍以实际浏览器与网络验收结果为准。
+
 A项目/版本/因果→B真实浏览器密码/TLS→C双向网络/冲突/故障，依次复审；安全前置失败对应Gate BLOCKED且总体INCOMPLETE，不明文替代。测试按附件A–P，retries0，真实PC UI和B UI编辑；逻辑PC停消费不等于宿主断电。保留TLS原测试/参数/失败/诊断，新的失败独立run/attempt归档。Relay DB/BYTEA/files/logs做正文与key marker扫描及正对照。精确实现SHA CI后报告STOP，不3C。
 
 参考[IndexedDB事务](https://www.w3.org/TR/IndexedDB/)、[WebCrypto](https://www.w3.org/TR/webcrypto/)、[Fetch CORS](https://fetch.spec.whatwg.org/)；库官方支持与实测版本在B阶段补录。已读frontend-app-builder/ui-ux-pro-max，用户要求延续现有界面而非重新生成视觉方案；真实隔离profile要求优先于个人IAB默认。UX检索未找到精确冲突反馈匹配，采用现有错误保留/可见label/44px规范，不声称检索已证明该交互。

@@ -1,5 +1,6 @@
 """Isolated PC QA work copies and ordinary draft commands. Never product reads."""
 import copy
+from dataclasses import replace
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
@@ -15,7 +16,7 @@ from ..schemas import RunInput, NoteInput
 from .authority import protected, resolve_principal
 from .canonical import digest
 from .kernel import apply_in_session, heads, lock_project
-from .models import ObjectRevision, Outbox
+from .models import ObjectRevision, Outbox, Audit
 from .projection import object_view, history
 from .protocol import ProtocolError, _uuid, _payload
 from .secure.transport_pg import guard
@@ -58,6 +59,10 @@ def read_record(db, project_id, object_type, object_id):
     return {'work':None if work is None else {'document':copy.deepcopy(work.document),
         'version':work.version,'base_heads':work.base_heads,'last_local_tx':work.last_local_tx,'pending':work.pending},
         'trusted':object_view(db,project_id,object_type,object_id),
+        'audit':[{'audit_id':a.audit_id,'transaction_id':a.transaction_id,'action':a.action,'content':a.content}
+                 for a in db.scalars(select(Audit).where(Audit.project_id==project_id,Audit.transaction_id.in_(
+                     select(ObjectRevision.transaction_id).where(ObjectRevision.project_id==project_id,
+                         ObjectRevision.object_type==object_type,ObjectRevision.object_id==object_id))))],
         'history':[{'revision':r.revision,'transaction_id':r.transaction_id,'document':r.document,
                     'parents':r.parents} for r in history(db,project_id,object_type,object_id)]}
 
@@ -91,7 +96,7 @@ def execute_command(db, context, project_id, command, *, fault=None):
     if type(command) is not dict or set(command)!=required:reject('INVALID_COMMAND','exact command fields required')
     for f in ('command_id','transaction_id','object_id'):_uuid(command[f])
     kind=command['object_type']; operation=command['operation']; patch=command['patch']
-    if kind not in ('ResearchRun','Note') or operation not in ('create','update','highlight'):
+    if kind not in ('ResearchRun','Note') or operation not in ('create','update','highlight','resolve'):
         reject('QA_SCOPE','ordinary Run/Note drafts only')
     if type(command['expected_work_version']) is not int or command['expected_work_version']<0:
         reject('INVALID_COMMAND','work version must be nonnegative')
@@ -128,6 +133,10 @@ def execute_command(db, context, project_id, command, *, fault=None):
     if operation=='create':
         if work or current_heads:reject('IDENTITY_COLLISION','object identity collision')
         document=copy.deepcopy(patch)
+    elif operation=='resolve':
+        if not current_heads:reject('CONFLICT_CHANGED','proposal requires existing heads')
+        from .kernel import _materialize
+        document,_=_materialize({'payload':patch,'operation':'resolve','object_type':kind,'schema_version':2},[db.get(ObjectRevision,h) for h in current_heads])
     else:
         if view['status']=='conflicted' or len(current_heads)!=1:
             reject('CONFLICT_REQUIRES_PROPOSAL','conflict requires explicit candidate proposal')
@@ -179,12 +188,13 @@ def execute_command(db, context, project_id, command, *, fault=None):
     common=dict(project_id=project_id,device_id=principal.device_id,actor_id=principal.actor_id,
                 actor_type=principal.actor_type,schema_version=2,created_at=stamp)
     change=dict(**common,change_id=str(uuid4()),audit_id=str(uuid4()),transaction_id=tid,
-        object_type=kind,object_id=oid,operation='create' if operation=='create' else 'update',
+        object_type=kind,object_id=oid,operation=operation if operation in ('create','resolve') else 'update',
         parents=current_heads,payload=patch,module_snapshot_hash=state.module_snapshot_hash)
     dependencies=sorted({db.get(ObjectRevision,h).transaction_id for h in current_heads})
     tx=dict(**common,transaction_id=tid,idempotency_key=tid,protocol_version=2,
         ordered_change_ids=[change['change_id']],changes=[change],dependencies=dependencies)
-    receipt=apply_in_session(db,tx,context,local_outbox=True,domain_action_digest=action_digest,fault=fault)
+    policy_context=replace(context,mode='offline_proposal',grant_id=None) if operation=='resolve' else context
+    receipt=apply_in_session(db,tx,policy_context,local_outbox=True,domain_action_digest=action_digest,fault=fault)
     after=heads(db,*key)
     if work is None:
         work=RecordWork(project_id=project_id,object_type=kind,object_id=oid,version=0)

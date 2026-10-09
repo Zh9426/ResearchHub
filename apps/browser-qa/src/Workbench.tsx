@@ -1,3 +1,5 @@
+import {ConflictPanel} from './sync/ConflictPanel';
+import type {ConflictService} from './sync/conflicts';
 import {RecordSyncPanel} from './sync/RecordSyncPanel';
 import type {RecordSyncStatus} from './sync/status';
 import {useEffect,useRef,useState,type ReactNode} from 'react';
@@ -8,7 +10,7 @@ import {newDraft,RUN_STATUSES,OUTCOMES,type LocalObject,type LocalSnapshot} from
 import {testOnlyDisconnectedAdapter} from './local/testTransport';
 export type WorkbenchExtensionContext={snapshot:LocalSnapshot;draft:LocalObject|null;dirty:boolean;busy:boolean;refresh:()=>Promise<void>;openRescueDraft:(draft:LocalObject)=>void};
 export type SyncResult={sent:number;received:number;confirmed:number;has_more:boolean;peer:string;review:string};
-export type WorkbenchAdapter={recordStatus?:(object:LocalObject)=>Promise<RecordSyncStatus>;captureBaseline?:(object:LocalObject)=>unknown;saveDraft?:(object:LocalObject,baseline:unknown)=>Promise<LocalObject>;highlightDraft?:(id:string,version:number,patch:any,baseline:unknown)=>Promise<LocalObject>;synchronize?:(project:string)=>Promise<SyncResult>;commands:Pick<typeof localCommands,'snapshot'|'save'|'setHighlight'|'notifications'|'injectNextAbort'>;initialize:()=>Promise<void>;sync?:boolean;pc?:boolean};
+export type WorkbenchAdapter={conflicts?:ConflictService;recordStatus?:(object:LocalObject)=>Promise<RecordSyncStatus>;captureBaseline?:(object:LocalObject)=>unknown;saveDraft?:(object:LocalObject,baseline:unknown)=>Promise<LocalObject>;highlightDraft?:(id:string,version:number,patch:any,baseline:unknown)=>Promise<LocalObject>;synchronize?:(project:string)=>Promise<SyncResult>;commands:Pick<typeof localCommands,'snapshot'|'save'|'setHighlight'|'notifications'|'injectNextAbort'>;initialize:()=>Promise<void>;sync?:boolean;pc?:boolean};
 const defaultAdapter:WorkbenchAdapter={commands:localCommands,initialize:initializeSyntheticWorkspace};
 type SaveState='editing'|'saving'|'saved'|'save_failed';
 declare global {interface Window {__LOCAL_QA__?:{snapshot:typeof localCommands.snapshot;currentDraft:()=>LocalObject|null;injectNextAbort:()=>void;testOnlyTransportProbe:()=>Promise<never>}}}
@@ -101,6 +103,7 @@ export function Workbench({extension,adapter=defaultAdapter}:{extension?:(contex
  </fieldset><button className="primary" disabled={busy} onClick={()=>void save()}>保存到本机</button>
  {conflict&&<div><p>审核状态：conflict（本地编辑冲突，未请求科研批准）</p><button onClick={async()=>{try{const snapshot=await localCommands.snapshot();setComparison(snapshot.objects.find(o=>o.id===draft.id)??null);}catch(e){setError(String(e));}}}>比较当前记录</button>{!adapter.sync&&<button onClick={()=>void save(true)}>另存草稿</button>}{comparison&&<pre data-testid="comparison">{JSON.stringify(comparison,null,2)}</pre>}</div>}
  </div>:<Empty>选择记录，或创建一条 Run / Note。</Empty>}</Panel></div>
+ {adapter.conflicts&&project&&<ConflictPanel service={adapter.conflicts} project={project.id} refreshToken={data} refresh={refresh}/>}
  <Panel title="本地队列与状态"><div className="qa-content">{draft&&persisted&&adapter.recordStatus&&<RecordSyncPanel draft={draft} dirty={dirty} read={adapter.recordStatus} refreshToken={data} pc={adapter.pc}/>}{adapter.synchronize&&<><button disabled={syncBusy||busy||!project} aria-busy={syncBusy} onClick={()=>void synchronize()}>立即同步</button><p role="status" data-testid="manual-sync-status">{syncBusy?'正在同步…':syncError?'同步未完成；记录仍在本机，可再次点击重试原消息。':syncResult?`本轮发送 ${syncResult.sent} 条，接收 ${syncResult.received} 条，已验证对端应用回执 ${syncResult.confirmed} 条。${syncResult.has_more?'仍有记录待处理，请再次点击。':''}`:'手动同步就绪；尚未确认对端应用。'}</p>{syncError&&<details><summary>同步诊断</summary><pre data-testid="manual-sync-diagnostic">{syncError}</pre></details>}</>}{adapter.sync?<><p data-testid="transport">已保存到本机；对端应用状态须经签名回执确认。</p>{adapter.pc?<p>PC 事务与可信状态见下方；正文保存经独立 PC 业务服务。</p>:<p>本地操作历史 {data.operations.length} 条 · 审计历史 {data.audit.length} 条</p>}<p>尚未请求科研批准。</p></>:<><p data-testid="transport">transport：not_configured · 待同步：本轮尚未连接传输服务</p><p>review：{conflict?'conflict':'not_requested'} · 未请求科研批准</p><p>待处理操作 {data.operations.length} 条 · 本地历史 {data.audit.length} 条 · NEEDS_WIRE_ADAPTER</p><p className="muted">本地操作保留完整内容，尚不是可发送的 SyncTransaction。明文合成数据，不含真实设备授权。</p></>}{notice&&<p role="status">{notice}</p>}</div></Panel>
  </>}
  {data&&extension?.({snapshot:data,draft,dirty,busy,refresh,openRescueDraft})}
