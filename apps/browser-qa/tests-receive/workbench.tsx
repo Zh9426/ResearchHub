@@ -1,3 +1,6 @@
+import {QaShell} from '../src/QaShell';
+import {JoinPanel} from '../src/sync/JoinPanel';
+import {BindingPanel} from '../src/sync/BindingPanel';
 import {revision} from '../../../packages/sync-protocol/src/browser';
 /** TEST_ONLY ordinary Workbench component with a persisted remote-only PC snapshot. */
 import React from 'react';
@@ -30,13 +33,14 @@ export async function remoteOnlyWorkbench(q:any){
 /** Actual native verified same-page Run create/update and ordinary B editor read. */
 export async function receivedRunWorkbench(q:any){
  const f=await q.fixture();await (await q.sealer.authorization()).install(f.wrapper,{ownerRoot:f.binding.trust.owner_root,recoveryRoot:f.binding.trust.recovery_root,grant:f.grant});
- const first=f.transaction('SYNTHETIC C manual Run');first.changes[0].object_type='ResearchRun';first.changes[0].payload={title:'SYNTHETIC C manual Run',run_type:'simulation',observation:''};
+ const first=f.transaction('SYNTHETIC C manual Run');first.changes[0].object_type='ResearchRun';first.changes[0].payload={title:'SYNTHETIC C manual Run',run_type:'simulation',observation:'',objective:'  SYNTHETIC 中文目标  ',is_highlighted:true,highlight_note:'  SYNTHETIC 中文星标说明  ',context_data:{repository:'  SYNTHETIC 中文代码仓库  '}};
  const second=f.transaction('unused',first.changes[0].object_id,[await revision(first.changes[0])],[first.transaction_id]);second.changes[0].object_type='ResearchRun';second.changes[0].payload={observation:'SYNTHETIC PC baseline second save'};
  const note=f.transaction('SYNTHETIC C manual Note');await (await q.sealer.receiver()).receive(f.project.id,await f.page([first,second,note]));
  const snapshot=await q.commands.snapshot(),object=snapshot.objects.find((o:any)=>o.id===first.changes[0].object_id);
  if(object?.observation!=='SYNTHETIC PC baseline second save')throw Error('RECEIVED_RUN_DURABLE_OBSERVATION_MISMATCH');
  const older=snapshot.projects.find((p:any)=>p.id!==f.project.id&&p.route_alias===f.project.route_alias);
  if(!older)throw Error('OLDER_SAME_ALIAS_FIXTURE_REQUIRED');
+ q.receivedWorkbenchProject=f.project.id;
  const cases:string[]=[];
  for(const olderFirst of [true,false]){
   const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
@@ -57,4 +61,16 @@ export async function receivedRunWorkbench(q:any){
   }finally{root.unmount();host.remove();history.replaceState(null,'','/');}
  }
  return cases;
+}
+
+/** Mount the actual B shell and panels for external Playwright exact-label checks. */
+export async function mountAccessibleWorkbench(q:any,pc=false){
+ const current=await q.commands.snapshot(),project=current.projects.find((p:any)=>p.id===q.receivedWorkbenchProject);
+ if(!project)throw Error('NATIVE_RECEIVED_PROJECT_REQUIRED');
+ const snapshot={...current,projects:[project],objects:current.objects.filter((o:any)=>o.project_id===project.id)};
+ const commands=Object.create(q.commands);commands.snapshot=async()=>snapshot;
+ const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+ history.replaceState(null,'',`/projects/${project.route_alias}`);
+ q.unmountAccessibleWorkbench=()=>{root.unmount();host.remove();history.replaceState(null,'','/');};
+ root.render(<QaShell sync pc={pc}><Workbench adapter={{sync:true,pc,initialize:async()=>{},commands}} extension={({refresh,snapshot})=><><JoinPanel refresh={refresh}/><BindingPanel refreshToken={snapshot}/></>}/></QaShell>);
 }

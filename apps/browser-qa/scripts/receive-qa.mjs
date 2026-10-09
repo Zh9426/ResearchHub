@@ -1,3 +1,5 @@
+import {withNativeUiCleanup,privateFailure,NATIVE_UI_FAILURE} from './native-ui-cleanup.ts';
+import {expect} from '@playwright/test';
 /** Owned one-shot actual Chromium/IDB/native crypto; no Relay network claim. */
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
@@ -10,7 +12,7 @@ import {openOwnedKernelBrowser,closeOwnedKernelBrowser} from './owned-kernel-bro
 const repo=fileURLToPath(new URL('../../../',import.meta.url)),attempt=process.argv[2];
 if(!attempt||!/^[a-zA-Z0-9_-]{1,80}$/.test(attempt))throw Error('UNIQUE_ATTEMPT_REQUIRED');
 const parent=join(repo,'storage/runtime/browser-sync-qa/c-receive');mkdirSync(parent,{recursive:true});const output=join(parent,attempt);mkdirSync(output);
-let browser,server,error,cleanup='NOT_STARTED',cases=[],browserVersion,bundleSha256;
+let browser,server,error,cleanup='NOT_STARTED',cases=[],browserVersion,bundleSha256,nativeUiStage=false;
 const sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8'}).trim(),workingTreeDirty=Boolean(execFileSync('git',['status','--porcelain'],{cwd:repo,encoding:'utf8'}).trim());
 async function deadline(promise,ms){let timer;try{return await Promise.race([promise,new Promise((_,no)=>{timer=setTimeout(()=>no(Error('RECEIVE_QA_DEADLINE')),ms);})]);}finally{clearTimeout(timer);}}
 try{
@@ -62,10 +64,31 @@ try{
   assert(typeof q.manualReceipts==='function','native manual receipt API missing');passed.push(...await q.manualReceipts(q));
   passed.push(...await q.adversarial(q));passed.push(...await q.identityCollisions(q));return passed;
  }),90000);
-}catch(e){error=e;writeFileSync(join(output,'error.txt'),String(e.stack??e));}
+ nativeUiStage=true;
+ await withNativeUiCleanup(async()=>{
+  await page.evaluate(()=>window.receiveQA.mountAccessibleWorkbench(window.receiveQA));
+  await page.locator('button.qa-record').filter({hasText:'SYNTHETIC C manual Run'}).click();
+  const initialValueInLabel=await page.evaluate(()=>[...document.querySelectorAll('textarea')].some(field=>field.value==='SYNTHETIC PC baseline second save'&&field.closest('label')?.textContent==='观察SYNTHETIC PC baseline second save'));
+  expect(initialValueInLabel).toBe(true);console.log('SYNTHETIC_INITIAL_TEXTAREA_VALUE_INCLUDED_IN_WRAPPING_LABEL');
+  await expect(page.getByLabel('观察',{exact:true})).toHaveValue('SYNTHETIC PC baseline second save');
+  await expect(page.getByLabel('本次目标（可选）',{exact:true})).toHaveValue('  SYNTHETIC 中文目标  ');
+  await expect(page.getByLabel('星标说明（可选）',{exact:true})).toHaveValue('  SYNTHETIC 中文星标说明  ');
+  await page.locator('button.qa-record').filter({hasText:'SYNTHETIC C manual Note'}).click();
+  await expect(page.getByLabel('笔记正文',{exact:true})).toHaveValue('SYNTHETIC C manual Note');
+  cases.push('full-b-shell-native-received-run-note-exact-labels');
+ },()=>page.evaluate(()=>window.receiveQA.unmountAccessibleWorkbench()));
+ await withNativeUiCleanup(async()=>{
+  await page.evaluate(()=>window.receiveQA.mountAccessibleWorkbench(window.receiveQA,true));
+  await page.locator('button.qa-record').filter({hasText:'SYNTHETIC C manual Run'}).click();
+  await page.getByText('高级语境（可选）',{exact:true}).click();
+  await expect(page.getByLabel('代码仓库',{exact:true})).toHaveValue('  SYNTHETIC 中文代码仓库  ');
+  cases.push('pc-module-context-nonempty-chinese-exact-label');
+ },()=>page.evaluate(()=>window.receiveQA.unmountAccessibleWorkbench()));
+
+}catch(e){error=e;writeFileSync(join(output,'error.txt'),String(e.stack??e));writeFileSync(join(output,'error-details.json'),JSON.stringify(privateFailure(e),null,2));}
 finally{
  const results=await Promise.allSettled([Promise.resolve().then(async()=>{if(server?.listening){server.closeAllConnections();await deadline(new Promise(done=>server.close(done)),10000);}}),Promise.resolve().then(async()=>{if(browser)await closeOwnedKernelBrowser(browser);})]);
- const failures=results.filter(r=>r.status==='rejected');cleanup=failures.length?'FAILED':'PASS';if(failures.length){error??=failures[0].reason;writeFileSync(join(output,'cleanup-error.txt'),failures.map(r=>String(r.reason)).join('\n'));}
+ const failures=results.filter(r=>r.status==='rejected');cleanup=failures.length?'FAILED':'PASS';if(failures.length){error??=failures[0].reason;writeFileSync(join(output,'cleanup-error.txt'),failures.map(r=>String(r.reason)).join('\n'));writeFileSync(join(output,'cleanup-error-details.json'),JSON.stringify(privateFailure(new AggregateError(failures.map(r=>r.reason),'Owned runner cleanup failed')),null,2));}
  writeFileSync(join(output,'summary.json'),JSON.stringify({attempt,status:error?'FAIL':'PASS',scope:'TEST_ONLY synthetic native Chromium IDB + crypto; no Relay network claim',cases,cleanup,sourceCommit,workingTreeDirty,bundleSha256,browserVersion,retries:0},null,2));
 }
-if(error){console.error(error.message);process.exitCode=1;}else console.log(JSON.stringify({status:'PASS',cases,cleanup}));
+if(error){console.error(nativeUiStage?NATIVE_UI_FAILURE:error.message);process.exitCode=1;}else console.log(JSON.stringify({status:'PASS',cases,cleanup}));

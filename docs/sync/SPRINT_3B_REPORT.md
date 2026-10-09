@@ -256,3 +256,15 @@ RH043已提交并同步 `6448d3e38af294aa4f097223501f345e73a5ebd6`，首次 [CI3
 新增组件测试复用同一TEST_ONLY数据库，多个随机UUID项目共享generic别名；Workbench按别名选择首个项目。确定性把真实旧项目排在新项目前，持久观察断言通过后目标按钮缺失，保存RED `c-receive/fixture-order-red-3168ca8b-81b7-4758-92cf-24cca9beb012/`。更早的RED前置条件误要求旧项目仍有accepted对象，另存500e3132…，不计因果复现。
 
 最小补丁只按目标project ID过滤该测试组件snapshot中的projects/objects，未修改产品alias、真实接收数据或网络断言。两种输入项目顺序分别实际挂载、选择、读取，原31case保留并新增第二种顺序，合计32项。worker `fixture-order-green-e7e6b960-3fc6-4a7f-9e98-d8549815be11` 与根协调者 `root-fixture-order-20261009-02` 均32 PASS、cleanup PASS、retries=0，Chromium156.0.8078.4，bundle SHA256 `fad7429d668b572fbe3f7eaa4f02319f405e963bec51bc3700aa50ba01f7d76f`。root首次01未指定项目browser路径，启动前Executable missing失败另存；纠正环境后02运行，未安装或放宽浏览器安全。类型检查通过。此修正针对RH043新增测试隔离，不声称RH042网络基线读取已修复；新增固定枚举诊断仍待实际HTTPS用例运行。
+
+RH044 `1534a30cb57a5f7819e840e41ff5f96315272b5d` 已同步，首次 [CI37943105146](https://github.com/Zh9426/ResearchHub/actions/runs/37943105146) attempt1六job通过、网络仍失败。原生32项同bundle通过，TLS固定20轮通过，时间边界/安全回归通过；不能覆盖网络失败。真实Linux Chromium在 `C_B_READ_BASELINE_RUN` 的原观察精确标签断言失败，新诊断 `{dom:missing,local:expected,kernel:expected}` 表明本地对象与kernel观察正确，但精确标签定位器找不到控件；尚需区分未呈现或标签关联，不能据此认定数据丢失。错误摘要SHA256 `4fabc31c7c57be5bdbc062fb8c8559332cf4d2cc745725c9af70b0b3b3b9da4a`，B构建仍 `db6fb41960633d2b67329030dbb593eb863332e060ddefa5c503c0f1e1f85f4c`，retries=0、cleanup PASS。错误CA拒绝通过，未到最终截图。
+
+完整证据 `storage/runtime/browser-local-qa/ci-37943105146-attempt1/`：失败日志zip SHA256 `54a1b1a9b1c9229841072a2a02c108f6ca7d1df7570f8a2e3f9a294f01f5adfe`，网络zip `8aad868f018b6f5707bf311774d37b87ed1a7a4879f61ba801e334239a58037f`，TLSzip `317f878a276d89d7faf5d3851d43b5a0b33d566defcc6233ab1615b13ea1ac6b`。期间一次GitHub只读状态查询断连另存索引，不是产品测试失败，也未触发CI重跑。G4仍FAIL/INCOMPLETE；TLS-001/PC013 OPEN。
+
+### RH045候选 — 非空文本域的精确标签修正
+
+在完整QaShell/Workbench/JoinPanel/BindingPanel和原生接收Run上，外部Playwright原 `getByLabel('观察',{exact:true})` 稳定复现失败。机制RED `c-receive/exact-label-cause-red-463bae66-d7de-4cd8-a203-d2879a30bbba/` 已确认textarea实际存在、持久观察正确，但包裹label文本为“观察”加初始正文；原定位失败。较早RED `exact-label-red-ba3e9edd-9a25-4b0e-8e9e-b55518df317a` 同样独立保留。
+
+产品补丁仅为目标、观察、星标说明、Note正文和高级语境五类textarea设置与可见标签一致的aria-label，不改业务值、保存处理或协议。原网络精确定位、断言、超时和TLS设置未改。新增完整B页面Run/Note外部精确定位与PC模式模块语境定位两项，后者是组件验收而非独立PC服务验收。旧32项均保留。worker `exact-label-green-5f1113ba-7a83-40c5-acab-28554da915fd` 与root独立 `root-exact-label-20261009-01` 均34 PASS、cleanup PASS、retries=0，bundle SHA256 `29e8c43f68f81d21e5282918dd0de91433ddcfa2e43d58a5b2d51bd1f5920e88`。类型检查和B/PC构建通过。该因果复现与RH044分类一致，仍须精确新SHA的Linux原网络用例通过后才能确认实际往返路径越过该缺陷。
+
+质量复审发现新增UI回归的finally unmount异常可覆盖原断言。确定性双失败RED已保留，修正为复用清理helper并递归保存AggregateError.errors/cause到忽略目录，循环、深度和分支有界；公共诊断由独立UI阶段标记决定，不依赖可能被覆盖的error属性。节点9项和类型检查通过，root独立9项通过；最终原生 `ui-cleanup-green-1e903cbc-06d4-4ad8-8eaf-3d3610683cad` 34 PASS、cleanup PASS。RED/GREEN与中间TS7016类型错误分别保存在transport-attempts，测试接入已有CI cleanup.test.ts，不跳过或吞错。尚不代表新的Linux往返通过。
