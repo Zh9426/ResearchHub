@@ -39,3 +39,14 @@ test('probe targets CfT Crash Reports and leaves existing directory contents int
  const result=probe.inspectCrashpadPath({home,cwd:root,env:{HOME:home,CHROME_CONFIG_HOME:config}});
  assert.equal(result.targetState,'EXISTS');assert.equal(result.createProbe,'CREATED_AND_REMOVED');assert.deepEqual(readdirSync(crash),['synthetic-marker']);
 });
+
+test('sanitizing only directory overrides changes outside selection to actual-home fallback',()=>{
+ const prior={HOME:home,XDG_CONFIG_HOME:outside,XDG_CACHE_HOME:outside,XDG_DATA_HOME:outside,XDG_STATE_HOME:outside,PRIVATE_BUSINESS_TOKEN:'PRIVATE_SECRET'};
+ const before=probe.inspectCrashpadPath({home,cwd:root,env:prior});
+ const cleaned={...prior};for(const key of ['CHROME_CONFIG_HOME','XDG_CONFIG_HOME','XDG_CACHE_HOME','XDG_DATA_HOME','XDG_STATE_HOME'])delete cleaned[key];
+ const after=probe.inspectCrashpadPath({home,cwd:root,env:cleaned});
+ assert.equal(before.selector,'XDG_CONFIG_HOME');assert.equal(before.realLocation,'OUTSIDE_HOME');assert.equal(before.createProbe,'NOT_ATTEMPTED');
+ assert.equal(after.selector,'HOME_FALLBACK');assert.equal(after.realLocation,'INSIDE_HOME');assert.equal(after.createProbe,'CREATED_AND_REMOVED');
+ assert.equal(cleaned.HOME,prior.HOME);assert.equal(prior.XDG_CONFIG_HOME,outside);assert.equal(cleaned.PRIVATE_BUSINESS_TOKEN,prior.PRIVATE_BUSINESS_TOKEN);
+ assert.equal(JSON.stringify({before,after}).includes('PRIVATE'),false);
+});

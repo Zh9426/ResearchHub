@@ -64,6 +64,27 @@ def safe_crashpad_probe(raw):
     return result
 
 
+def browser_env_command(args, values=None):
+    """Reset only inherited directory overrides for the QA child process."""
+    values = values or {}
+    if not set(values) <= {'RH_B2_RESULTS', 'RH_B2_BUILD_HASH', 'RH_B2_TLS_CASE',
+                          'PLAYWRIGHT_BROWSERS_PATH', 'GITHUB_SHA'}:
+        raise ValueError('UNEXPECTED_QA_ENV_KEY')
+    removed = ('CHROME_CONFIG_HOME', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME',
+               'XDG_DATA_HOME', 'XDG_STATE_HOME')
+    return ['env', *(arg for name in removed for arg in ('-u', name)),
+            *(f'{key}={value}' for key, value in values.items()), *args]
+
+
+def clean_probe_ready(probe):
+    expected = {'selector': 'HOME_FALLBACK', 'absolute': True, 'homeMatchesAccount': True,
+                'lexicalLocation': 'INSIDE_HOME', 'realLocation': 'INSIDE_HOME',
+                'nearestType': 'DIRECTORY', 'ancestorAccess': 'WRITABLE_SEARCHABLE',
+                'createProbe': 'CREATED_AND_REMOVED', 'probeError': None}
+    return all(type(probe.get(key)) is type(value) and probe.get(key) == value
+               for key, value in expected.items())
+
+
 def owned_process_metadata(uid):
     """Fixed fields for this run's newly created UID; never collect argv/env."""
     result = subprocess.run(['ps', '-u', str(uid), '-o', 'pid=,ppid=,stat=,comm='],
@@ -146,9 +167,10 @@ def main():
         if code != 0:
             raise StageFailure(stage)
 
-    def as_user(user, args, *, values=None, cwd=APP):
+    def as_user(user, args, *, values=None, cwd=APP, clean_browser=False):
         # sudo login selects the account's actual home; never overwrite HOME.
-        command = shlex.join(['env', *(f'{k}={v}' for k, v in (values or {}).items()), *args])
+        child = browser_env_command(args, values) if clean_browser else ['env', *(f'{k}={v}' for k, v in (values or {}).items()), *args]
+        command = shlex.join(child)
         return ['sudo', '--login', '--user', user, '--', 'sh', '-c',
                 'cd ' + shlex.quote(str(cwd)) + ' && exec ' + command]
 
@@ -259,13 +281,25 @@ def main():
             save()
             if evidence['crashpadPathProbes'][case]['createProbe'] == 'CLEANUP_FAILED':
                 raise StageFailure(probe_stage)
+            # RH036 observed inherited XDG_CONFIG_HOME outside the new user's
+            # home and EACCES. Keep that prior observation above, then verify
+            # exactly the sanitized environment used by the browser below.
+            clean_stage = 'crashpad-clean-path-' + case
+            run(clean_stage, as_user(user, [node, 'scripts/crashpad-path-probe.mjs'],
+                                    values=values, clean_browser=True))
+            clean_probe = safe_crashpad_probe(
+                (OUT / (clean_stage + '.private.log')).read_text(encoding='utf-8'))
+            evidence.setdefault('crashpadCleanPathProbes', {})[case] = clean_probe
+            save()
+            if not clean_probe_ready(clean_probe):
+                raise StageFailure(clean_stage)
             # Verify user separation by actual access denial before running browser tests.
             run('runtime-denied-' + case, as_user(user, [node, '-e',
                 'const fs=require("fs");try{fs.readdirSync(process.argv[1]);process.exit(1)}'
                 'catch(e){if(e.code!=="EACCES")throw e}', str(RUNTIME)], cwd=home))
             try:
                 run('browser-' + case, as_user(user, [node, 'node_modules/@playwright/test/cli.js',
-                    'test', '--config', 'playwright.network.config.ts'], values=values), timeout=420)
+                    'test', '--config', 'playwright.network.config.ts'], values=values, clean_browser=True), timeout=420)
             finally:
                 # Only reviewed public summary is copied. Raw logs/profiles never leave home/runtime.
                 summary = results / 'summary.json'

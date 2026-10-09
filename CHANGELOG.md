@@ -2,6 +2,22 @@
 
 每次提交均需更新本文件，按最新迭代在前记录。日期采用 Asia/Shanghai。
 
+## RH-037 — 2026-10-09 — 隔离浏览器继承的配置目录环境
+
+### 完成内容
+
+- RH036首次CI实际观察到继承XDG_CONFIG_HOME指向新QA账户home外且EACCES，Chromium随后Crashpad缺数据库参数并SIGTRAP；原证据保留。
+- 针对该目录隔离缺口，只清理QA浏览器子进程继承的CHROME/XDG目录覆盖，使用账户真实home默认目录，保留清理前后固定字段诊断。
+- 不改HOME、全局环境/ACL、浏览器启动安全参数或TLS；不能把环境修补当作原TLS-001根因修复。
+
+### 验证结果
+
+- Python环境/诊断回归7项、Node目录探针5项通过，保留RED→GREEN；新提交首次Linux Chromium网络验收前保持INCOMPLETE。
+
+### 后续工作
+
+- 完成B2真实安全接入后继续C双向业务、冲突、回执与失败验收；TLS-001/PC013保持OPEN，不进入3C或生产。
+
 ## RH-036 — 2026-10-09 — 定向诊断 Crashpad 默认目录选择
 
 ### 完成内容

@@ -172,3 +172,13 @@ npm run build:sync       # 恢复无 fixture 的普通入口
 ```
 
 每次新 attempt 保存到 `storage/runtime/browser-sync-qa/a2/<attempt>/`，`retries=0`。基础验证覆盖实际 Chromium 156 的离线星标/多 tab CAS/Unicode/稳定身份/连续父链/准备中断/真实 IDB abort/并发 token/正常全进程关闭重开；binding 单元测试是 Node 结构测试，不能冒充配对或浏览器网络证明。截图为合成数据，移动 viewport 不等于实体手机。原3A测试仍用 `npm test`。
+
+## B2 Linux 网络 QA 的账户目录隔离
+
+`playwright.network.config.ts` 使用外部已启动的隔离服务。CI harness 为可信与不可信证书测试分别建立临时 OS 用户，经 `sudo --login --user` 运行；不修改 `HOME` 或全局环境。
+
+RH036 的实际诊断发现：登录后继承的 `XDG_CONFIG_HOME` 指向该 QA 用户 home 外且访问被拒绝，随后 Chromium 的 Crashpad 缺少数据库目录并以 SIGTRAP 退出。这是浏览器子进程环境隔离问题，不是 TLS 验证通过或 TLS_001 已关闭的证据。
+
+Harness 保留 `crashpadPathProbes` 的清理前观察，再仅对 QA 浏览器子进程用固定 `env -u` 名单移除 `CHROME_CONFIG_HOME`、`XDG_CONFIG_HOME`、`XDG_CACHE_HOME`、`XDG_DATA_HOME`、`XDG_STATE_HOME`，使目录选择回退到该 OS 用户真实 home，包括现代 NSS 默认 data 位置。`crashpadCleanPathProbes` 必须确认 HOME_FALLBACK、真实 home 内、可写以及临时目录创建后清理成功；浏览器使用同一清理后的环境。任一检查失败即保留首败并停止，不重试同一 attempt。
+
+路径探针不输出环境值或路径、不写 home 外目录、不创建默认配置/Crash Reports 目录；只有 home 内最近实际父目录中的唯一空临时探针目录会被创建并删除。Crashpad、证书校验和网络断言均保持启用。每次修补后的完整浏览器结果仍须由新 SHA 的首次 Linux CI 验证。

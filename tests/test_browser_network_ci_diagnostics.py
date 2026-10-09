@@ -63,3 +63,32 @@ def test_crashpad_probe_summary_rejects_untrusted_fields_and_values():
     report=harness.safe_crashpad_probe(json.dumps(value))
     assert report['selector']=='UNKNOWN' and report['probeError']=='UNKNOWN'
     assert report['absolute'] is None
+
+def test_browser_command_unsets_only_fixed_directory_overrides_and_never_home():
+    assert hasattr(harness, 'browser_env_command')
+    import os
+    before=dict(os.environ)
+    args=['node','probe.mjs']
+    values={'RH_B2_TLS_CASE':'untrusted'}
+    command=harness.browser_env_command(args,values)
+    assert command==['env','-u','CHROME_CONFIG_HOME','-u','XDG_CONFIG_HOME',
+                     '-u','XDG_CACHE_HOME','-u','XDG_DATA_HOME','-u','XDG_STATE_HOME',
+                     'RH_B2_TLS_CASE=untrusted','node','probe.mjs']
+    assert 'HOME' not in command and 'CODEX_HOME' not in command
+    assert dict(os.environ)==before and args==['node','probe.mjs'] and values=={'RH_B2_TLS_CASE':'untrusted'}
+    import pytest
+    with pytest.raises(ValueError,match='UNEXPECTED_QA_ENV_KEY'):
+        harness.browser_env_command(args,{'PRIVATE_BUSINESS_TOKEN':'SECRET'})
+
+
+def test_post_sanitize_probe_gate_requires_actual_home_and_successful_cleanup():
+    assert hasattr(harness, 'clean_probe_ready')
+    good={'selector':'HOME_FALLBACK','absolute':True,'homeMatchesAccount':True,
+          'lexicalLocation':'INSIDE_HOME','realLocation':'INSIDE_HOME',
+          'nearestType':'DIRECTORY','ancestorAccess':'WRITABLE_SEARCHABLE',
+          'createProbe':'CREATED_AND_REMOVED','probeError':None}
+    assert harness.clean_probe_ready(good)
+    for key,value in [('selector','XDG_CONFIG_HOME'),('homeMatchesAccount',False),
+                      ('realLocation','OUTSIDE_HOME'),('ancestorAccess','DENIED'),
+                      ('createProbe','CLEANUP_FAILED'),('probeError','EACCES')]:
+        assert not harness.clean_probe_ready({**good,key:value})

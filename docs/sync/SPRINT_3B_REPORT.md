@@ -94,6 +94,12 @@ RH032 已推送 `e7eedb7b56eb417d5ae9bef26a4391fae349316f`，远端同 SHA，mai
 
 ## 失败保留
 
+RH036（`7d54e1d89e696442c058dfcb5af69fdbc1a27acb`）首次 [CI37912368218](https://github.com/Zh9426/ResearchHub/actions/runs/37912368218) 网络 job FAIL，已保留 `storage/runtime/browser-sync-qa/rh036-network-diagnostic/`，网络zip `75f597dbcf6aa14ba7b8047abc46f5be5fe3018e5454754304f4a872fae4b2a5`。同一新OS用户、相同cwd和环境的Node探针观察到：`selector=XDG_CONFIG_HOME`，路径为绝对路径且实际/词法均在home外，最近目录访问 `DENIED / EACCES`，未尝试外部写入；实际HOME仍匹配账户。随后Chromium仍在BROWSER_LAUNCH以CRASHPAD_DATABASE_REQUIRED/SIGTRAP退出。该观测确认继承配置目录的隔离缺口，与官方源码所示初始化失败链吻合；探针本身不证明运行中二进制路径或修补后网络已通过。
+
+RH037修补仅在QA浏览器子进程移除继承的CHROME/XDG目录覆盖，依赖新账户真实home的标准默认目录，不重写HOME、全局环境或ACL。保留清理前观测，并在相同干净环境中核验清理后目录与启动。修补效果必须由新提交首次实际Chromium验收确认，原失败与TLS-001仍保留。
+
+RH036完整归档 `storage/runtime/browser-local-qa/ci-37912368218-attempt1/`：失败日志zip `69ab269c1c8cdb5dfe03780822fb66dcf63ce5bddb4a66401d4209beeba4ff15`；TLS zip `fdf016b3d19276841246e5efa90ed8a98c86203523e526b86e349956d3017206`，六个既有job与原固定20轮通过，网络仍FAIL。RH037定向Python回归7项、Node探针5项通过；证据 `b2-local/clean-browser-env-{red,green}-20261009-01` 与 `clean-browser-probe-green-20261009-01`，不计实际Linux修补后运行通过。
+
 RH035（`0495bc920ba522a76caf81bd0c0b2492b3ffed72`）首次 [CI37910732229](https://github.com/Zh9426/ResearchHub/actions/runs/37910732229) 网络 job 仍 FAIL：`BROWSER_LAUNCH / CRASHPAD_DATABASE_REQUIRED`，退出 `SIGTRAP`，未取得 context，TLS/OPTIONS/签名请求均未到达。该错误的上游目录/环境原因待追踪，不能通过关闭Crashpad或放宽浏览器安全设置回避。网络产物zip `30ab945fd10340369b9e3b9116810a3b49659c91c1fb05866e6bb77cc0dc41d5` 已独立保留于 `storage/runtime/browser-sync-qa/rh035-network-diagnostic/`。
 
 本次确认实际HOME等于新OS账户home；两个owned UID的 `loginctl terminate-user` 均exit0，终态ps均exit1且进程列表为空，无cleanupFailures。因此仅账户会话清理缺口有真实Linux修复证据，浏览器启动与B2网络Gate仍失败。RH035标准Git推送遇到github.com:443连接超时；经官方Git Data API逐个验证相同blob/tree/commit SHA后，以force=false同步同一提交，并复核main/v0.2.0不变。传输诊断保留 `rh035-push-transport-evidence.json`，没有重跑原CI或替换失败归档。
