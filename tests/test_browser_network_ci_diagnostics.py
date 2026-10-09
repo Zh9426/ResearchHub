@@ -26,3 +26,25 @@ def test_owned_process_metadata_restricts_fields():
 def test_process_probe_failure_is_preserved():
     with patch.object(harness.subprocess, 'run', return_value=SimpleNamespace(returncode=1, stdout='')):
         assert harness.owned_process_metadata(1002) == {'uid': 1002, 'exitCode': 1, 'processes': []}
+
+
+def test_only_owned_login_session_processes_are_recognized():
+    session = [{'pid': 12, 'parentPid': 1, 'state': 'S', 'kind': 'systemd'},
+               {'pid': 13, 'parentPid': 12, 'state': 'S', 'kind': '(sd-pam)'}]
+    assert harness.only_login_session(session)
+    assert not harness.only_login_session(session + [
+        {'pid': 14, 'parentPid': 12, 'state': 'S', 'kind': 'chrome'}])
+    assert not harness.only_login_session([
+        {'pid': 13, 'parentPid': 999, 'state': 'S', 'kind': '(sd-pam)'}])
+    assert not harness.only_login_session([
+        {'pid': 12, 'parentPid': 3, 'state': 'S', 'kind': 'systemd'}])
+    assert not harness.only_login_session([
+        {'pid': 12, 'parentPid': 1, 'state': 'Z', 'kind': 'systemd'}])
+
+
+def test_observed_browser_leak_remains_failure_if_it_exits_before_pgrep():
+    snapshot = {'exitCode': 0, 'processes': [
+        {'pid': 14, 'parentPid': 1, 'state': 'S', 'kind': 'chrome'}]}
+    assert harness.process_cleanup_failures(snapshot, 1) == ['OwnedProcessesRemain']
+    assert harness.process_cleanup_failures({'exitCode': 1, 'processes': []}, 1) == []
+    assert harness.process_cleanup_failures({'exitCode': 1, 'processes': []}, 0) == ['OwnedProcessesRemain']

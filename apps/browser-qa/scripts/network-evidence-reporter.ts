@@ -7,13 +7,29 @@ const phases=new Set('START BROWSER_LAUNCH BROWSER_VERSION UNTRUSTED_CA HOSTNAME
 const diagnostics=new Set('ERR_CERT_AUTHORITY_INVALID ERR_CERT_COMMON_NAME_INVALID ERR_CONNECTION_REFUSED OTHER_NETWORK_FAILURE NO_CERTIFICATE_FAILURE ASSERTION_OR_OPERATION_FAILED'.split(' '));
 const errorTypes=new Set(['Error','TypeError','ReferenceError','SyntaxError','TimeoutError']);
 const diagnosticPatterns:Record<string,string[]>={ACCESS_DENIED:['EACCES','Permission denied'],OPERATION_NOT_PERMITTED:['EPERM','Operation not permitted'],MISSING_BROWSER:["Executable doesn't exist"],MISSING_MODULE:['MODULE_NOT_FOUND'],SANDBOX_UNAVAILABLE:['No usable sandbox'],MISSING_SHARED_LIBRARY:['error while loading shared libraries'],BROWSER_DEPENDENCIES_MISSING:['Host system is missing dependencies'],BROWSER_CLOSED:['Target page, context or browser has been closed'],BROWSER_LAUNCH_TIMEOUT:['launchPersistentContext: Timeout']};
+// Literal messages verified in Chromium Crashpad handler_main.cc, sandbox.c,
+// setuid_sandbox_host.cc and process_singleton_posix.cc; classifications only.
+Object.assign(diagnosticPatterns,{CRASHPAD_DATABASE_REQUIRED:['--database is required'],SANDBOX_NAMESPACE_FAILED:['Failed to move to new namespace:'],SANDBOX_HELPER_MISCONFIGURED:['The SUID sandbox helper binary was found, but is not'],PROFILE_SOCKET_DIRECTORY_FAILED:['Failed to create socket directory.'],PROFILE_SOCKET_PATH_TOO_LONG:['Socket path too long:']});
+const signals=new Set('SIGHUP SIGINT SIGQUIT SIGILL SIGTRAP SIGABRT SIGBUS SIGFPE SIGKILL SIGSEGV SIGPIPE SIGALRM SIGTERM SIGXCPU SIGXFSZ SIGSYS'.split(' '));
+type ProcessExit={exitCode:number|null;signal:string|null};
+function processExits(message:string):ProcessExit[]{
+ // Exact Playwright 1.64 processLauncher log grammar; never retain PID/argv.
+ const result:ProcessExit[]=[];
+ for(const match of message.matchAll(/<process did exit: exitCode=(null|[0-9]{1,6}), signal=(null|[A-Z0-9_]{1,64})>/g)){
+  const exitCode=match[1]==='null'?null:Number(match[1]);if(exitCode!==null&&exitCode>255)continue;
+  const signal=match[2]==='null'?null:signals.has(match[2])?match[2]:'OTHER';
+  if(!result.some(e=>e.exitCode===exitCode&&e.signal===signal))result.push({exitCode,signal});
+  if(result.length===8)break;
+ }
+ return result;
+}
 export function safeDiagnostics(message:string):string[]{
  return Object.keys(diagnosticPatterns).filter(code=>diagnosticPatterns[code].some(needle=>message.includes(needle)));
 }
 export function summarizeError(error:{name?:string;message?:string;stack?:string}){
  const name=error.name??error.message?.match(/^(Error|TypeError|ReferenceError|SyntaxError|TimeoutError):/)?.[1];
  // Hash the complete diagnostic input; never emit any fragment of it.
- return {errorType:name&&errorTypes.has(name)?name:'UNKNOWN',sha256:createHash('sha256').update(JSON.stringify({name:error.name??null,message:error.message??null,stack:error.stack??null})).digest('hex'),diagnostics:safeDiagnostics(error.message??'')};
+ return {errorType:name&&errorTypes.has(name)?name:'UNKNOWN',sha256:createHash('sha256').update(JSON.stringify({name:error.name??null,message:error.message??null,stack:error.stack??null})).digest('hex'),diagnostics:safeDiagnostics(error.message??''),processExits:processExits(error.message??'')};
 }
 function reviewedSummary(raw:any){return {errorType:errorTypes.has(raw?.errorType)?raw.errorType:'UNKNOWN',sha256:typeof raw?.sha256==='string'&&/^[a-f0-9]{64}$/.test(raw.sha256)?raw.sha256:null,diagnostics:Array.isArray(raw?.diagnostics)?raw.diagnostics.filter((v:unknown)=>typeof v==='string'&&Object.hasOwn(diagnosticPatterns,v)):[]};}
 /** Fixed-field summary only; errors, DOM, network bodies and stdout stay private. */

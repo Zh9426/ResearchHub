@@ -22,3 +22,15 @@ test('error summaries retain category and full error hash without private text',
  assert.equal(reporter.summarizeError({name:'PRIVATE_TYPE',message:'arbitrary private error'}).errorType,'UNKNOWN');
  assert.deepEqual(reporter.summarizeError({message:'arbitrary private error'}).diagnostics,[]);
 });
+
+test('launch diagnostics expose bounded exit status and fixed codes, never stderr argv paths or PID',()=>{
+ const message='Target page, context or browser has been closed\n<launching> /PRIVATE/PATH --token=PRIVATE_SECRET\n<launched> pid=987654\n[pid=987654][err] chrome_crashpad_handler: --database is required\n[pid=987654] <process did exit: exitCode=null, signal=SIGTRAP>\n[pid=987654] <process did exit: exitCode=null, signal=SIGTRAP>';
+ const summary=reporter.summarizeError({message});
+ assert.deepEqual(summary.processExits,[{exitCode:null,signal:'SIGTRAP'}]);
+ assert.equal(summary.diagnostics.includes('CRASHPAD_DATABASE_REQUIRED'),true);
+ assert.equal(JSON.stringify(summary).includes('PRIVATE'),false);assert.equal(JSON.stringify(summary).includes('987654'),false);
+ assert.deepEqual(reporter.summarizeError({message:'<process did exit: exitCode=127, signal=null>'}).processExits,[{exitCode:127,signal:null}]);
+ assert.deepEqual(reporter.summarizeError({message:'<process did exit: exitCode=null, signal=SECRET_SIGNAL>'}).processExits,[{exitCode:null,signal:'OTHER'}]);
+ assert.deepEqual(reporter.summarizeError({message:'private unrecognized stderr'}).processExits,[]);
+ assert.deepEqual(reporter.summarizeError({message:'<process did exit: exitCode=999999, signal=null>'}).processExits,[]);
+});

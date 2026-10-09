@@ -94,6 +94,12 @@ RH032 已推送 `e7eedb7b56eb417d5ae9bef26a4391fae349316f`，远端同 SHA，mai
 
 ## 失败保留
 
+RH034（`9452ca9de9c78e7c7682b8fe83ecc23744dc5716`）首次 [CI37909229321](https://github.com/Zh9426/ResearchHub/actions/runs/37909229321) attempt1 再次 FAIL，六个既有 job 通过。新增诊断确定失败为 `BROWSER_LAUNCH / BROWSER_CLOSED`，尚未取得 context，cleanup 为 NOT_STARTED、TLS/请求计数仍0；错误摘要hash `828d513e6f41ef9381ac65efe50a8abfc7d80ee4009e8443f7609b11e1ea0d47`。浏览器具体关闭原因仍 UNKNOWN。两个新UID在NSS准备后与最终快照均只有 systemd（PPID1）及其 sd-pam 子进程，说明这部分清理缺口是本次 sudo login 创建的账户会话资源。
+
+完整归档 `storage/runtime/browser-local-qa/ci-37909229321-attempt1/`：失败日志zip `c0ea94b083039be9959e6fc0cc4cbd052c030edd7a865f27cff3e150c7dbb37b`；网络zip `b84949c33e48ecb5be38dcab8476f1648c3078ba7d85791d0e5bcf9750ac58e2`；TLS zip `23dc97a1280166400ddaaa5cf79613841c26fee4dd8c7f56590cbf4bf979e57c`，原固定20轮通过仍不关闭TLS-001。
+
+后续最小补丁区分两件事：启动错误增加固定退出码/信号和官方已知启动错误分类，不改变launch flags；新建UID的会话使用显式 `loginctl terminate-user` 释放，要求最终零进程，任何额外浏览器/未知进程仍先记FAIL。该命令的范围依据 [systemd官方手册](https://raw.githubusercontent.com/systemd/systemd/main/man/loginctl.xml)，仅应用于本次成功useradd得到的UID，不触及个人会话。进程分类及竞态4项和退出诊断3项纯测试通过；实际Linux清理待新提交首次CI，不计修复验收通过。
+
 RH033 首次 [CI37907069953](https://github.com/Zh9426/ResearchHub/actions/runs/37907069953) attempt1、提交 `c6109d65654a5418c0626d52ac51bb2eac22d415`：六个既有 job 通过，新增 browser-network-qa 失败。`browser-untrusted` exit1，摘要停在 START、Chromium版本为空、证书诊断为空、OPTIONS/签名POST均0；尚不能确认浏览器是否成功启动，不能计错误CA拒绝通过。trusted用例未执行。两个新QA账户均有残留进程；PC与静态服务明确owned停止exit0。网络Gate为 FAIL / INCOMPLETE，根因调查中，不重跑该提交覆盖首败。
 
 原始归档 `storage/runtime/browser-local-qa/ci-37907069953-attempt1/` 保留：失败日志zip SHA-256 `f437d0abbdd3953f3ed3db7fb196d18d5a18634b6d19dae7d1feb4c4bd5505ae`；网络zip `dbdddcb3367e47430cbeded54017bb7c17e71577eafb8d45e83925102141ddc9`；TLS zip `e97ffa1eb18f9dd816bb786a797909c1fc065830c50b89f54ce5a86dabf8c681`。原TLS固定20轮通过不关闭TLS-001，也不豁免本次网络失败。后续诊断将区分启动、测试配置和新账户会话进程；不改变证书规则或失败判定。

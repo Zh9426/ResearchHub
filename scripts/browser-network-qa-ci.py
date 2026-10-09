@@ -57,6 +57,25 @@ def owned_process_metadata(uid):
     return {'uid': uid, 'exitCode': result.returncode, 'processes': rows}
 
 
+def only_login_session(rows):
+    managers = {row['pid'] for row in rows if row['kind'] == 'systemd'
+                and row['parentPid'] == 1 and row['state'] in ('S', 'R')}
+    return bool(managers) and all(
+        row['pid'] in managers or (row['kind'] == '(sd-pam)'
+                                  and row['parentPid'] in managers and row['state'] in ('S', 'R'))
+        for row in rows)
+
+
+def process_cleanup_failures(snapshot, probe_exit):
+    failures = []
+    if probe_exit not in (0, 1) or snapshot['exitCode'] not in (0, 1):
+        failures.append('ProcessProbeFailed')
+    # A leak observed by either probe cannot be erased by a later process exit.
+    if (snapshot['processes'] or probe_exit == 0) and not only_login_session(snapshot['processes']):
+        failures.append('OwnedProcessesRemain')
+    return failures
+
+
 def main():
     if sys.platform != 'linux' or os.environ.get('GITHUB_ACTIONS') != 'true':
         raise RuntimeError('EPHEMERAL_LINUX_CI_ONLY')
@@ -203,6 +222,8 @@ def main():
             values = {'RH_B2_RESULTS': str(results), 'RH_B2_BUILD_HASH': build_hash,
                       'RH_B2_TLS_CASE': case, 'PLAYWRIGHT_BROWSERS_PATH': str(PUBLIC_BROWSER),
                       'GITHUB_SHA': os.environ['GITHUB_SHA']}
+            run('actual-home-' + case, as_user(user, [node, '-e',
+                'const os=require("os");if(process.env.HOME!==os.userInfo().homedir)process.exit(2)'], cwd=home))
             # Verify user separation by actual access denial before running browser tests.
             run('runtime-denied-' + case, as_user(user, [node, '-e',
                 'const fs=require("fs");try{fs.readdirSync(process.argv[1]);process.exit(1)}'
@@ -262,12 +283,36 @@ def main():
         # A timed-out sudo child can leave Chromium descendants. These UIDs were
         # created by this run and cannot contain the user's personal processes.
         for uid in owned_user_ids:
-            evidence.setdefault('userProcessCleanupSnapshots', []).append(owned_process_metadata(uid))
+            snapshot = owned_process_metadata(uid)
+            evidence.setdefault('userProcessCleanupSnapshots', []).append(snapshot)
             remaining = subprocess.run(['pgrep', '-u', str(uid)], stdout=subprocess.DEVNULL, check=False)
-            if remaining.returncode == 0:
+            failures = process_cleanup_failures(snapshot, remaining.returncode)
+            if failures:
                 evidence['status'] = 'FAIL'
-                evidence.setdefault('cleanupFailures', []).append({'service': 'browser-user', 'errorClass': 'OwnedProcessesRemain'})
-                subprocess.run(['sudo', 'pkill', '-TERM', '-u', str(uid)], check=False)
+                evidence.setdefault('cleanupFailures', []).extend(
+                    {'service': 'browser-user', 'errorClass': failure} for failure in failures)
+            if remaining.returncode == 0:
+                # sudo login created these account sessions before any browser ran.
+                # Any additional process remains a failure, even if termination succeeds.
+                try:
+                    run('terminate-owned-user-' + str(uid), ['sudo', 'loginctl', 'terminate-user', str(uid)], timeout=15)
+                    deadline = time.monotonic() + 5
+                    while True:
+                        check = subprocess.run(['pgrep', '-u', str(uid)], stdout=subprocess.DEVNULL, check=False)
+                        if check.returncode == 1:
+                            break
+                        if check.returncode != 0 or time.monotonic() >= deadline:
+                            raise StageFailure('owned-user-termination')
+                        time.sleep(0.1)  # Owned session shutdown readiness, never a test retry.
+                except Exception as exc:
+                    evidence['status'] = 'FAIL'
+                    evidence.setdefault('cleanupFailures', []).append({'service': 'browser-user', 'errorClass': type(exc).__name__})
+                    subprocess.run(['sudo', 'pkill', '-TERM', '-u', str(uid)], check=False)
+            final_snapshot = owned_process_metadata(uid)
+            evidence.setdefault('userProcessAfterTermination', []).append(final_snapshot)
+            if final_snapshot['exitCode'] != 1 or final_snapshot['processes']:
+                evidence['status'] = 'FAIL'
+                evidence.setdefault('cleanupFailures', []).append({'service': 'browser-user', 'errorClass': 'TerminationNotConfirmed'})
         if relay_attempted:
             try:
                 run('relay-diagnostics', [sys.executable, 'scripts/secure-relay-diagnostics.py'])
