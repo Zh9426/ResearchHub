@@ -40,6 +40,30 @@ class StageFailure(RuntimeError):
         super().__init__('QA_STAGE_FAILED')
 
 
+def safe_crashpad_probe(raw):
+    """Only fixed path-selection metadata; never publish selected path or env."""
+    value = json.loads(raw)
+    if not isinstance(value, dict):
+        raise ValueError('INVALID_CRASHPAD_PROBE')
+    allowed = {
+        'selector': {'CHROME_CONFIG_HOME', 'XDG_CONFIG_HOME', 'HOME_FALLBACK'},
+        'lexicalLocation': {'INSIDE_HOME', 'OUTSIDE_HOME', 'UNKNOWN'},
+        'realLocation': {'INSIDE_HOME', 'OUTSIDE_HOME', 'UNKNOWN'},
+        'targetState': {'EXISTS', 'MISSING', 'INACCESSIBLE'},
+        'nearestType': {'DIRECTORY', 'FILE', 'OTHER', 'UNKNOWN'},
+        'ancestorAccess': {'WRITABLE_SEARCHABLE', 'DENIED', 'UNKNOWN'},
+        'createProbe': {'NOT_ATTEMPTED', 'CREATED', 'CREATED_AND_REMOVED', 'CREATE_FAILED', 'CLEANUP_FAILED'},
+        'probeError': {None, 'EACCES', 'EPERM', 'ENOENT', 'ENOTDIR', 'EROFS', 'ENOSPC', 'UNKNOWN'},
+    }
+    result = {'probeKind': 'NODE_FS_PRELAUNCH_CFT_PATH'}
+    for field, choices in allowed.items():
+        candidate = value.get(field)
+        result[field] = candidate if (candidate is None or isinstance(candidate, str)) and candidate in choices else 'UNKNOWN'
+    for field in ('absolute', 'homeMatchesAccount'):
+        result[field] = value.get(field) if type(value.get(field)) is bool else None
+    return result
+
+
 def owned_process_metadata(uid):
     """Fixed fields for this run's newly created UID; never collect argv/env."""
     result = subprocess.run(['ps', '-u', str(uid), '-o', 'pid=,ppid=,stat=,comm='],
@@ -224,6 +248,17 @@ def main():
                       'GITHUB_SHA': os.environ['GITHUB_SHA']}
             run('actual-home-' + case, as_user(user, [node, '-e',
                 'const os=require("os");if(process.env.HOME!==os.userInfo().homedir)process.exit(2)'], cwd=home))
+            # Observe the same login environment/cwd as Playwright, before any
+            # browser launch. Do not override config variables or create its
+            # default Crash Reports directory. The probe only creates/removes a
+            # unique empty temporary directory when the real parent is in home.
+            probe_stage = 'crashpad-path-' + case
+            run(probe_stage, as_user(user, [node, 'scripts/crashpad-path-probe.mjs'], values=values))
+            evidence.setdefault('crashpadPathProbes', {})[case] = safe_crashpad_probe(
+                (OUT / (probe_stage + '.private.log')).read_text(encoding='utf-8'))
+            save()
+            if evidence['crashpadPathProbes'][case]['createProbe'] == 'CLEANUP_FAILED':
+                raise StageFailure(probe_stage)
             # Verify user separation by actual access denial before running browser tests.
             run('runtime-denied-' + case, as_user(user, [node, '-e',
                 'const fs=require("fs");try{fs.readdirSync(process.argv[1]);process.exit(1)}'

@@ -1,0 +1,10 @@
+{
+ "scope":"Source-derived path-selection probe. Not a Linux failure reproduction or repair.",
+ "sources":[
+  {"url":"https://raw.githubusercontent.com/chromium/chromium/main/chrome/common/chrome_paths_linux.cc","facts":"CHROME_CONFIG_HOME including empty precedes XDG; CfT basename google-chrome-for-testing"},
+  {"url":"https://raw.githubusercontent.com/chromium/chromium/main/base/nix/xdg_util.cc","facts":"Nonempty XDG_CONFIG_HOME selected; otherwise actual HOME .config"},
+  {"url":"https://raw.githubusercontent.com/chromium/chromium/main/chrome/common/chrome_paths.cc","facts":"DIR_CRASH_DUMPS default path plus Crash Reports ignores user-data-dir; failed CreateDirectory returns false"},
+  {"url":"https://raw.githubusercontent.com/chromium/chromium/main/components/crash/core/app/crashpad_linux.cc","facts":"GetCrashDumpLocation return unchecked before StartHandler(database_path)"}
+ ],
+ "boundary":"No environment/path values printed. Outside real actual home no filesystem mutations. Does not create default config or Crash Reports directories. Temporary nearest-home-parent create/remove probe is not Chromium acceptance."
+}

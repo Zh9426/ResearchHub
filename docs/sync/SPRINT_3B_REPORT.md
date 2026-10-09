@@ -94,6 +94,12 @@ RH032 已推送 `e7eedb7b56eb417d5ae9bef26a4391fae349316f`，远端同 SHA，mai
 
 ## 失败保留
 
+RH035（`0495bc920ba522a76caf81bd0c0b2492b3ffed72`）首次 [CI37910732229](https://github.com/Zh9426/ResearchHub/actions/runs/37910732229) 网络 job 仍 FAIL：`BROWSER_LAUNCH / CRASHPAD_DATABASE_REQUIRED`，退出 `SIGTRAP`，未取得 context，TLS/OPTIONS/签名请求均未到达。该错误的上游目录/环境原因待追踪，不能通过关闭Crashpad或放宽浏览器安全设置回避。网络产物zip `30ab945fd10340369b9e3b9116810a3b49659c91c1fb05866e6bb77cc0dc41d5` 已独立保留于 `storage/runtime/browser-sync-qa/rh035-network-diagnostic/`。
+
+本次确认实际HOME等于新OS账户home；两个owned UID的 `loginctl terminate-user` 均exit0，终态ps均exit1且进程列表为空，无cleanupFailures。因此仅账户会话清理缺口有真实Linux修复证据，浏览器启动与B2网络Gate仍失败。RH035标准Git推送遇到github.com:443连接超时；经官方Git Data API逐个验证相同blob/tree/commit SHA后，以force=false同步同一提交，并复核main/v0.2.0不变。传输诊断保留 `rh035-push-transport-evidence.json`，没有重跑原CI或替换失败归档。
+
+RH035完整CI已结束：六个既有job通过，网络job失败；归档 `storage/runtime/browser-local-qa/ci-37910732229-attempt1/`。失败日志zip `74b61422926c099e1eba4b922de89e0183f49d5a64d7bb41a710e16f9f1d233c`；TLS zip `ecf47a7189cdbd35a953a4c30805e6e5a4ab30483a5c1842ed7591c1a4bfc466`，原固定20轮通过。TLS-001仍OPEN，本次网络失败不获豁免。
+
 RH034（`9452ca9de9c78e7c7682b8fe83ecc23744dc5716`）首次 [CI37909229321](https://github.com/Zh9426/ResearchHub/actions/runs/37909229321) attempt1 再次 FAIL，六个既有 job 通过。新增诊断确定失败为 `BROWSER_LAUNCH / BROWSER_CLOSED`，尚未取得 context，cleanup 为 NOT_STARTED、TLS/请求计数仍0；错误摘要hash `828d513e6f41ef9381ac65efe50a8abfc7d80ee4009e8443f7609b11e1ea0d47`。浏览器具体关闭原因仍 UNKNOWN。两个新UID在NSS准备后与最终快照均只有 systemd（PPID1）及其 sd-pam 子进程，说明这部分清理缺口是本次 sudo login 创建的账户会话资源。
 
 完整归档 `storage/runtime/browser-local-qa/ci-37909229321-attempt1/`：失败日志zip `c0ea94b083039be9959e6fc0cc4cbd052c030edd7a865f27cff3e150c7dbb37b`；网络zip `b84949c33e48ecb5be38dcab8476f1648c3078ba7d85791d0e5bcf9750ac58e2`；TLS zip `23dc97a1280166400ddaaa5cf79613841c26fee4dd8c7f56590cbf4bf979e57c`，原固定20轮通过仍不关闭TLS-001。

@@ -48,3 +48,18 @@ def test_observed_browser_leak_remains_failure_if_it_exits_before_pgrep():
     assert harness.process_cleanup_failures(snapshot, 1) == ['OwnedProcessesRemain']
     assert harness.process_cleanup_failures({'exitCode': 1, 'processes': []}, 1) == []
     assert harness.process_cleanup_failures({'exitCode': 1, 'processes': []}, 0) == ['OwnedProcessesRemain']
+
+def test_crashpad_probe_summary_rejects_untrusted_fields_and_values():
+    assert hasattr(harness, 'safe_crashpad_probe')
+    value={'selector':'CHROME_CONFIG_HOME','absolute':False,'homeMatchesAccount':True,
+           'lexicalLocation':'OUTSIDE_HOME','realLocation':'OUTSIDE_HOME',
+           'targetState':'MISSING','nearestType':'DIRECTORY','ancestorAccess':'WRITABLE_SEARCHABLE',
+           'createProbe':'NOT_ATTEMPTED','probeError':None,'PRIVATE_SECRET':'do not expose'}
+    import json
+    report=harness.safe_crashpad_probe(json.dumps(value))
+    assert report['selector']=='CHROME_CONFIG_HOME'
+    assert 'PRIVATE_SECRET' not in json.dumps(report)
+    value.update(selector='PRIVATE_PATH',probeError='PRIVATE_ERROR',absolute='PRIVATE')
+    report=harness.safe_crashpad_probe(json.dumps(value))
+    assert report['selector']=='UNKNOWN' and report['probeError']=='UNKNOWN'
+    assert report['absolute'] is None
