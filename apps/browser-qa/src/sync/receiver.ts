@@ -54,8 +54,9 @@ async function projectObject(tx:IDBTransaction,state:RecordState,oid:string){
 export class PageReceiver{
  constructor(private open:()=>Promise<IDBDatabase>,private vault:BrowserVault){}
  /** Called only after a durable verified transport handoff, with its frozen identity. */
- async completeHandoff(operationId:string,transactionId:string,version:number){
+ async completeHandoff(operationId:string,transactionId:string,version:number,commitGuard?:(tx:IDBTransaction)=>Promise<void>){
   return businessTransaction(this.open,['meta','operations','objects'],'readwrite',async tx=>{
+   await commitGuard?.(tx);
    const s=tx.objectStore('meta'),op=await request(tx.objectStore('operations').get(operationId)),mapping=await request(s.get('mapping:'+operationId));
    if(!op||mapping?.conversion!=='CONVERTED'||mapping.transaction_id!==transactionId||op.payload.local_edit_version!==version)throw Error('HANDOFF_IDENTITY_MISMATCH');
    const pending=await request(s.get('pending-operation:'+op.object_id));
@@ -67,7 +68,7 @@ export class PageReceiver{
    await request(s.put(verifiedBaseline(kernel.state,op.object_id,kernel.generation,cursor?.cursor??0)));await projectObject(tx,kernel.state,op.object_id);return true;
   });
  }
- async receive(project:string,input:unknown,hooks:{beforeCommit?:()=>Promise<void>;abortCommit?:boolean}={}){
+ async receive(project:string,input:unknown,hooks:{beforeCommit?:()=>Promise<void>;abortCommit?:boolean;commitGuard?:(tx:IDBTransaction)=>Promise<void>}={}){
   const bytes=canonicalBytes(input);if(bytes.length>26*1024*1024)throw Error('PAGE_TOO_LARGE');
   const page=strictLoads(bytes) as PublicObject;fields(page,['rows','cursor','chain_digest','has_more']);integer(page.cursor);
   if(!Array.isArray(page.rows)||page.rows.length>100||typeof page.has_more!=='boolean'||(!page.rows.length&&page.has_more))throw Error('INVALID_PAGE');
@@ -95,6 +96,7 @@ export class PageReceiver{
   localIdentities(state);
   await hooks.beforeCommit?.();
   return businessTransaction(this.open,['meta','objects','operations'],'readwrite',async tx=>{
+   await hooks.commitGuard?.(tx);
    const s=tx.objectStore('meta'),now=await request(s.get(a.id)),binding=await request(s.get(b.id)),kernel=await request(s.get('record-kernel:'+project)),oldCursor=await request(s.get('relay-cursor:'+project));
    requireAuthorization(now,binding);
    if(JSON.stringify(now)!==JSON.stringify(a)||JSON.stringify(binding)!==JSON.stringify(b)||JSON.stringify(kernel)!==JSON.stringify(snapshot.kernel)||JSON.stringify(oldCursor)!==JSON.stringify(snapshot.cursor))throw Error('RECEIVE_CAS_MISMATCH');

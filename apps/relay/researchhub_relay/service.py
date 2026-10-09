@@ -698,6 +698,8 @@ def chunk_dispatch(db, project, manifest, proof, method, query, body):
 
 def dispatch(db, project, manifest, proof, method, path, query, body, now):
     device = proof["device_id"]
+    if path == '/v1/peer-receipts':
+        return peer_receipts(db, project, manifest, device, method, query, body)
     if path == "/v1/hello":
         fields(body, frozenset())
         return {
@@ -818,3 +820,36 @@ def dispatch(db, project, manifest, proof, method, path, query, body, now):
     if path == "/v1/chunks":
         return chunk_dispatch(db, project, manifest, proof, method, query, body)
     raise ValueError("INVALID_REQUEST")
+
+
+def peer_receipts(db, project, manifest, device, method, query, body):
+    from packages.secure_wire.peer_receipt import verify_peer_receipt, validate_peer_receipt
+    from .models import PeerReceipt
+    if method == 'POST':
+        validate_peer_receipt(body)
+        message_id, target = body['message_id'], body['target_device_id']
+        if target != device:
+            raise ValueError('AUTH_REJECTED')
+    else:
+        message_id, target = query['message_id'], query['target_device_id']
+    uuid(message_id); uuid(target)
+    message = db.get(Message, (project.id, message_id))
+    if message is None:
+        raise ValueError('RECEIPT_UNAVAILABLE')
+    envelope = strict_loads(message.body)
+    if method == 'GET' and device not in (target, envelope['sender_device_id']):
+        raise ValueError('AUTH_REJECTED')
+    old = db.get(PeerReceipt, (project.id, message_id, target))
+    if method == 'GET':
+        return {'receipt': strict_loads(old.body) if old else None}
+    verify_peer_receipt(body, manifest, envelope, message.sequence, target)
+    raw = canonical_bytes(body)
+    if old:
+        if old.body != raw:
+            raise ValueError('OBJECT_COLLISION')
+    else:
+        count = db.scalar(select(func.count()).select_from(PeerReceipt).where(PeerReceipt.project == project.id))
+        if count >= 4096:
+            raise ValueError('METADATA_QUOTA_EXCEEDED')
+        db.add(PeerReceipt(project=project.id, message=message_id, target=target, body=raw))
+    return body

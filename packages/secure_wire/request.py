@@ -27,6 +27,7 @@ PROOF_FIELDS = frozenset(
     )
 )
 GET_QUERIES = {
+    "/v1/peer-receipts": {"message_id": "uuid", "target_device_id": "uuid"},
     "/v1/messages": {"cursor": "int", "limit": "limit"},
     "/v1/membership": {},
     "/v1/membership/receipt": {"candidate_digest": "digest"},
@@ -41,6 +42,7 @@ POST_PATHS = frozenset(
         "/v1/hello",
         "/v1/messages",
         "/v1/ack",
+        "/v1/peer-receipts",
         "/v1/membership",
         "/v1/membership/recovery",
         "/v1/grants",

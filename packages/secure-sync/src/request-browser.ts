@@ -7,9 +7,9 @@ export const RELAY='https://127.0.0.1:38001';
 export const AUDIENCE='ResearchHub/SecureRelay/QA/v1';
 type RequestTrust={id:string;headDigest:string;membershipEpoch:number;keyEpoch:number};
 const gets:Record<string,Record<string,string>>={
- '/v1/messages':{cursor:'int',limit:'limit'},'/v1/membership':{},'/v1/membership/receipt':{candidate_digest:'digest'},'/v1/grants':{session_id:'uuid'},'/v1/pairing/challenge':{session_id:'uuid'},'/v1/pairing/receipt':{session_id:'uuid'},'/v1/checkpoints':{},'/v1/chunks':{opaque_locator:'uuid',index:'index'},
+ '/v1/peer-receipts':{message_id:'uuid',target_device_id:'uuid'},'/v1/messages':{cursor:'int',limit:'limit'},'/v1/membership':{},'/v1/membership/receipt':{candidate_digest:'digest'},'/v1/grants':{session_id:'uuid'},'/v1/pairing/challenge':{session_id:'uuid'},'/v1/pairing/receipt':{session_id:'uuid'},'/v1/checkpoints':{},'/v1/chunks':{opaque_locator:'uuid',index:'index'},
 };
-const posts=new Set(['/v1/hello','/v1/messages','/v1/ack','/v1/membership','/v1/membership/recovery','/v1/grants','/v1/pairing/challenge','/v1/pairing/submit','/v1/pairing/complete','/v1/checkpoints','/v1/chunks']);
+const posts=new Set(['/v1/hello','/v1/messages','/v1/ack','/v1/peer-receipts','/v1/membership','/v1/membership/recovery','/v1/grants','/v1/pairing/challenge','/v1/pairing/submit','/v1/pairing/complete','/v1/checkpoints','/v1/chunks']);
 export async function prepareRequest(d:DeviceKeys,t:RequestTrust,method:'GET'|'POST',path:string,query:PublicObject={},body?:unknown){
  let suffix='';
  if(method==='GET'){

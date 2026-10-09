@@ -144,3 +144,10 @@ def advance_history(engine, project, candidate):
         verify_transition(history[-1], candidate, row.recovery)
         if candidate != history[-1]:
             row.history = canonical_bytes([*history, candidate])
+
+class PeerReceiptOutbox(ClientBase):
+    __tablename__ = 'secure_client_peer_receipts'
+    project: Mapped[str] = mapped_column(String(36), primary_key=True)
+    sequence: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    target: Mapped[str] = mapped_column(String(36), primary_key=True)
+    body: Mapped[bytes] = mapped_column(LargeBinary)

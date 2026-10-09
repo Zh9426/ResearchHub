@@ -14,7 +14,7 @@ let browser,server,error,cleanup='NOT_STARTED',cases=[],browserVersion,bundleSha
 const sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8'}).trim(),workingTreeDirty=Boolean(execFileSync('git',['status','--porcelain'],{cwd:repo,encoding:'utf8'}).trim());
 async function deadline(promise,ms){let timer;try{return await Promise.race([promise,new Promise((_,no)=>{timer=setTimeout(()=>no(Error('RECEIVE_QA_DEADLINE')),ms);})]);}finally{clearTimeout(timer);}}
 try{
- await build({entryPoints:[join(repo,'apps/browser-qa/tests-receive/entry.ts')],outfile:join(output,'app.js'),bundle:true,format:'iife',platform:'browser',target:'es2022'});
+ await build({entryPoints:[join(repo,'apps/browser-qa/tests-receive/entry.ts')],outfile:join(output,'app.js'),bundle:true,jsx:'automatic',alias:{react:join(repo,'apps/browser-qa/node_modules/react'),'react-dom':join(repo,'apps/browser-qa/node_modules/react-dom')},format:'iife',platform:'browser',target:'es2022'});
  bundleSha256=createHash('sha256').update(readFileSync(join(output,'app.js'))).digest('hex');
  server=createServer((req,res)=>{res.setHeader('content-type',req.url==='/app.js'?'text/javascript':'text/html');res.end(req.url==='/app.js'?readFileSync(join(output,'app.js')):'<!doctype html><title>SYNTHETIC receive QA</title><script src="/app.js"></script>');});
  await new Promise((ok,no)=>{server.once('error',no);server.listen(3314,'127.0.0.1',ok);});
@@ -58,6 +58,8 @@ try{
   const revoke=await q.signed('Membership',{...f.head,membership_epoch:3,key_epoch:2,previous_digest:await q.digest(f.head),operation:'revoke',members:f.head.members.map(m=>m.device_id===f.device.deviceId?{...m,status:'REVOKED',revoked_at:1}:m)},f.owner.signing.privateKey);
   try{await receiver.receive(f.project.id,next,{beforeCommit:async()=>{await installer.revoke(f.project.id,[f.boot,f.head,revoke]);}});}catch(e){denied=e.message==='AUTHORIZATION_NOT_READY';if(!denied)throw e;}
   assert(denied&&(await q.meta('relay-cursor:'+f.project.id)).cursor===2,'authorization CAS prevents stale receive');passed.push('authorization-generation-cas');
+  passed.push(...await q.remoteOnlyWorkbench(q));
+  assert(typeof q.manualReceipts==='function','native manual receipt API missing');passed.push(...await q.manualReceipts(q));
   passed.push(...await q.adversarial(q));passed.push(...await q.identityCollisions(q));return passed;
  }),90000);
 }catch(e){error=e;writeFileSync(join(output,'error.txt'),String(e.stack??e));}

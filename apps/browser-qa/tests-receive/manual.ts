@@ -1,0 +1,44 @@
+import {ManualSync} from '../src/sync/manual';
+import {receiptBody,verifyPeerReceipt} from '../../../packages/secure-sync/src/peer-receipt';
+import {strictLoads} from '../../../packages/sync-protocol/src/browser';
+export async function manualReceipts(q:any){
+ const assert=(v:any,m:string)=>{if(!v)throw Error(m);},f=await q.fixture();
+ await (await q.sealer.authorization()).install(f.wrapper,{ownerRoot:f.binding.trust.owner_root,recoveryRoot:f.binding.trust.recovery_root,grant:f.grant});
+ const manual=new ManualSync(q.open);assert(typeof (manual as any).cycle==='function','manual bounded cycle missing');assert(typeof (manual as any).recordStatus==='function','latest persisted operation status missing');
+ let denied=false;try{await manual.preparePeerReceipt(f.project.id,1);}catch(e){denied=(e as Error).message==='DURABLE_RECEIPT_REQUIRED';}assert(denied,'cannot sign before durable commit');
+ const page=await f.page([f.transaction('SYNTHETIC native receipt')]);await (await q.sealer.receiver()).receive(f.project.id,page);
+ const before=(await q.commands.snapshot()).objects.find((o:any)=>o.project_id===f.project.id);
+ await (await q.sealer.receiver()).receive(f.project.id,{rows:[],cursor:1,chain_digest:page.chain_digest,has_more:false});
+ const after=(await q.commands.snapshot()).objects.find((o:any)=>o.id===before.id);assert(after.local_edit_version===before.local_edit_version,'empty pull must preserve editor CAS version');
+ const raw=await manual.preparePeerReceipt(f.project.id,1),again=await manual.preparePeerReceipt(f.project.id,1);
+ assert(raw.every((v:number,i:number)=>v===again[i]),'durable exact signed receipt retry');
+ await verifyPeerReceipt(strictLoads(raw) as any,f.head,page.rows[0].envelope,1,f.device.deviceId);
+ assert(!(await f.vault.device()).signing.privateKey.extractable,'browser signer nonextractable');
+ const claims=await Promise.allSettled([manual.claim(f.project.id),manual.claim(f.project.id)]);
+ assert(claims.filter(x=>x.status==='fulfilled').length===1,'single durable concurrent claimant');
+ const token=(claims.find(x=>x.status==='fulfilled') as PromiseFulfilledResult<string>).value;
+ await manual.release(f.project.id,token);const next=await manual.claim(f.project.id);
+ denied=false;try{await manual.check(f.project.id,token);}catch(e){denied=(e as Error).message==='MANUAL_CLAIM_LOST';}assert(denied,'stale worker barred');
+ await manual.release(f.project.id,next);
+ // TEST_ONLY signed peer fixture exercises status projection; this is not transport E2E.
+ const edited=await q.commands.save({...after,body:'SYNTHETIC status edit'});
+ let status=await manual.recordStatus(f.project.id,edited.id);
+ assert(status.conversion==='NOT_CONVERTED'&&status.peer==='UNCONFIRMED','fresh operation not confirmed');
+ const op=(await q.commands.snapshot()).operations.find((o:any)=>o.object_id===edited.id&&o.payload.local_edit_version===edited.local_edit_version);
+ await q.adapter.convert(op.id);await q.sealer.seal(op.id);const mapping=await q.meta('mapping:'+op.id),env=strictLoads(mapping.envelope) as any;
+ const ack={stage:'RELAY_STORED',message_id:env.message_id,sequence:2,envelope_digest:await q.digest(env),chain_digest:'0'.repeat(64)};
+ await q.meta('relay-stored:'+op.id,{receipt:ack});status=await manual.recordStatus(f.project.id,edited.id);
+ assert(status.transport==='RELAY_STORED'&&status.peer==='UNCONFIRMED','Relay storage is not peer apply');
+ const proof=await q.signed('PeerApplyReceipt',await receiptBody(f.head,env,2,f.owner.deviceId,'ACCEPTED'),f.owner.signing.privateKey);
+ await q.meta('peer-confirmed:'+op.id,{raw:q.canonicalBytes(proof),target:f.owner.deviceId,transaction_id:mapping.transaction_id,version:edited.local_edit_version});
+ status=await manual.recordStatus(f.project.id,edited.id);assert(status.peer==='VERIFIED'&&status.state_at_commit==='ACCEPTED','exact target verified');
+ const kernel=await q.meta('record-kernel:'+f.project.id);
+ const base=Object.entries(kernel.state.revisions).find(([,r]:any)=>r.semantic.object_id===edited.id&&r.semantic.parents.length===0) as any;
+ const branch=f.transaction('SYNTHETIC late competing branch',edited.id,[base[0]],[base[1].semantic.transaction_id]);
+ await (await q.sealer.receiver()).receive(f.project.id,await f.page([branch],1,page.chain_digest));
+ status=await manual.recordStatus(f.project.id,edited.id);assert(status.current_record==='CONFLICTED'&&status.peer==='VERIFIED'&&status.review==='NOT_REQUESTED','historical ACCEPTED is not current science');
+ const savedAgain=await q.commands.save({...edited,body:'SYNTHETIC newer unsent edit'});status=await manual.recordStatus(f.project.id,savedAgain.id);
+ assert(status.peer==='UNCONFIRMED'&&status.transport==='NOT_SENT'&&status.conversion==='NOT_CONVERTED','old receipt must not confirm new save');
+ assert(!('raw' in status)&&!('envelope' in status),'status is whitelist only');
+ return ['native-latest-operation-status-boundaries','empty-pull-preserves-editor-version','native-durable-peer-receipt-exact-retry','native-nonextractable-peer-signature','native-concurrent-manual-claim'];
+}

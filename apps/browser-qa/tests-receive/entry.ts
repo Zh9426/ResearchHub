@@ -1,4 +1,6 @@
+import {remoteOnlyWorkbench} from './workbench';
 /** TEST_ONLY synthetic native WebCrypto fixture; never included in app builds. */
+import {manualReceipts} from './manual';
 import {WireSealer} from '../src/sync/seal';
 import {openLocalDatabase} from '../src/local/db';
 import {prepareSyntheticProjects} from '../src/local/seeds';
@@ -29,4 +31,4 @@ async function fixture(){
  const page=async(txs:any[],start=0,chain='0'.repeat(64))=>{const rows:any[]=[];for(const tx of txs){const env=await envelope(tx),sequence=start+rows.length+1,envelope_digest=await digest(env);chain=await security.extendChain(chain,sequence-1,[{sequence,envelope_digest}]);rows.push({sequence,envelope_digest,chain_digest:chain,envelope:env});}return {rows,cursor:start+rows.length,chain_digest:chain,has_more:false};};
  return {vault,device,owner,project,binding,grant,wrapper,transaction,page,boot,head};
 }
-(window as any).receiveQA={open,sealer,commands,adapter,meta,fixture,digest,canonicalBytes,security,signed,adversarial,identityCollisions};
+(window as any).receiveQA={remoteOnlyWorkbench,manualReceipts,open,sealer,commands,adapter,meta,fixture,digest,canonicalBytes,security,signed,adversarial,identityCollisions};

@@ -1,0 +1,77 @@
+{
+  "label": "SYNTHETIC TEST ONLY public verification vector",
+  "envelope": {
+    "envelope_version": 1,
+    "crypto_suite": "RH-v1/AES256GCM/Ed25519/HPKE-X25519-HKDFSHA256-AES256GCM",
+    "protocol_version": 2,
+    "schema_version": 2,
+    "record_type": "transaction",
+    "opaque_project_id": "11111111-1111-4111-8111-111111111111",
+    "sender_device_id": "00000000-0000-4000-8000-000000000003",
+    "membership_epoch": 2,
+    "key_epoch": 1,
+    "message_id": "33333333-3333-4333-8333-333333333333",
+    "semantic_transaction_digest": "c54b77ef770b9acc0e2a2937ca34630c482161557a7678a239224f824571b260",
+    "dependencies": [],
+    "nonce": "000000000000000000000001",
+    "checkpoint_sequence": 0,
+    "ciphertext": "u6eeiN-MZbquwtXedLY8xWZKIfWchwxSl8Ujy1b7FJXoEDH3DDZV8gsp1L74WExkZAox_rfzOv0N1SdqC9aTpfbq8gPImTYGbM5Ytgt68WUmKC9EMAwBEjX5O0UiKQ8qU2uzxOlFDE9l-JnjCiq3j_1pqJQ2OpbNuZxDxy5VNaoVJrvAU2kBm8mo9naK7VSAb2nKQmHQOh5Nz7qkoB6tROGTHqczeIHz_-RzMtmimJ0UL9U_RpvLYgX0d05pr_8OG2tIceW-AMVr32uFIgkPfE3VBu_bFCp70TMtmGRgMczXk39pmWVJYIeIrqx_k-avP6Bk4_GvDV96P53mWnbzDiSTh1L6JPqjEsyfU9-9_llqxJsz7Y14BOaGPCllSDQoz1vTc8BJHSzZ33BtIIYynGiU8jxWbojJ1IKclkvLOTmt1sB4d2Y0AZ6Fc5lrg4rifVVRyxI5LtIaZdeEPcIiku54JUXMpVB5l4JZbjYF5pwzVgRy9H9Z9nQpP5Wl4P5jjKcYNYDKEmof8MJCZTHyaTu4HHReClrdACU7YuzFkUQqHA1R7PEXke8RK0w_Y0Y1Aq6pTCJbOlMND41tZLltXpEaE6DPKN7F4eywK2TOFSouxyM2_n3xZq1ziXFjwJQMtelVcFgVKLSfwrY4AI0bcDDM_daBQqKwqxiFYQCiROMaJNjn4icZPiLMuPr24WBf2g3KXg_xKDQCxVWq94hXwnEpHNSZH0t8CmI-ap0b0J4A3NW31fG7b5NW6NUucdalPR9XhwfRnbrdSUmhHUmYt0nxeksqNSIRArU7bTBSXmh2zF12NqbdmSPrQ7JCnWyCChXFY4gvOotLRj-xjhW3KVNbx0rxbCOzE6nPoCrirfgQV4Kd6E2lVWhH_6jeAekM5TSKHgYTvJTF8Brsm9Q0wU1VT_YuUBOSBj8hscvesOOQFhlvdaLq1IV2k-euSAyvtv8Hkv1e5R9kUCwNd20eHbyvvH1jzcw4FKxKpoc9Sl_x6kpvRDV4phqTqfxLNufoaH-m8Ow6P_BxPQ1e0upcfdNxuSnSOIY-F_qzbxW-jseIKgKPO6jWqVQjZxcLEHSsMLPNdubmV1EBf8leJvwYKJ8bcej_1s1FrZXviV01ba99KEZyuCSAe5tVV3kum5bjJLFxdtlmHj1Fiz_8gQcsHRj79le_nRqvsvvOxUlvtVHRyBKa0IheenUjxU4EzEWzmQ2Z9NOFNdAAvByRABI1cXEiTcp3ahXprs41WL7vaE0D3UC4lctJIoZDuKKJYC3DAK9F7-V7-PQRZH6B3dzXfJ5z0ZO8lypGCzU8VV-rGgzn6DmTvizrItNBt2xZO0RDQNV4Rq3RnldsRbk63ijeior9TijNCj9PvZ2fsD2IWPIEf6Nx38_ZBW3EMoU-B0OX4cUGBi9nBZtvXnkE3xFSSR0Kkdg5r7Cn46xBnG6PLCnhHsFUSSUuRdTMgs06v9KOkAkfJ67NTbrT36HCN5jlkNSlgNLOexf_zA8euyBld3OZ0h7U0EULHngYm-AhZMYQ7XzdWIqGo3GFzyjhcURYpJgpVTqnEhEgANNswPf4eiKWZSc54qMtkoSwfEg5Fv5pfHcoWxhQg8ZDuzmNjObOC3XYcAW9zsqpROdHPiBHjEyQ34IxmNjd8YJnGdipVlefb_ZzDYHoMeDQ1x64lAHdBfPY48CWUS8k71bgpToMamc9XUxo4z2k3iXhchd01pwk6eTa0c5TZgbCVkfcf55PBxE6Hu23",
+    "ciphertext_digest": "209dddd7f3d160f0bb4833bc16cf15fd3bd847bcd0b5050ed812205b20a09a26",
+    "signature": "EYBhwus7t0XG4nPbuTvF60QlxuQLs1ih3f1UY-RLMBwOnMNgIoEhmZRuu8u7iIeqvboL1HAncP7XaG0iTu4yCg"
+  },
+  "manifest": {
+    "version": 1,
+    "opaque_project_id": "11111111-1111-4111-8111-111111111111",
+    "membership_epoch": 2,
+    "key_epoch": 1,
+    "previous_digest": "0e6e2524b8f5fd2b60a7bb98ab16c379e6130725dcb9a276cc5d6b10c935a969",
+    "operation": "grant",
+    "authority_device_id": "00000000-0000-4000-8000-000000000003",
+    "recovery_device_id": "44444444-4444-4444-8444-444444444444",
+    "recovery_signing_public_key": "cd14b37f956e953194ff7fb73b3d81dcc561d61a7538094b7c3e1a643ee5f3aa",
+    "recovery_recipient_public_key": "605a725d2a4adfeeb1a29e17edd621c1b7593ee8cdbc44ac6c4ab6e2f805d23c",
+    "members": [
+      {
+        "device_id": "00000000-0000-4000-8000-000000000003",
+        "signing_public_key": "174553b456dddfc6908ecab1c101fe6ab21e2baa0617795b7d43a63482993fd5",
+        "recipient_public_key": "2bd3950461202e242f2bae83c077119d5ba4ae300583d7ebb7923b226d853343",
+        "fingerprint": "92de9eb577e58b3d0004b295aec9594f07cd46eb3315c1e3f5f4a4d49fdc1c6e",
+        "role": "owner",
+        "status": "ACTIVE",
+        "nonce_prefix": 0,
+        "granted_at": 0,
+        "revoked_at": null
+      },
+      {
+        "device_id": "33333333-3333-4333-8333-333333333333",
+        "signing_public_key": "4ed32f63bf35f0eeefcb25f28a2e1fbdc873ae2835671b0c9460f5f12e4556a8",
+        "recipient_public_key": "7d34a4815fa6b982535e60af3bd9b49556816080f1641ff81d2b7c8ae8268a44",
+        "fingerprint": "743bac282b7a4f0035d1d9d11c34fb65b37d59a6519d564c8e7f30ea52653135",
+        "role": "writer",
+        "status": "ACTIVE",
+        "nonce_prefix": 1,
+        "granted_at": 0,
+        "revoked_at": null
+      }
+    ],
+    "signature": "fLnwD50ZlpzQT2miJf0EVFyHkLIF3YpbmIbRRe_SzSbziGvu-J-Cf2BkzdWjYLefEfV47X3mEjA1xeKRZ9rlBw"
+  },
+  "target": "33333333-3333-4333-8333-333333333333",
+  "sequence": 1,
+  "receipt": {
+    "version": 1,
+    "opaque_project_id": "11111111-1111-4111-8111-111111111111",
+    "sender_device_id": "00000000-0000-4000-8000-000000000003",
+    "target_device_id": "33333333-3333-4333-8333-333333333333",
+    "message_id": "33333333-3333-4333-8333-333333333333",
+    "sequence": 1,
+    "envelope_digest": "7d0fbb9f94fff03f4b522401105c526db4830ee4d716846c0238a65cd8ad8197",
+    "semantic_transaction_digest": "c54b77ef770b9acc0e2a2937ca34630c482161557a7678a239224f824571b260",
+    "membership_epoch": 2,
+    "key_epoch": 1,
+    "manifest_digest": "88987194c5dde3782b0fec5daa9eaf7ee831369c30dae4de787a64b0cee365c8",
+    "stage": "KERNEL_APPLIED",
+    "state_at_commit": "ACCEPTED",
+    "signature": "5mpRbLggh9zkvfbKBWvGFL_-ilmFJAvpzigkr-4H7__vFr6gTYV9SZDOS6u_0wz-IFGAFM-md-TzbL0Ph9EpCw"
+  }
+}

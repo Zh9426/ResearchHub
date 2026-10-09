@@ -90,24 +90,25 @@ export class WireSealer {
         const identity: SealIdentity = { prepareId: mapping.prepare_id, operationId: mapping.operation_id, transactionId: mapping.transaction_id, messageId: mapping.message_id, semanticDigest: mapping.transaction_digest!, projectId: mapping.transaction!.project_id, opaqueProjectId: b.opaque_project_id, deviceId: b.principal.device_id, keyFingerprint: key.fingerprint, prefix: key.prefix, membershipEpoch: b.trust.membership_epoch, keyEpoch: b.trust.key_epoch, headDigest: b.trust.manifest_head };
         return { ...snapshot, identity, vault };
     }
-    private async block(operationId: string, error: unknown): Promise<void> {
+    private async block(operationId: string, error: unknown, commitGuard?:(tx:IDBTransaction)=>Promise<void>): Promise<void> {
         const code = error instanceof Error && /^[A-Z][A-Z_]+$/.test(error.message) ? error.message : 'SECURITY_GATE_FAILED';
         await this.meta('readwrite', async (store) => {
+            await commitGuard?.(store.transaction);
             const current = await req(store.get(`mapping:${operationId}`));
             if (current)
                 await req(store.put({ ...current, transport: 'BLOCKED', security_blocked_reason: code }));
         });
     }
-    async seal(operationId: string): Promise<WireMapping> {
+    async seal(operationId: string, commitGuard?:(tx:IDBTransaction)=>Promise<void>): Promise<WireMapping> {
         try {
-            return await this.sealPrepared(operationId);
+            return await this.sealPrepared(operationId,commitGuard);
         }
         catch (error) {
-            await this.block(operationId, error);
+            await this.block(operationId, error,commitGuard);
             throw error;
         }
     }
-    private async sealPrepared(operationId: string): Promise<WireMapping> {
+    private async sealPrepared(operationId: string, commitGuard?:(tx:IDBTransaction)=>Promise<void>): Promise<WireMapping> {
         const { mapping, binding, identity, vault } = await this.inspect(operationId);
         const reserved = await vault.reserve(identity);
         const sealed = await vault.seal(reserved, mapping.transaction);
@@ -115,6 +116,7 @@ export class WireSealer {
             throw Error('SEALED_MISSING');
         await vault.ready(mapping.prepare_id, sealed.sealed, identity);
         return this.meta('readwrite', async (s) => {
+            await commitGuard?.(s.transaction);
             const current = await req(s.get(mapping.id)) as WireMapping;
             const now = await req(s.get(binding.id));
             if(!this.testOnly)requireAuthorization(await req(s.get(`authorization:${binding.binding.semantic_project_id}`)),now);
@@ -134,13 +136,14 @@ export class WireSealer {
             return ready;
         });
     }
-    async ready(operationId: string): Promise<Uint8Array> {
+    async ready(operationId: string,commitGuard?:(tx:IDBTransaction)=>Promise<void>): Promise<Uint8Array> {
         try {
             const { mapping, vault, identity, binding } = await this.inspect(operationId);
             if (mapping.transport !== 'READY' || !mapping.envelope)
                 throw Error('ENVELOPE_NOT_READY');
             const raw = await vault.ready(mapping.prepare_id, mapping.envelope, identity);
             await this.meta('readonly', async (store) => {
+                await commitGuard?.(store.transaction);
                 const current = await req(store.get(mapping.id)), now = await req(store.get(binding.id));
                 if(!this.testOnly)requireAuthorization(await req(store.get(`authorization:${binding.binding.semantic_project_id}`)),now);
                 if (JSON.stringify(current) !== JSON.stringify(mapping) || JSON.stringify(now) !== JSON.stringify(binding))
@@ -149,7 +152,7 @@ export class WireSealer {
             return raw;
         }
         catch (error) {
-            await this.block(operationId, error);
+            await this.block(operationId, error,commitGuard);
             throw error;
         }
     }

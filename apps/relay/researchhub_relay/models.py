@@ -79,3 +79,11 @@ class Budget(Base):
     __tablename__ = "relay_qa_rate_budgets"
     id: Mapped[str] = mapped_column(String(80), primary_key=True)
     events: Mapped[bytes] = mapped_column(LargeBinary, default=b"[]")
+
+class PeerReceipt(Base):
+    """One immutable target-signed application fact per ciphertext and target."""
+    __tablename__ = 'relay_qa_peer_receipts'
+    project: Mapped[str] = mapped_column(String(36), primary_key=True)
+    message: Mapped[str] = mapped_column(String(36), primary_key=True)
+    target: Mapped[str] = mapped_column(String(36), primary_key=True)
+    body: Mapped[bytes] = mapped_column(LargeBinary)

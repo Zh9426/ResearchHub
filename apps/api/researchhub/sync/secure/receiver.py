@@ -37,7 +37,7 @@ def checked_anchor(row, history):
 
 
 def receive(
-    engine, project, creator, keyring, page, start, *, grants=None, barrier=None
+    engine, project, creator, keyring, page, start, *, grants=None, barrier=None, apply_record=None, commit_guard=None
 ):
     # Snapshot untrusted inputs before validation or any database wait.
     page = strict_loads(bounded_canonical(page))
@@ -57,6 +57,7 @@ def receive(
     grants = dict(grants or {})
     with Session(engine) as db, db.begin():
         trust, history = locked(db, project)
+        if commit_guard: commit_guard(db)
         checked_anchor(trust, history)
         current = history[-1]
         member_of(current, creator.device_id)
@@ -144,7 +145,7 @@ def receive(
                 results.append(strict_loads(old.result))
                 continue
             result = (
-                apply_in_session(db, tx, context)
+                (apply_record or apply_in_session)(db, tx, context)
                 if context
                 else {"state": "TRANSPORT_QUARANTINED", "reason": "HISTORICAL_EPOCH"}
             )

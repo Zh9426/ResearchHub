@@ -1,0 +1,1 @@
+export type RecordSyncStatus={object_id:string;operation_id:string|null;transaction_id:string|null;local_version:number|null;local:string;conversion:string;transport:string;peer:string;target_device_id:string|null;review:string;current_record:string;state_at_commit:string|null};

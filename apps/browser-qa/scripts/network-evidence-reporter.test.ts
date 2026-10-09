@@ -34,3 +34,10 @@ test('launch diagnostics expose bounded exit status and fixed codes, never stder
  assert.deepEqual(reporter.summarizeError({message:'private unrecognized stderr'}).processExits,[]);
  assert.deepEqual(reporter.summarizeError({message:'<process did exit: exitCode=999999, signal=null>'}).processExits,[]);
 });
+
+test('manual sync phases retain only reviewed labels, never arbitrary private content',()=>{
+ const safePhase=(reporter as any).safePhase;
+ assert.equal(typeof safePhase,'function');
+ for(const phase of ['C_PC_BASELINE_UI','C_B_NATIVE_EDIT_UI','C_PC_READ_AND_EDIT_UI','C_CLEAN_EDITOR_REFRESH','C_PC_DIRTY_BASELINE_CAS','C_DIRTY_EDITOR_PRESERVED','C_DURABLE_NATIVE_PEER_RECEIPTS'])assert.equal(safePhase(phase),phase);
+ assert.equal(safePhase('PRIVATE_SECRET_SENTINEL'),'START');assert.equal(safePhase('BAD_PROOF'),'BAD_PROOF');
+});

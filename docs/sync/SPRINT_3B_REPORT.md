@@ -179,6 +179,8 @@ RH038规格复审另发现测试清理串行调用可能因证据写入或浏览
 
 ### C-接收 — 授权镜像、整页提交与离线因果来源（RH040）
 
+RH040已提交并同步 `7b5ee670d97ff3f05211da73cbac76875082bc0f`；首次 [CI37922293892](https://github.com/Zh9426/ResearchHub/actions/runs/37922293892) attempt1七job全部成功。Linux真实Chromium23项接收与24项C1差异通过，sourceCommit精确匹配、dirty=false、bundle与最终本机一致；B2原入口严格TLS配对仍通过。完整归档 `storage/runtime/browser-local-qa/ci-37922293892-attempt1/`，网络zip SHA256 `4b22932615f2568718a029556f40a25776767868931c25645c274cf55a96d964`，TLS zip `99bb9751d41ce43af3e60b0bc9f1cca7d6e5ec6847f3c3406f0fe458483cb41d`；原TLS固定20轮通过。远端main/v0.2.0及公开状态复核未变。此次成功不关闭TLS-001或PC013。
+
 本片 `IMPLEMENTED / VERIFIED_IN_REAL_BROWSER`，尚未接通真实 Relay 双向业务。正常加入经统一授权协调器：先在业务库写 BLOCKED 与 generation/token，再安装独立 vault，最后短事务 CAS 发布 READY。安装中断保留 BLOCKED；完整相同安装重试不增加 generation。已有绑定缺少授权镜像时明确阻断，不能从 vault 自动恢复为可信。
 
 接收先在事务外完成整页原生验签、AEAD、身份、epoch、摘要与记录内核计算，再在短 IDB 事务复核授权、kernel 和 Relay cursor，原子写修订、接收结果与游标。Relay cursor 与 kernel sequence 分开。保存操作时在同一事务冻结前一待发送操作或已知基线；转换把本地分支加入 kernel，远端更新不能把离线修改改接到新父修订。原操作与审计不重写；独立 pending/handoff 标记只匹配具体 operation/transaction/version。交接后继续编辑读取当前 kernel 基线，冲突不选择赢家。PC 仅在 pending 时显示工作副本，命令锁序统一为 Trust→Project→Work。
@@ -187,9 +189,21 @@ RH038规格复审另发现测试清理串行调用可能因证据写入或浏览
 
 失败证据保留在 `c-receive/red-authorization-*`、`red-causality-001`、`red-post-handoff-001` 和各独立 green/adversarial attempt；名称为 green 不代表当次一定通过，以摘要为准。交接后继续编辑最初错误引用旧基线，由真实 RED 定位并修补。PC 的 `c-receive-pg-red-20261009T104206767` 和 `c-receive-pg-lock-red-20261009T105521544` 分别保留缺少handoff服务及实际SQL锁序失败；对应两次定向绿色证据另存。原A2五项、B1十项及正常加入本地UI两项回归通过；原3A本机runner会覆盖固定旧证据，本次不在本机重跑，保留CI原套件验证。根协调者类型检查与网络诊断七项通过；独立真实PG `test_pc_records.py test_pc_api.py` 六项通过、零skip，JUnit/stdout/exit码保存 `c-receive-pg-root-20261009-01/`，另有一条第三方Starlette/httpx弃用警告。
 
-质量复审另发现P2：正式内核以类型+UUID区分对象，当前本地表只用UUID，同UUID的Run/Note可被内核接受却在投影中漏掉一种。纯函数复现记录为 `review-typed-identity-finding.json`；随后 `red-local-identity-001` 真实Chromium同时确认七种身份碰撞被接受并改变持久状态。最小修补在staging拒绝不可表达的同UUID多类型，并在写事务内校验现有object/baseline/pending来源的项目与类型；handoff共用检查，不改变正式内核规则或重分配UUID。`green-local-identity-001` 与根协调者独立 `root-receive-final-20261009-01` 均23项PASS、cleanup PASS、retries=0，bundle SHA256 `1e334a351dd2907db448e89d8983d41d0dd51e6f84671ce182854f63d2714fb5`；碰撞时meta/objects/operations/audit（包括kernel/cursor/receipts）完全不变。该明确阻断是当前本地模型限制，不声称已支持复合对象键。最终类型检查通过。SPEC复审与P2修补后的QUALITY复审均PASS；新提交精确SHA首次CI待执行。
+质量复审另发现P2：正式内核以类型+UUID区分对象，当前本地表只用UUID，同UUID的Run/Note可被内核接受却在投影中漏掉一种。纯函数复现记录为 `review-typed-identity-finding.json`；随后 `red-local-identity-001` 真实Chromium同时确认七种身份碰撞被接受并改变持久状态。最小修补在staging拒绝不可表达的同UUID多类型，并在写事务内校验现有object/baseline/pending来源的项目与类型；handoff共用检查，不改变正式内核规则或重分配UUID。`green-local-identity-001` 与根协调者独立 `root-receive-final-20261009-01` 均23项PASS、cleanup PASS、retries=0，bundle SHA256 `1e334a351dd2907db448e89d8983d41d0dd51e6f84671ce182854f63d2714fb5`；碰撞时meta/objects/operations/audit（包括kernel/cursor/receipts）完全不变。该明确阻断是当前本地模型限制，不声称已支持复合对象键。最终类型检查通过。SPEC复审与P2修补后的QUALITY复审均PASS；精确SHA首次CI结果见本节开头。
 
 后续仍需 PC secure receiver 的可信 record policy 接入、PC Outbox→sealed bridge、手动双向传输、设备签名应用回执、冲突界面、显式旧3A导入及完整A–P验收。本片不宣称完成这些范围；TLS-001/PC013继续OPEN。
+
+### C-传输 — 持久发送与设备应用回执（工作树实施中）
+
+当前工作树新增 PeerApplyReceipt v1 的 Python/浏览器独立验证及 Relay 不可变存取；签名绑定具体目标设备、项目、原消息、事务/密文摘要和 epoch。回执来自已提交接收结果并先缓存后发送，只表示历史应用事实。PC 新桥接保留原 Outbox 事务与稳定 message ID，密封在短 PG 事务外执行；完整密文提交后才允许网络发送。两端手动周期采用持久claim、固定集合、有界批次与原密文重试。尚无本片严格 HTTPS 的实际 UI 往返通过证据，不能据此提升 G4/G5。
+
+复审前定向测试34项通过（`transport-attempts/6e502fe3-5726-4657-a3af-149bf9c9d7b3/final-targeted.txt`），完整 Python 安全测试205项、TypeScript安全测试59项通过；一次第三方Starlette/httpx弃用警告保留。根协调者真实 Windows Chromium `c-receive/root-transport-native-20261009-01/summary.json` 27项、cleanup PASS、retries=0，sourceCommit为RH040且dirty=true，bundle SHA256 `95fdf56c1c0c49e51e9e52fb4da232a0ca7c16632be0c517896ae40c58605461`。包括原生非导出签名、持久回执exact retry、并发claim和空页不改变编辑版本；这是浏览器组件验证，不是 Windows Relay HTTPS。此前worker构建与最终代码不同，各摘要独立保留，不混用bundle哈希。
+
+首次独立SPEC复审提出两项P2：PC路由清理异常可能覆盖主错误；普通界面缺少当前记录对应的持久中继/目标设备状态，固定UNCONFIRMED诊断也会误导。保留原RED与每次定向修正后的结果；`transport-attempts/evidence-index.txt` 中早期条目是原工具输出索引，不冒充原始日志。完整 UI 联调、冲突解决、显式3A导入与A–P失败验收仍待后续。
+
+上述两项已完成补丁，SPEC与QUALITY独立复审均PASS：路由双异常先出现实际RED（`fef973bc-11be-469f-826d-233d1e55dda6`），随后3项通过（`368a0141-98c5-4b4e-a45b-99ee817e4b82`）。新增白名单状态投影每次只对应最近保存操作，验证具体peer签名，不借用旧操作回执；当前DAG冲突与历史应用状态分列。PC无本地工作版本的远端Run原先隐藏观察/星标，真实组件RED `spec-ui-red-3a9ac0d1-b2dd-4d7f-8fdd-284d0139b2ca` 后改用独立“曾持久化”编辑状态。随后 `spec-dirty-red-0f90e3e2-ccbc-4958-8761-84ff1050f999` 又复现冲突移除投影后脏观察被隐藏，补丁保持字段可见且不改CAS版本。两次fixture前置错误、一次UTF8补丁未应用后的重复RED均单独保留，不计业务修复成功。
+
+冻结候选最终定向PG/协议组合37项通过（`4454b21a-8638-44d8-bfac-1c464eb11fb2/final-targeted.txt`），类型检查与普通B/PC构建通过。根协调者独立真实Chromium `root-transport-final-20261009-01` 30项、cleanup PASS、retries=0，bundle SHA256 `aee15af7f173d903256767068191456debde4c164f4bda148a61463326794648` 与worker最终构建一致。覆盖Relay-only、新保存不借旧回执、旧ACCEPTED回执同时存在当前冲突、version0记录与脏输入可见。source仍为RH040加未提交工作树，不能称为RH040已实现。新增实际Linux UI往返断言已经接入原测试，尚未运行。
 
 ## 当前 Gate
 

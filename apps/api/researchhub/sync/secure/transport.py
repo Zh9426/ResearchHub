@@ -62,7 +62,8 @@ class SecureTransport:
     def request(self, method, path, body=None, query=None):
         with Session(self.engine) as db, db.begin():
             _, history = locked(db, self.project)
-            return self._request_manifest(history[-1], method, path, body, query)
+            manifest = history[-1]
+        return self._request_manifest(manifest, method, path, body, query)
 
     def pairing_request(self, session_id, operation, *, db):
         """Only this registered, verified journal may authorize fixed membership paths.
@@ -212,3 +213,40 @@ class SecureTransport:
                 raise ValueError("ROLLBACK_OR_UNCONSUMED_CHECKPOINT")
             trust.checkpoint = canonical_bytes(checkpoint)
         return checkpoint
+
+
+    def prepare_peer_receipt(self, sequence, *, commit_guard=None):
+        """Sign only committed receiver state; cache exact bytes before any HTTP."""
+        from .transport_pg import PeerReceiptOutbox
+        from packages.secure_wire.peer_receipt import receipt_body, verify_peer_receipt
+        with Session(self.engine) as db, db.begin():
+            trust, history = locked(db, self.project)
+            if commit_guard: commit_guard(db)
+            checked_anchor(trust, history)
+            row = db.get(Received, (self.project, sequence))
+            if row is None or sequence > trust.cursor:
+                raise ValueError('DURABLE_RECEIPT_REQUIRED')
+            envelope = strict_loads(row.body)
+            result = strict_loads(row.result)
+            if result.get('state') not in ('ACCEPTED', 'CANDIDATE'):
+                raise ValueError('KERNEL_APPLIED_REQUIRED')
+            # An old epoch remains historical: never re-sign it under current authority.
+            manifest = history[-1]
+            key = (self.project, sequence, self.device.device_id)
+            saved = db.get(PeerReceiptOutbox, key)
+            if saved:
+                verify_peer_receipt(strict_loads(saved.body), manifest, envelope, sequence, self.device.device_id)
+                return saved.body
+            receipt = signed_object('PeerApplyReceipt', receipt_body(manifest, envelope, sequence,
+                self.device.device_id, result['state']), self.device.signing_seed)
+            verify_peer_receipt(receipt, manifest, envelope, sequence, self.device.device_id)
+            raw = canonical_bytes(receipt)
+            db.add(PeerReceiptOutbox(project=self.project, sequence=sequence, target=self.device.device_id, body=raw))
+        return raw
+
+    def publish_peer_receipt(self, sequence):
+        raw = self.prepare_peer_receipt(sequence)
+        result = self.request('POST', '/v1/peer-receipts', strict_loads(raw))
+        if canonical_bytes(result) != raw:
+            raise ValueError('PEER_RECEIPT_RELAY_MISMATCH')
+        return result

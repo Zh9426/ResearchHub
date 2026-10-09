@@ -1,3 +1,4 @@
+import {manualRoundTrip} from './manual-roundtrip';
 import {test,expect,chromium,type BrowserContext} from '@playwright/test';
 import {writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -53,6 +54,7 @@ test('B2 actual browser pairing, strict TLS and narrow CORS',async()=>{
   const binding=await b.evaluate(async(id)=>{const db=await new Promise<IDBDatabase>((ok,no)=>{const r=indexedDB.open('researchhub-browser-sync-qa-business-v1');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);});try{return await new Promise<any>((ok,no)=>{const r=db.transaction('meta').objectStore('meta').get('binding:'+id);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);});}finally{db.close();}},expected.semantic_project_id);
   expect(binding.state).toBe('VERIFIED');expect(binding.generation).toBe(1);expect(binding.binding).toEqual(expected);
   mark('RECEIPT_RESUME');await b.reload();await b.getByLabel('PC 完成回执与签名绑定').fill(result);await b.getByRole('button',{name:'验证回执并加入'}).click();await expect(b.getByTestId('join-status')).toHaveText('加入完成 · VERIFIED · Relay hello 已确认',{timeout:30000});
+  await manualRoundTrip(b,pc,mark);
   mark('BAD_PROOF');const rejected=await b.evaluate(async()=>{const r=await fetch('https://127.0.0.1:38001/v1/hello',{method:'POST',credentials:'omit',redirect:'error',headers:{'content-type':'application/json','x-rh-proof':'AAAA'},body:'{}'});return r.status;});expect(rejected).toBe(401);
   mark('UNAUTHORIZED_ORIGIN');const opaque=await context.newPage(),ocdp=await context.newCDPSession(opaque);await ocdp.send('Network.enable');let preflight403=false,nullOrigin=false;const options=new Set<string>();
   ocdp.on('Network.requestWillBeSent',(e:any)=>{if(e.request.url==='https://127.0.0.1:38001/v1/hello'&&e.request.method==='OPTIONS'){options.add(e.requestId);if(e.request.headers.Origin==='null'||e.request.headers.origin==='null')nullOrigin=true;}});

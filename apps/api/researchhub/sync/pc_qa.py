@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from .models import ObjectRevision, Outbox
 from .pc_identity import setup_node,current_binding
 from .pc_records import RecordWork, execute_command, read_record
+from .pc_transport import record_status
 from .projection import project_status
 from .protocol import ProtocolError
 from .secure.transport_pg import client_engine, guard
@@ -123,11 +124,47 @@ def create_app(*,engine=None,runtime=None,module_id='generic',pairing_transport=
         # Construction, PG/SQLite/network work and owned transport cleanup all block.
         return await run_in_threadpool(pairing_operation,action,data)
 
+    @app.post('/api/sync')
+    async def sync_now(request:Request):
+        from packages.secure_wire.canonical import strict_loads
+        try:
+            if strict_loads(await request.body())!={}:raise ValueError()
+        except ValueError:return JSONResponse({'error':'INVALID_SYNC_REQUEST'},422)
+        def operation():
+            import httpx
+            from .pc_transport import PcTransport
+            from .pc_pairing import make_transport
+            from .secure.transport_pg import locked
+            transport=None;primary=None
+            try:
+                try:
+                    with Session(engine) as db,db.begin():
+                        _,history=locked(db,node.binding['opaque_project_id'])
+                        peers=[m for m in history[-1]['members'] if m['status']=='ACTIVE' and m['device_id']!=node.owner.device_id]
+                        if len(peers)!=1:raise ValueError('EXACT_PEER_TARGET_REQUIRED')
+                    transport=make_transport(engine,node)
+                    return PcTransport(engine,node).cycle(transport)
+                except Exception as exc:
+                    primary=exc;raise
+                finally:
+                    if transport:
+                        try:transport.close()
+                        except Exception as cleanup:
+                            if primary:raise ExceptionGroup('SYNC_AND_TRANSPORT_CLOSE_FAILED',[primary,cleanup]) from None
+                            raise
+            except ValueError as exc:
+                code=str(exc) if re.fullmatch('[A-Z_]+',str(exc)) else 'SYNC_BLOCKED'
+                return JSONResponse({'error':code},409)
+            except (httpx.HTTPError,OSError):return JSONResponse({'error':'SYNC_NETWORK_UNCONFIRMED'},503)
+        return await run_in_threadpool(operation)
+
     @app.get('/api/snapshot')
     def snapshot():
         pid=node.binding['semantic_project_id'];module=node.binding['module_snapshot']
         with Session(engine) as db,db.begin():
-            # Project lock gives one consistent projection/work/history snapshot under READ COMMITTED.
+            from .secure.transport_pg import locked
+            _,history=locked(db,node.binding['opaque_project_id'])
+            # Trust -> Project, matching commands and receiving; one consistent status view.
             from .kernel import lock_project
             lock_project(db,pid)
             keys=set(db.execute(select(RecordWork.object_type,RecordWork.object_id).where(RecordWork.project_id==pid)).all())
@@ -135,7 +172,7 @@ def create_app(*,engine=None,runtime=None,module_id='generic',pairing_transport=
             records=[];objects=[]
             for kind,oid in sorted(keys):
                 if kind not in ('ResearchRun','Note'):continue
-                view=read_record(db,pid,kind,oid);records.append({'object_id':oid,'object_type':kind,**view})
+                view=read_record(db,pid,kind,oid);records.append({'object_id':oid,'object_type':kind,**view,'sync_status':record_status(db,node,kind,oid,history[-1])})
                 from .pc_records import displayed_document
                 work=view['work'];doc=displayed_document(view)
                 if doc is not None:objects.append(local_object(kind,oid,pid,doc,work['version'] if work else 0))
@@ -149,7 +186,7 @@ def create_app(*,engine=None,runtime=None,module_id='generic',pairing_transport=
                 'module_hash':node.binding['local_module_hash']['value'],'local_format_version':1}],
             'objects':objects,'operations':[],'audit':[],'drafts':[]}
         return {'snapshot':local,'records':records,'project_status':status,
-                'outbox_count':len(outboxes),'transport':'NOT_IMPLEMENTED','pairing':'OWNER_TEXT_V1'}
+                'outbox_count':len(outboxes),'transport':'MANUAL_AVAILABLE','pairing':'OWNER_TEXT_V1'}
 
     @app.post('/api/command')
     async def command(request:Request):
