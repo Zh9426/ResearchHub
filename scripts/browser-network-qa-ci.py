@@ -70,7 +70,8 @@ def browser_env_command(args, values=None):
     values = values or {}
     if not set(values) <= {'RH_B2_RESULTS', 'RH_B2_BUILD_HASH', 'RH_B2_TLS_CASE',
                           'PLAYWRIGHT_BROWSERS_PATH', 'GITHUB_SHA',
-                          'RH_IMPORT_PHASE', 'RH_IMPORT_MODULE', 'RH_IMPORT_SOURCE_DIR'}:
+                          'RH_IMPORT_PHASE', 'RH_IMPORT_MODULE', 'RH_IMPORT_SOURCE_DIR',
+                          'RH_FAILURE_CASE', 'RH_FAILURE_CONTROL'}:
         raise ValueError('UNEXPECTED_QA_ENV_KEY')
     removed = ('CHROME_CONFIG_HOME', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME',
                'XDG_DATA_HOME', 'XDG_STATE_HOME')
@@ -134,6 +135,9 @@ def network_scenario(scenario):
         choices['import-' + module] = {
             'directory': 'import-' + module + '-ci', 'config': 'playwright.import.config.ts',
             'node': 'ci-browser-import-' + module, 'module': module}
+    for case in ('reopen','pc-offline','independent-echo','ack-loss','revoked-write','historical-bootstrap','privacy'):
+        choices['failure-' + case] = {'directory': 'failure-' + case + '-ci',
+            'config': 'playwright.failure.config.ts', 'node': 'ci-failure-' + case, 'failure': case}
     if not isinstance(scenario, str) or scenario not in choices:
         raise ValueError('UNKNOWN_NETWORK_SCENARIO')
     return choices[scenario]
@@ -142,6 +146,7 @@ def network_scenario(scenario):
 def main(scenario='baseline'):
     selected = network_scenario(scenario)
     importing = 'module' in selected
+    failure_case = selected.get('failure')
     OUT = RUNTIME / 'browser-sync-qa' / selected['directory']
     if sys.platform != 'linux' or os.environ.get('GITHUB_ACTIONS') != 'true':
         raise RuntimeError('EPHEMERAL_LINUX_CI_ONLY')
@@ -163,23 +168,40 @@ def main(scenario='baseline'):
     owned_user_ids = []
     relay_attempted = False
     current_stage = 'initialize'
+    controller = None
+    failure_actions = None
 
     def save():
         (OUT / 'harness-summary.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
 
-    def run(stage, args, *, env=None, cwd=ROOT, timeout=300):
+    def run(stage, args, *, env=None, cwd=ROOT, timeout=300, control=None):
         nonlocal current_stage
         current_stage = stage
         path = OUT / (stage + '.private.log')
         with path.open('xb') as log:
             try:
-                result = subprocess.run(args, cwd=cwd, env=env, stdout=log,
-                                        stderr=subprocess.STDOUT, timeout=timeout, check=False)
-                code = result.returncode
+                if control is None:
+                    result = subprocess.run(args, cwd=cwd, env=env, stdout=log,
+                                            stderr=subprocess.STDOUT, timeout=timeout, check=False)
+                    code = result.returncode
+                else:
+                    from browser_failure_control import run_controlled
+                    code = run_controlled(args, cwd=cwd, env=env, log=log, timeout=timeout, controller=control)
+                current_stage = stage
             except subprocess.TimeoutExpired:
                 code = 'TIMEOUT'
             except OSError:
                 code = 'SPAWN_ERROR'
+                if control is not None:
+                    import traceback
+                    log.write(traceback.format_exc().encode('utf-8'))
+                    code = 'CONTROL_OS_ERROR'
+            except Exception:
+                if control is None:
+                    raise
+                import traceback
+                log.write(traceback.format_exc().encode('utf-8'))
+                code = 'CONTROL_ERROR'
         raw_log = path.read_bytes()
         evidence['stages'].append({'stage': stage, 'exitCode': code,
                                   'privateLogSha256': hashlib.sha256(raw_log).hexdigest(),
@@ -195,9 +217,9 @@ def main(scenario='baseline'):
         return ['sudo', '--login', '--user', user, '--', 'sh', '-c',
                 'cd ' + shlex.quote(str(cwd)) + ' && exec ' + command]
 
-    def start_service(name, args, origin, env):
+    def start_service(name, args, origin, env, *, instance=''):
         nonlocal current_stage
-        current_stage = name + '-start'
+        current_stage = name + instance + '-start'
         port = int(origin.rsplit(':', 1)[1])
         owner_path = RUNTIME / ('browser-sync-qa/pc/server-owner.json' if name == 'pc'
                                 else 'browser-local-qa/server-owner.json' if name == 'source-static'
@@ -207,7 +229,8 @@ def main(scenario='baseline'):
         with socket.socket() as probe:
             if probe.connect_ex(('127.0.0.1', port)) == 0:
                 raise RuntimeError('OCCUPIED_QA_PORT')
-        log = (OUT / (name + '.private.log')).open('xb')
+        log_path = OUT / (name + instance + '.private.log')
+        log = log_path.open('xb')
         logs.append(log)
         try:
             process = subprocess.Popen(args, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -217,7 +240,7 @@ def main(scenario='baseline'):
                 'privateLogSha256': hashlib.sha256(Path(log.name).read_bytes()).hexdigest()})
             save()
             raise StageFailure(current_stage) from None
-        services.append((name, process, OUT / (name + '.private.log')))
+        services.append((name, process, log_path))
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             if process.poll() is not None:
@@ -239,7 +262,7 @@ def main(scenario='baseline'):
         if not node or not PUBLIC_BROWSER.is_dir():
             raise RuntimeError('PUBLIC_NODE_BROWSER_REQUIRED')
         users = {}
-        browser_users = [('trusted', 'rhqatlsgood')] if importing else [('untrusted', 'rhqatlsbad'), ('trusted', 'rhqatlsgood')]
+        browser_users = [('trusted', 'rhqatlsgood')] if importing or failure_case else [('untrusted', 'rhqatlsbad'), ('trusted', 'rhqatlsgood')]
         for case, user in browser_users:
             run('user-' + case, ['sudo', 'useradd', '--create-home', '--shell', '/bin/bash', user])
             account = pwd.getpwnam(user)
@@ -300,6 +323,29 @@ def main(scenario='baseline'):
             values = {'RH_B2_RESULTS': str(results), 'RH_B2_BUILD_HASH': build_hash,
                       'RH_B2_TLS_CASE': 'trusted' if importing else case, 'PLAYWRIGHT_BROWSERS_PATH': str(PUBLIC_BROWSER),
                       'GITHUB_SHA': os.environ['GITHUB_SHA']}
+            if failure_case:
+                import tempfile
+                from browser_failure_control import Controller, RealActions
+                directory = Path(tempfile.mkdtemp(prefix='rh-failure-'))
+                directory.chmod(0o1733)
+                def stop_matrix_pc():
+                    owned = [p for name, p, _ in services if name == 'pc' and p.poll() is None]
+                    owner = json.loads((RUNTIME / 'browser-sync-qa/pc/server-owner.json').read_text())
+                    if len(owned) != 1 or owner.get('pid') != owned[0].pid:
+                        raise RuntimeError('MATRIX_PC_OWNER_MISMATCH')
+                    run('matrix-pc-stop', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'stop'], env=env)
+                    owned[0].wait(timeout=15)
+                    if owned[0].returncode != 0:
+                        raise RuntimeError('MATRIX_PC_STOP_FAILED')
+                def start_matrix_pc():
+                    if any(p.poll() is None for name, p, _ in services if name == 'pc'):
+                        raise RuntimeError('MATRIX_PC_STILL_RUNNING')
+                    start_service('pc', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'start', '--node', selected['node']],
+                        'http://127.0.0.1:3315', env, instance='-restarted')
+                failure_actions = RealActions(ROOT, RUNTIME / 'browser-sync-qa/pc/nodes' / selected['node'],
+                    stop_matrix_pc, start_matrix_pc, evidence.setdefault('failureMatrix', {}))
+                controller = Controller(failure_case, directory, pwd.getpwnam(user).pw_uid, failure_actions, evidence['failureMatrix'])
+                values.update({'RH_FAILURE_CASE': failure_case, 'RH_FAILURE_CONTROL': str(directory)})
             if importing:
                 values.update({'RH_IMPORT_PHASE': 'prepare' if case == 'prepare' else 'apply',
                                'RH_IMPORT_MODULE': selected['module'],
@@ -335,7 +381,7 @@ def main(scenario='baseline'):
                 'catch(e){if(e.code!=="EACCES")throw e}', str(RUNTIME)], cwd=home))
             try:
                 run('browser-' + case, as_user(user, [node, 'node_modules/@playwright/test/cli.js',
-                    'test', '--config', selected['config']], values=values, clean_browser=True), timeout=420)
+                    'test', '--config', selected['config']], values=values, clean_browser=True), timeout=420, control=controller)
             finally:
                 # Only reviewed public summary is copied. Raw logs/profiles never leave home/runtime.
                 summary = results / 'summary.json'
@@ -347,7 +393,7 @@ def main(scenario='baseline'):
                     raise StageFailure('collect-' + case)
                 if case == 'trusted' and present == 0:
                     public_result = json.loads((OUT / (case + '-summary.json')).read_text())
-                    if public_result.get('status') == 'passed':
+                    if public_result.get('status') == 'passed' and not failure_case:
                         screenshots = ('desktop.png', 'mobile.png')
                         if scenario == 'conflict':
                             screenshots += ('conflict-comparison.png', 'conflict-candidate.png')
@@ -378,6 +424,12 @@ def main(scenario='baseline'):
         # Do not print exception text: remote/browser data can contain credentials or proofs.
         print('BROWSER_QA_FAILED stage=' + failed_stage + ' class=' + type(exc).__name__)
     finally:
+        if failure_actions is not None:
+            try:
+                failure_actions.close()
+            except Exception as exc:
+                evidence['status'] = 'FAIL'
+                evidence.setdefault('cleanupFailures', []).append({'service': 'matrix-database', 'errorClass': type(exc).__name__})
         for name, process, log_path in reversed(services):
             try:
                 if process.poll() is None:

@@ -103,3 +103,10 @@ RH045 首次 CI 已证明原基本双向网络路径通过。新增冲突和故�
 A项目/版本/因果→B真实浏览器密码/TLS→C双向网络/冲突/故障，依次复审；安全前置失败对应Gate BLOCKED且总体INCOMPLETE，不明文替代。测试按附件A–P，retries0，真实PC UI和B UI编辑；逻辑PC停消费不等于宿主断电。保留TLS原测试/参数/失败/诊断，新的失败独立run/attempt归档。Relay DB/BYTEA/files/logs做正文与key marker扫描及正对照。精确实现SHA CI后报告STOP，不3C。
 
 参考[IndexedDB事务](https://www.w3.org/TR/IndexedDB/)、[WebCrypto](https://www.w3.org/TR/webcrypto/)、[Fetch CORS](https://fetch.spec.whatwg.org/)；库官方支持与实测版本在B阶段补录。已读frontend-app-builder/ui-ux-pro-max，用户要求延续现有界面而非重新生成视觉方案；真实隔离profile要求优先于个人IAB默认。UX检索未找到精确冲突反馈匹配，采用现有错误保留/可见label/44px规范，不声称检索已证明该交互。
+
+
+## 实际故障矩阵运行边界（RH049）
+
+七个固定场景独立Linux CI VM执行，不复用业务数据库/profile。浏览器只提交版本、固定case、递增step和白名单action；runner的FSM核验文件属主、大小、inode和归属资源，不接受任意命令、PID、路径或SQL。只有新failure模式使用有界Popen轮询控制通道，原网络harness阻塞路径保留。
+
+ACK测试观察原Relay after_commit屏障及持久Message后终止本次容器，完整浏览器重开后以相同消息正文重送；新的HTTP请求证明身份不与业务幂等身份混淆。PC暂离线是服务节点退出，不是宿主关机。隐私正对照仅新建独立合成PublicObject并精确删除，不以SQL创建或修改同步科研记录。撤销场景普通周期首签名GET被拒即停止发送；首次非空历史加入明确阻断，不实现bootstrap或跳游标。

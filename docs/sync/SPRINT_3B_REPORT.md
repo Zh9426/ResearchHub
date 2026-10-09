@@ -172,7 +172,7 @@ RH038规格复审另发现测试清理串行调用可能因证据写入或浏览
 | L 版本与身份 | v1/v2/Python/Chromium密码与身份负例已验证；完整网络路径待验收 |
 | M 浏览器网络边界 | RH038实际Linux严格TLS、直接Fetch、CORS正负例通过；Windows未验证，C业务路径仍待验收 |
 | N 撤销与旧epoch | B1 vault撤销/history负例已验证；PC真实撤销与网络待验收 |
-| O 旧3A记录适配 | NOT IMPLEMENTED；不能按名字合并或克隆发送身份 |
+| O 旧3A记录适配 | VERIFIED_IN_REAL_LOOPBACK_NETWORK；RH048 HDSP/ICE 显式归档重放及往返通过，源身份与新设备分开 |
 | P 状态真实性 | RH045签名回执实际通过；RH046冲突提案实际收敛仍CANDIDATE，历史应用与当前科研候选分列 |
 
 上述局部测试不等于对应完整场景PASS。正常关闭重开、故障注入与真正进程终止分别记录；尚无操作系统断电、实体手机或真实磁盘满证据。
@@ -217,13 +217,13 @@ RH038质量复审发现READY前停滞无法取得清理句柄的旧helper缺口�
 
 | Gate | 当前状态 |
 |---|---|
-| G1 项目与协议一致 | RH046当前空项目基线、版本/父链及实际往返已验证；显式3A导入仍待实施验收 |
+| G1 项目与协议一致 | 当前切点PASS；RH048同源UUID/冻结模块的HDSP与ICE显式导入实际往返通过，原版本/父链回归保持 |
 | G2 浏览器安全接入 | 当前切点PASS；RH046 Linux正式密码、实际配对/严格TLS/Fetch回归通过；Windows HTTPS NOT VERIFIED |
 | G3 本地可靠性 | INCOMPLETE；3A回归通过不替代3B |
 | G4 实际双向传输 | 当前切点PASS；RH045基础往返通过，RH046基础及冲突HTTPS场景首次通过；RH041–RH044失败证据与标签因果修复均保留 |
 | G5 冲突与幂等 | INCOMPLETE；RH046实际冲突通过，ACK丢失/已加入profile重启及失败矩阵尚待验收 |
 | G6 人类体验与状态 | INCOMPLETE |
-| G7 隔离与回归 | INCOMPLETE；RH046首次CI八job通过，原TLS20轮通过但仍OPEN；实际往返正文/密钥隐私矩阵尚待补齐 |
+| G7 隔离与回归 | INCOMPLETE；RH048首次CI十job通过，原TLS20轮通过但仍OPEN；新增实际往返正文/密钥隐私矩阵尚待网络验收 |
 
 仍在按A→B→C实施。最终A–P矩阵、实际截图、启动停止命令和最小往返步骤将在真实验收后补充；未进入Sprint3C，也未发布生产版本。
 
@@ -335,3 +335,24 @@ root另独立协议完整63项、PG conflict_proposal+pc_records共7项、Report
 修补只恢复 Node 自身冻结快照的键顺序：先验证规范化内容、规范 hash、原 stringify hash，再验证整份历史响应 canonical bytes 原样不变；不重签、不改 journal、原始救援包、密钥或 nonce。最初补丁还暴露 provisional Node 恢复时缺少快照的两个回归（`pairing-order-green-001`，实际 FAIL，保留），增加自身 snapshot_json 后恢复路径通过。
 
 实现者最终来源/配对 36 项通过（`pairing-order-final-001`），附加实际 FastAPI HTTP 响应两模块 2 项通过（`pairing-order-http-001`）；含确认、状态查询、重启恢复/重复确认、after_consume/before_pg_commit、历史 wrapper/签名不变、篡改拒绝和默认模块字节保持。root 独立内核/QA PG 全量 203 项通过，`rh048-root-pg-final.txt`。新 SHA 首次 Linux 导入网络结果仍待执行，原 RH047 导入 FAIL 不被本地测试覆盖。
+
+
+### RH048 首次实际导入网络通过
+
+`d4bc8f7b7b92119748c17d61f1113f9470a4c947`，[CI37956636464](https://github.com/Zh9426/ResearchHub/actions/runs/37956636464)，attempt1，十 job 全部 PASS。HDSP/ICE 独立来源 UI、完整包导出、同 UUID 新 PC、正常原生配对、只读预览、原子确认与重复确认、B→PC 同对象字段、PC→B Note 修改、映射下载均完成。每组真实 Chromium156.0.8078.4、6 OPTIONS204与6签名 POST200/201、IMPORT_COMPLETE、cleanupPASS、retries0。B 构建 `a38f3921f85806ff8593fffbf08022e4794814e7a7ec870bbfe1f20899973f6a`。这证明本次导入路径，不证明全量历史 bootstrap 或生产备份。
+
+归档 `storage/runtime/browser-local-qa/ci-37956636464-attempt1/`：HDSP zip `2f3ba5a0f643901e38d7bc0b6e2b1bfa6e5c96d0231b630e9815e72839e74611`；ICE zip `cbb3576e57ca9efc9df47381c8c68319b5109bf622436228e580e70504b1eafd`；原 TLS20/20 zip `66664972e6359a6975a79ba0aab1bf4de65b257e5ec6648bad54afdf7c4d76c7`。RH047 首败仍原样保留。已目视 ICE 桌面与390px截图，无配对秘密；长 UUID/hash 和窄屏顶部焦点链接仍待最终界面收尾，不称最终 UX 完成。
+
+### RH049 故障矩阵实现（首次网络执行前）
+
+`IMPLEMENTED`：7 个独立 VM/profile/PCnode/合成项目：reopen、pc-offline、independent-echo、ack-loss、revoked-write、historical-bootstrap、privacy。原 baseline/conflict/import/TLS 与 180/420 秒设置保留。受控固定 FSM 无任意命令、路径、PID或SQL参数；每次动作核验归属，失败与清理异常保留。
+
+- reopen 验证已加入3314工作区离线资源就绪、离线保存、全部B进程正常退出、同profile离线冷启动；不代表断电。
+- PC offline 停止实际owned服务，Relay持续工作，分别检查中继接收与目标设备确认。
+- ACKloss 在原 after_commit 屏障观察真实落盘再kill owned Relay；原缓存 envelope/nonce/message/receipt/sequence及PC TX/Inbox/Audit/Revision、B操作与快照检查幂等，不限制新HTTP proof/request ID。
+- N撤销以owner签名HTTPS发布，普通B待写周期在首signed GET401被拒，未到POST，内容/pending保留且无新增PC/Relay消息；不能声称该场景直接观察了撤销POST。历史用例仅首次加入非空历史的BOOTSTRAP_REQUIRED阻断，已加入旧epoch接收范围仍由原生接收测试单列支持。
+- privacy 使用真实pg_dump、所有解码BYTEA、owned文件/日志及已知PC项目/设备私有材料清单，独立合成正对照精确删除后零命中。B不可导出私钥未做raw扫描，标NOT_POSSIBLE。
+
+root 独立 `failure-matrix-root-001`：Python35、Node24及完整typecheck PASS。实现者原故障证据与路径在忽略目录 `failure-matrix-draft/IMPLEMENTER_HANDOFF.md`；不存在七个实际网络PASS结果，尚待精确SHA首次CI。G3保存失败补证及最终UI仍未完成；整体INCOMPLETE，TLS-001/PC013 OPEN。
+
+QUALITY发现并修补P2：Playwright序列化丢弃AggregateError.errors，原始主断言/cleanup细节会丢失。保留因果RED；现于spec最外catch在序列化前使用有界privateFailure保存到忽略目录（wx/0600），原样重抛，写入失败保留两异常。公开白名单不变。root `failure-matrix-root-002` 独立Node24与typecheck通过；不得把私有写入成功当作测试成功。
