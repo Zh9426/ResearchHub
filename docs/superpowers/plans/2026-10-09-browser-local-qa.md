@@ -14,10 +14,10 @@
 - [x] 规格→质量复审，根协调者检查暂存/CHANGELOG并提交推送。
 
 ## Task 2：本地命令与最小工作台
-- [ ] src/local/{model,db,commands,seeds}.ts：冻结三模块snapshot/hash；空空间显式种子初始化；稳定UUID及新workspace/device身份。
-- [ ] IDB事务内get→CAS→object+operation+audit+local_version写入；resolve只在oncomplete；注入写后abort实证全部回滚。
-- [ ] Run/Note详情、星标/筛选、本地保存/未连接传输/review状态独立；过期编辑保留输入、比较/另存；BroadcastChannel仅通知。
-- [ ] 真实浏览器验证离线核心闭环、两tab不同ID并存/同版本一成一拒、保存失败输入保留。规格→质量复审后提交。
+- [x] src/local/{model,db,commands,seeds}.ts：冻结三模块snapshot/hash；空空间显式种子初始化；稳定UUID及新workspace/device身份。
+- [x] IDB事务内get→CAS→object+operation+audit+local_version写入；resolve只在oncomplete；注入写后abort实证全部回滚。
+- [x] Run/Note详情、星标/筛选、本地保存/未连接传输/review状态独立；过期编辑保留输入、比较/另存；BroadcastChannel仅通知。
+- [x] 真实浏览器验证离线核心闭环、两tab不同ID并存/同版本一成一拒、保存失败输入保留。规格→质量复审后提交。
 
 ## Task 3：救援与存储错误
 - [ ] src/local/rescue.ts与storage.ts：完整明文合成包，strict schema+canonical摘要，排除key/nonce/信任；预览、原子恢复、重复幂等、碰撞拒绝、新身份、保留事件source。

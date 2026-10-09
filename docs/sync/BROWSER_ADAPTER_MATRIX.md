@@ -26,12 +26,12 @@
 | 本地字段 | 冻结wire v1 | 本轮处理 |
 |---|---|---|
 | ResearchRun title / run_type / objective / observation / status / scientific_outcome | 支持，仍需原类型/枚举检查 | 本地versioned操作保存；可用合成ChangeSet验证字段兼容，不冒称已生成授权交易 |
-| Note title / content / run_id | 支持 | 独立Note UUID与同项目关联；本地保存、编辑与救援 |
+| Note title / body | wire使用title / content，body不是wire字段 | 独立Note UUID；本地body完整保存，未来adapter需显式转换到content；本轮不伪造转换成功 |
 | is_highlighted / highlight_type / highlight_note | ResearchRun wire白名单不支持 | 本地持久化并完整救援；标记NEEDS_WIRE_ADAPTER，不丢字段、不直接塞wire v1 |
 | highlighted_at / highlighted_by | 产品有这些字段，wire不支持 | 不伪造产品User身份/人工授权；本地audit/source标识独立记录，未来映射另审 |
 | id / local_edit_version / source / local_format_version | local bookkeeping，不是payload权限 | 同事务CAS，base revision未知时null；不把本地版本当跨端revision |
 | LocalOperation / LocalAudit | 不是SyncTransaction/SecureEnvelope/Kernel Audit | 全部保留本地pending及原来源，不生成receipt/ScientificAccepted |
-| Project module_id/version/snapshot/hash | 有相应wire字段 | 使用已冻结合成模块快照，刷新不覆盖；hash不赋予真实项目授权 |
+| Project module_id/module_version/module_snapshot/module_hash | wire使用module_snapshot_hash | 本地module_hash是冻结JSON序列化的SHA256；不是直接可发送的wire hash。未来adapter须依wire canonical规则核验；快照刷新不覆盖，hash不赋予授权 |
 
 浏览器互操作须读取原fixtures/sync/v1（26canonical、59protocol、3nesting、10场景20step）并核对固定预期；不能在测试时重生成期望。科学decimal保留字符串精度；未知/额外字段继续拒绝。
 
