@@ -1,5 +1,29 @@
 # 隔离浏览器离线工作台
 
+## Sprint 3B B2b 浏览器加入（网络验收进行中）
+
+普通3314页面的“加入可信 PC 项目”可在空工作区生成本浏览器设备公钥。不要先初始化演示项目；已有演示或旧3A内容不能按名称合并成联网身份。
+
+1. 使用下节 setup/start 命令建立全新空 PC 合成节点，打开3315。
+2. B生成公开身份并复制到PC“授权新浏览器设备”，点击“开始设备配对”。
+3. 将PC公开输出复制到B；在可信PC屏幕独立核对设备指纹、Owner/Recovery root与SAS，再生成B配对证明。
+4. PC确认该证明，将完成回执与签名绑定交回B。B验证完整授权与模块快照，在本浏览器解封项目钥匙，再向原38001入口发送正式签名hello。
+5. 只有B显示加入完成后才在PC创建baseline。首次加入要求当前epoch空历史；已有历史明确阻断，不跳游标或重建身份。
+
+网络失败后保留同一配对会话与回执，显式恢复；不得清库或新建密钥规避失败。独立公共绑定预览不会改变授权。此切点没有双向记录同步按钮，完整业务传输仍待C阶段。
+
+Windows本机已验证原生设备身份持久化与界面状态，**Windows严格浏览器TLS尚未验证**。不得为运行以上步骤安装全局CA或关闭证书检查。Linux网络验收使用一次性CI中的两个独立OS用户、各自NSS/profile和原QA Relay；`scripts/browser-network-qa-ci.py`仅允许在该CI环境运行，结果在正式首轮完成前保持NOT VERIFIED。
+
+本机界面定向测试（先普通 `build:sync`，全新attempt）：
+
+```powershell
+cd apps/browser-qa
+$env:RH_B2_LOCAL_ATTEMPT='unique-local-join-attempt'
+node node_modules/@playwright/test/cli.js test --config playwright.join-local.config.ts
+```
+
+其中持久绑定显示测试使用显式合成状态注入，只验证UI，不冒充真实加入。网络CI使用普通构建，真实PC UI与B UI交换配对材料，浏览器直接签名和fetch；白名单摘要区分真实证书/CORS与hello中断注入，原始日志、proof、profile不上传。
+
 ## Sprint 3B B2a PC owner 配对 API
 
 这是 owner 端配对切点；浏览器加入界面与浏览器 HTTPS 尚未完成，不计完整双端验收。只对全新、空合成项目使用下列准备命令；已加入或已有历史的节点不得再次 bootstrap。

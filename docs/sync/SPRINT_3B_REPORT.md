@@ -78,6 +78,20 @@ RED01/02为临时目录权限；03/04预期缺实现；05为业务阻断/端点/
 
 两项质量 P2 先以 `pc/b2a-red-11` 复现（5 failed / 1 passed）：同步配对阻塞 HTTP 事件循环、构造环境错误绕过异常映射。最小补丁将构造/动作/关闭整体交给线程池，精确处理已知 setup 错误。修补后 `pc/b2a-api-regression-02` 五个完整 PC 文件 **43 passed / 11.40s**，`pc/b2a-network-03` 原严格 HTTPS **1 passed / 1.44s**，均 exit0、0 skipped。中间 api-regression-01 为 Windows monotonic 同 tick 的测试误判（39 passed / 1 failed），改为事件先后断言，保留原记录；不是放宽超时或反复重跑。上述403项是P2修补前完整结果，未混称为修补后重跑。
 
+RH032 已推送 `e7eedb7b56eb417d5ae9bef26a4391fae349316f`，远端同 SHA，main/v0.2.0 不变。首次 [CI37902517081](https://github.com/Zh9426/ResearchHub/actions/runs/37902517081) attempt1 六job成功；原TLS固定20轮通过。归档 `storage/runtime/browser-local-qa/ci-37902517081-attempt1/`：TLS zip `d35ecac580cb93ca7abe0eca19990b5324e04363eb2da3bc28acf10872ad8de2`，browser zip `ade271cb619518d6c78e30a6159de33ce9865e2dafccdcdc31d2796a39c6a2fe`，security zip `06eb5cebca0fae784405cdb0f0a2712e00bd737c2d6efad2ef9ca7d130364053`。TLS-001/PC013仍OPEN，浏览器网络尚未验收。
+
+### B2b — 实际加入界面与严格网络验收入口（RH033，验收中）
+
+`IMPLEMENTED`：空B工作区原生生成设备公钥；PC/B通过独立信任根与SAS核对、标准配对证明、正式grant与签名绑定加入。B验证全部链、目标principal、模块内容和双哈希，vault授权先于业务绑定；原HTTPS签名hello确认当前空基线后才写VERIFIED。相同已完成receipt幂等重取不因后续新消息误报首次历史bootstrap。首次加入非空历史仍明确阻断。
+
+正式browser Fetch保持原RelayRequest域、精确路径/query/body摘要/epoch/head，credentials omit、redirect error、524288字节及15秒边界；窄CORS只允许3314，OPTIONS无业务访问，实际请求仍校验proof。Linux CI使用新OS账户各自真实home/NSS/profile，runner runtime与Git元数据保持私有，仅复制公开CA；不导入个人全局根库，不绕证书、不代理浏览器密码计算。
+
+`VERIFIED_IN_REAL_BROWSER`（仅Windows本地UI）：`b2-local/binding-status-green-20261009-01` 两项通过、exit0、0 skipped，4.2s。其profile Last Version为Chromium156.0.8078.4。第一项为原生身份生成与刷新保持、未确认按钮禁用、项目仍空；第二项是明确的合成BindingRecord注入，只验证状态显示与预览不改授权，不计真实加入。对应RED保留于 `binding-status-red-20261009-01`，build/typecheck/diff记录位于 `binding-status-build-20261009-01`。
+
+本机CORS单元3项、Node请求/安全规则56项通过；两包类型检查与普通构建通过。B构建完整hash `f283ee604f1e28041a5280cd529aff80814322c075ca9e204616dcd428a4b66d`；PC `96a5e71643977b5f0ff6ebaa753328071935ef237445719e9285ece71ea2092e`。早期CORS拒绝、缺请求函数、重复hex编码和缺加入按钮等RED保留在执行记录；早期UI曾复用固定输出目录，部分Playwright文件可能覆盖，不能声称这些原始产物完整。后续已改唯一attempt并拒绝覆盖。
+
+`NOT VERIFIED`：Linux严格浏览器TLS/真实Fetch/完整UI配对将由精确提交首次CI执行。其测试明确区分实际证书/CORS拒绝与 `FAULT_INJECTED_ONLY` 的pin+grant后hello网络中断；仅pin之后、grant之前中断尚未专测。Windows浏览器网络仍未验证。B2b规格与质量静态复审PASS，仍不计完整G2/G4通过；C业务双向传输尚未实现。
+
 ## 失败保留
 
 B2a收尾遇到环境中断：`pc/b2a-regression-03` 没有退出状态/JUnit，不能计通过。继续执行的 `b2a-regression-04` 期间35433/35434/38001均不可达，核验Docker Linux engine未运行；保存 `environment.txt` 后仅终止该轮明确owned等待进程，记录 `ENVIRONMENT_BLOCKED/CANCELLED`、exit -1。后台启动Docker Desktop、核对既有QA scope并只start原容器，原Relay `--start` guard成功；没有init/destroy/清库、重建身份或调整超时/证书。恢复记录在该轮 `restore.txt`，后续新attempt结果单列。

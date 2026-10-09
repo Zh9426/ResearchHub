@@ -1,0 +1,12 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import * as reporter from './network-evidence-reporter.ts';
+test('diagnostics export only six fixed enums and never private error fragments',()=>{
+ assert.equal(typeof reporter.safeDiagnostics,'function');
+ const secret='PRIVATE_SECRET_SENTINEL';
+ assert.deepEqual(reporter.safeDiagnostics(secret+' arbitrary unknown failure'),[]);
+ const output=reporter.safeDiagnostics(secret+" EACCES EPERM Executable doesn't exist MODULE_NOT_FOUND No usable sandbox error while loading shared libraries");
+ assert.deepEqual(output,['ACCESS_DENIED','OPERATION_NOT_PERMITTED','MISSING_BROWSER','MISSING_MODULE','SANDBOX_UNAVAILABLE','MISSING_SHARED_LIBRARY']);
+ assert.equal(JSON.stringify(output).includes(secret),false);
+ assert.deepEqual(reporter.safeDiagnostics(secret+' Permission denied Permission denied'),['ACCESS_DENIED']);
+});

@@ -28,8 +28,8 @@ export function Workbench({extension,adapter=defaultAdapter}:{extension?:(contex
   window.addEventListener('beforeunload',unload);document.addEventListener('click',link,true);
   return()=>{active=false;localCommands.notifications?.removeEventListener('message',change);window.removeEventListener('beforeunload',unload);document.removeEventListener('click',link,true);delete window.__LOCAL_QA__;};
  },[]);
- const project=data?.projects.find(p=>p.route_alias===alias)??(adapter.pc?data?.projects[0]:undefined);
- useEffect(()=>{if(adapter.pc&&data?.projects.length&&!data.projects.some(p=>p.route_alias===alias))setAlias(data.projects[0].route_alias);},[data,alias,adapter.pc]);
+ const project=data?.projects.find(p=>p.route_alias===alias)??(adapter.sync?data?.projects[0]:undefined);
+ useEffect(()=>{if(adapter.sync&&data?.projects.length&&!data.projects.some(p=>p.route_alias===alias))setAlias(data.projects[0].route_alias);},[data,alias,adapter.pc]);
  const contextFields=(()=>{
   if(!adapter.pc)return alias==='hdsp'?[['repository','代码仓库'],['config','仿真配置说明']]:alias==='ice'?[['experiment_conditions','实验条件说明'],['unexpected_events','异常观察']]:[['context','补充语境']];
   if(!project||draft?.kind!=='Run')return [];

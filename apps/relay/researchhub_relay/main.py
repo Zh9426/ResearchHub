@@ -42,6 +42,30 @@ def failure(code, status=400):
     )
 
 
+@app.middleware("http")
+async def browser_cors(request, call_next):
+    """Only the isolated browser. Preflight has no access to business state."""
+    origins = [v for k, v in request.scope["headers"] if k.lower() == b"origin"]
+    allowed = origins == [b"http://127.0.0.1:3314"]
+    if origins and not allowed:
+        return failure("ORIGIN_REJECTED", 403)
+    if request.method == "OPTIONS":
+        method = request.headers.get("access-control-request-method")
+        headers = {h.strip().lower() for h in request.headers.get("access-control-request-headers", "").split(",") if h.strip()}
+        if not allowed or method not in ("GET", "POST") or not headers <= {"content-type", "x-rh-proof"}:
+            return failure("ORIGIN_REJECTED", 403)
+        response = Response(status_code=204, headers={
+            "Access-Control-Allow-Methods": "GET, POST",
+            "Access-Control-Allow-Headers": "content-type, x-rh-proof",
+        })
+    else:
+        response = await call_next(request)
+    if allowed:
+        response.headers["Access-Control-Allow-Origin"] = "http://127.0.0.1:3314"
+        response.headers["Vary"] = "Origin"
+    return response
+
+
 @app.api_route(
     "/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]
 )

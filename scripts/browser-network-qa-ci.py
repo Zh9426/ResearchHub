@@ -1,0 +1,268 @@
+"""One-shot Linux CI harness: original Relay, separate OS browser users, no TLS bypass.
+
+Only public CA bytes cross into the browser user's home. Runtime, service logs and
+credentials stay owned by the runner. No browser operation runs as the PC owner.
+"""
+import hashlib
+import json
+import os
+from pathlib import Path
+import shlex
+import shutil
+import socket
+import stat
+import subprocess
+import sys
+import time
+from urllib.request import urlopen
+
+ROOT = Path(__file__).resolve().parents[1]
+RUNTIME = ROOT / 'storage/runtime'
+OUT = RUNTIME / 'browser-sync-qa/network-ci'
+PUBLIC_BROWSER = Path('/opt/rh-qa-browser')
+APP = ROOT / 'apps/browser-qa'
+
+
+def safe_diagnostics(raw):
+    """Classification only; never return fragments of untrusted/private logs."""
+    patterns = {'ACCESS_DENIED': (b'EACCES', b'Permission denied'),
+                'OPERATION_NOT_PERMITTED': (b'EPERM', b'Operation not permitted'),
+                'MISSING_BROWSER': (b"Executable doesn't exist",),
+                'MISSING_MODULE': (b'MODULE_NOT_FOUND',),
+                'SANDBOX_UNAVAILABLE': (b'No usable sandbox',),
+                'MISSING_SHARED_LIBRARY': (b'error while loading shared libraries',)}
+    return [code for code, needles in patterns.items() if any(n in raw for n in needles)]
+
+
+class StageFailure(RuntimeError):
+    def __init__(self, stage):
+        self.stage = stage
+        super().__init__('QA_STAGE_FAILED')
+
+
+def main():
+    if sys.platform != 'linux' or os.environ.get('GITHUB_ACTIONS') != 'true':
+        raise RuntimeError('EPHEMERAL_LINUX_CI_ONLY')
+    if os.environ.get('HUB_SYNC_QA') != '1' or os.environ.get('HUB_RELAY_QA') != '1':
+        raise RuntimeError('EXPLICIT_QA_REQUIRED')
+    import pwd
+    os.umask(0o077)
+    RUNTIME.mkdir(parents=True, exist_ok=True)
+    RUNTIME.chmod(0o700)
+    git_metadata = ROOT / '.git'
+    if git_metadata.is_dir():
+        git_metadata.chmod(0o700)
+    OUT.mkdir(parents=True, exist_ok=False)
+    evidence = {'scope': 'SYNTHETIC isolated Linux browser network',
+                'sourceCommit': os.environ['GITHUB_SHA'], 'TLS_001': 'OPEN',
+                'PRODUCTION_READY': False, 'stages': [], 'status': 'RUNNING'}
+    services = []
+    logs = []
+    owned_user_ids = []
+    relay_attempted = False
+    current_stage = 'initialize'
+
+    def save():
+        (OUT / 'harness-summary.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
+
+    def run(stage, args, *, env=None, cwd=ROOT, timeout=300):
+        nonlocal current_stage
+        current_stage = stage
+        path = OUT / (stage + '.private.log')
+        with path.open('xb') as log:
+            try:
+                result = subprocess.run(args, cwd=cwd, env=env, stdout=log,
+                                        stderr=subprocess.STDOUT, timeout=timeout, check=False)
+                code = result.returncode
+            except subprocess.TimeoutExpired:
+                code = 'TIMEOUT'
+            except OSError:
+                code = 'SPAWN_ERROR'
+        raw_log = path.read_bytes()
+        evidence['stages'].append({'stage': stage, 'exitCode': code,
+                                  'privateLogSha256': hashlib.sha256(raw_log).hexdigest(),
+                                  'diagnostics': safe_diagnostics(raw_log)})
+        save()
+        if code != 0:
+            raise StageFailure(stage)
+
+    def as_user(user, args, *, values=None, cwd=APP):
+        # sudo login selects the account's actual home; never overwrite HOME.
+        command = shlex.join(['env', *(f'{k}={v}' for k, v in (values or {}).items()), *args])
+        return ['sudo', '--login', '--user', user, '--', 'sh', '-c',
+                'cd ' + shlex.quote(str(cwd)) + ' && exec ' + command]
+
+    def start_service(name, args, origin, env):
+        nonlocal current_stage
+        current_stage = name + '-start'
+        port = int(origin.rsplit(':', 1)[1])
+        owner_path = RUNTIME / ('browser-sync-qa/pc/server-owner.json' if name == 'pc'
+                                else 'browser-sync-qa/server-owner.json')
+        if owner_path.exists():
+            raise RuntimeError('EXISTING_QA_OWNER_REQUIRED_REVIEW')
+        with socket.socket() as probe:
+            if probe.connect_ex(('127.0.0.1', port)) == 0:
+                raise RuntimeError('OCCUPIED_QA_PORT')
+        log = (OUT / (name + '.private.log')).open('xb')
+        logs.append(log)
+        try:
+            process = subprocess.Popen(args, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
+        except OSError:
+            log.flush()
+            evidence['stages'].append({'stage': current_stage, 'exitCode': 'SPAWN_ERROR',
+                'privateLogSha256': hashlib.sha256(Path(log.name).read_bytes()).hexdigest()})
+            save()
+            raise StageFailure(current_stage) from None
+        services.append((name, process, OUT / (name + '.private.log')))
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                raise RuntimeError('OWNED_SERVICE_EXITED')
+            try:
+                with urlopen(origin, timeout=1) as response:
+                    if response.status == 200:
+                        evidence['stages'].append({'stage': current_stage, 'exitCode': 0})
+                        save()
+                        return
+            except OSError:
+                time.sleep(0.1)  # Startup readiness only, never test/business retries.
+        raise RuntimeError('OWNED_SERVICE_START_TIMEOUT')
+
+    try:
+        if (RUNTIME / 'secure-relay-run.json').exists():
+            raise RuntimeError('FRESH_CI_RELAY_REQUIRED')
+        node = shutil.which('node')
+        if not node or not PUBLIC_BROWSER.is_dir():
+            raise RuntimeError('PUBLIC_NODE_BROWSER_REQUIRED')
+        users = {}
+        for case, user in [('untrusted', 'rhqatlsbad'), ('trusted', 'rhqatlsgood')]:
+            run('user-' + case, ['sudo', 'useradd', '--create-home', '--shell', '/bin/bash', user])
+            account = pwd.getpwnam(user)
+            owned_user_ids.append(account.pw_uid)
+            home = Path(account.pw_dir)
+            if home != Path('/home') / user:
+                raise RuntimeError('UNEXPECTED_QA_USER_HOME')
+            users[case] = (user, home)
+            # A private runner home may need traverse-only access. Do not expose
+            # its directory listing, change ownership, or grant runtime access.
+            for index, parent in enumerate(ROOT.parents):
+                if not parent.stat().st_mode & stat.S_IXOTH:
+                    run('traverse-' + case + '-' + str(index), ['sudo', 'setfacl', '-m',
+                        'u:' + user + ':--x', str(parent)])
+            nss = home / '.local/share/pki/nssdb'
+            run('nss-dir-' + case, as_user(user, ['mkdir', '-p', str(nss)], cwd=home))
+            run('nss-new-' + case, as_user(user, ['certutil', '-N', '-d', 'sql:' + str(nss),
+                                              '--empty-password'], cwd=home))
+        relay_attempted = True
+        run('relay-init', [sys.executable, 'scripts/secure-relay-qa.py', '--init'], timeout=600)
+        state = json.loads((RUNTIME / 'secure-relay-run.json').read_text())
+        tls_dir = Path(state['tls_directory']).resolve()
+        if not tls_dir.is_relative_to(RUNTIME.resolve()) or state.get('phase') != 'ready':
+            raise RuntimeError('RELAY_READY_CA_REQUIRED')
+        public_ca = tls_dir / 'ca.crt'
+        user, home = users['trusted']
+        # install only the public certificate, not state, TLS directory or private keys.
+        run('copy-public-ca', ['sudo', 'install', '-m', '0644', '-o', user, '-g', user,
+                              str(public_ca), str(home / 'qa-ca.crt')])
+        run('trust-public-ca', as_user(user, ['certutil', '-A', '-d', 'sql:' + str(home / '.local/share/pki/nssdb'),
+                                           '-t', 'C,,', '-n', 'ResearchHub-isolated-QA',
+                                           '-i', str(home / 'qa-ca.crt')], cwd=home))
+        evidence['caSha256'] = hashlib.sha256(public_ca.read_bytes()).hexdigest()
+        env = {**os.environ, 'PYTHONPATH': str(ROOT / 'apps/api') + os.pathsep + str(ROOT)}
+        run('pc-setup', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'setup', '--node', 'ci-browser-pairing'], env=env)
+        start_service('pc', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'start', '--node', 'ci-browser-pairing'],
+                      'http://127.0.0.1:3315', env)
+        start_service('browser-static', [node, 'apps/browser-qa/scripts/server.mjs'],
+                      'http://127.0.0.1:3314', {**env, 'RH_QA_PROFILE': 'sync'})
+        build = RUNTIME / 'browser-sync-qa/dist'
+        build_hash = hashlib.sha256((build / 'app.js').read_bytes() + (build / 'app.css').read_bytes()).hexdigest()
+        pc_build = RUNTIME / 'browser-sync-qa/pc/dist'
+        evidence['buildHashes'] = {'browser': build_hash, 'pc': hashlib.sha256(
+            (pc_build / 'app.js').read_bytes() + (pc_build / 'app.css').read_bytes()).hexdigest()}
+        for case, (user, home) in users.items():
+            results = home / 'network-results'
+            values = {'RH_B2_RESULTS': str(results), 'RH_B2_BUILD_HASH': build_hash,
+                      'RH_B2_TLS_CASE': case, 'PLAYWRIGHT_BROWSERS_PATH': str(PUBLIC_BROWSER),
+                      'GITHUB_SHA': os.environ['GITHUB_SHA']}
+            # Verify user separation by actual access denial before running browser tests.
+            run('runtime-denied-' + case, as_user(user, [node, '-e',
+                'const fs=require("fs");try{fs.readdirSync(process.argv[1]);process.exit(1)}'
+                'catch(e){if(e.code!=="EACCES")throw e}', str(RUNTIME)], cwd=home))
+            try:
+                run('browser-' + case, as_user(user, [node, 'node_modules/@playwright/test/cli.js',
+                    'test', '--config', 'playwright.network.config.ts'], values=values), timeout=420)
+            finally:
+                # Only reviewed public summary is copied. Raw logs/profiles never leave home/runtime.
+                summary = results / 'summary.json'
+                present = subprocess.run(['sudo', 'test', '-f', str(summary)], check=False).returncode
+                if present == 0:
+                    run('collect-' + case, ['sudo', 'install', '-m', '0600', '-o', str(os.getuid()),
+                        '-g', str(os.getgid()), str(summary), str(OUT / (case + '-summary.json'))])
+                elif present != 1:
+                    raise StageFailure('collect-' + case)
+                if case == 'trusted' and present == 0:
+                    public_result = json.loads((OUT / (case + '-summary.json')).read_text())
+                    if public_result.get('status') == 'passed':
+                        for filename in ('desktop.png', 'mobile.png'):
+                            run('collect-' + filename.split('.')[0], ['sudo', 'install', '-m', '0600',
+                                '-o', str(os.getuid()), '-g', str(os.getgid()), str(results / filename),
+                                str(OUT / ('trusted-' + filename))])
+        evidence['status'] = 'PASS'
+    except Exception as exc:
+        evidence['status'] = 'FAIL'
+        failed_stage = getattr(exc, 'stage', current_stage)
+        evidence['failure'] = {'stage': failed_stage, 'errorClass': type(exc).__name__,
+                               'exitCode': 'NOT_COMPLETED'}
+        # Do not print exception text: remote/browser data can contain credentials or proofs.
+        print('BROWSER_QA_FAILED stage=' + failed_stage + ' class=' + type(exc).__name__)
+    finally:
+        for name, process, log_path in reversed(services):
+            try:
+                if process.poll() is None:
+                    if name == 'pc':
+                        run('pc-stop', [sys.executable, '-m', 'researchhub.sync.pc_cli', 'stop'], env=env)
+                    else:
+                        run('browser-static-stop', [node, 'apps/browser-qa/scripts/stop.mjs'], env={**env, 'RH_QA_PROFILE': 'sync'})
+                    process.wait(timeout=15)
+            except Exception as exc:
+                evidence['status'] = 'FAIL'
+                evidence.setdefault('cleanupFailures', []).append({'service': name, 'errorClass': type(exc).__name__})
+                if process.poll() is None:
+                    process.terminate()  # Only the exact child this harness created.
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait(timeout=5)
+        for log in logs:
+            log.close()
+        evidence['ownedServiceResults'] = [
+            {'service': name, 'exitCode': process.poll() if process.poll() is not None else 'STILL_RUNNING',
+             'privateLogSha256': hashlib.sha256(log_path.read_bytes()).hexdigest()}
+            for name, process, log_path in services]
+        # A timed-out sudo child can leave Chromium descendants. These UIDs were
+        # created by this run and cannot contain the user's personal processes.
+        for uid in owned_user_ids:
+            remaining = subprocess.run(['pgrep', '-u', str(uid)], stdout=subprocess.DEVNULL, check=False)
+            if remaining.returncode == 0:
+                evidence['status'] = 'FAIL'
+                evidence.setdefault('cleanupFailures', []).append({'service': 'browser-user', 'errorClass': 'OwnedProcessesRemain'})
+                subprocess.run(['sudo', 'pkill', '-TERM', '-u', str(uid)], check=False)
+        if relay_attempted:
+            try:
+                run('relay-diagnostics', [sys.executable, 'scripts/secure-relay-diagnostics.py'])
+            except Exception as exc:
+                evidence['status'] = 'FAIL'
+                evidence.setdefault('cleanupFailures', []).append({'service': 'diagnostics', 'errorClass': type(exc).__name__})
+            try:
+                run('relay-destroy', [sys.executable, 'scripts/secure-relay-qa.py', '--destroy'], timeout=300)
+            except Exception as exc:
+                evidence['status'] = 'FAIL'
+                evidence.setdefault('cleanupFailures', []).append({'service': 'relay', 'errorClass': type(exc).__name__})
+        save()
+    print('BROWSER_QA_' + evidence['status'])
+    return 0 if evidence['status'] == 'PASS' else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

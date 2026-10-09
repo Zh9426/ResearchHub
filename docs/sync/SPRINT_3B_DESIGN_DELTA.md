@@ -54,6 +54,8 @@ B1永久prepare marker与预约行同时绑定身份、token、nonce、sealed状
 
 CORS精确允许 `http://127.0.0.1:3314`、GET/POST、`content-type,x-rh-proof`，不允许credentials；OPTIONS在proof之前处理，仅preflight响应，无业务读写或nonce消费。实际请求仍完整proof验证，错误响应也只向允许origin暴露。B的CSP固定 `connect-src 'self' https://127.0.0.1:38001`。
 
+B2复核[Chromium Linux证书文档](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/linux/cert_management.md)：M146起默认使用实际用户目录下 `.local/share/pki/nssdb`，已有旧 `.pki/nssdb` 时仍用旧库。本轮新OS用户显式创建新版NSS库，仅可信用户加入公开QA CA；通过sudo login选择真实账户，不改HOME。整个runner runtime设为0700，浏览器程序位于公共只读目录；browser用户不能读取PC/Relay运行配置。证书是否实际生效仍须通过真实Chromium正负例证明，静态脚本审查不计TLS通过。
+
 Linux网络验收由CI runner启动原Relay、PC3315和静态3314；两个新OS用户分别运行可信CA和错误CA浏览器，使用各自实际home/NSS/profile，浏览器测试不启动PC或读取其配置/私钥。只复制公共ca.crt，不开放TLS目录、Relay state或env；源码/依赖/浏览器二进制仅rX，只有所选profile/results目录可写，必要时父目录仅增加专用用户traverse ACL，不整仓chown。独立网络lifecycle采用外部服务模式，原3A helper含义不改。CA/hostname负例使用真实浏览器顶层导航到原127入口或https://localhost:38001，断言HTTP之前明确CERT信任/名称错误；不受3314的connect-src影响，不新增诊断页或放宽CSP。不能把401、IPv6连接拒绝、超时或CORS失败当证书验证。报告区分导航证书负例与3314 fetch/preflight/proof正例，普通页面仍仅连接原127入口。验收后关闭实际Chromium进程并分别owned stop，失败证据保留；临时用户由一次性CI环境回收。此段为待实施harness方案，不是已执行证明。
 
 ## C：传输、冲突与真实状态

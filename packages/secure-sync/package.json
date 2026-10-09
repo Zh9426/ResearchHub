@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test --test-isolation=none test/crypto.test.ts test/lifecycle.test.ts test/v2.test.ts test/browser-core.test.ts",
+    "test": "node --test --test-isolation=none test/crypto.test.ts test/lifecycle.test.ts test/v2.test.ts test/browser-core.test.ts test/request-browser.test.ts",
     "typecheck": "node ../../apps/web/node_modules/typescript/bin/tsc -p tsconfig.json"
   },
   "dependencies": { "@hpke/core": "1.9.0" }
